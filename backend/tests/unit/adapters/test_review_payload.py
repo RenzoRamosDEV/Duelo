@@ -211,46 +211,134 @@ def test_a_message_exactly_at_the_limit_is_not_cut() -> None:
     assert parse_review_payload(payload).findings[0].message == message
 
 
-# --- prompt versionado --------------------------------------------------------------------------
+# --- agente y skills -----------------------------------------------------------------------------
+
+ALWAYS_ON = (
+    "bug-detection",
+    "security-audit",
+    "safe-refactoring",
+    "test-coverage",
+    "change-hygiene",
+    "finding-verification",
+    "review-report",
+)
+CONDITIONAL = {
+    "architecture-review": "backend/src/duelo/application/use_cases.py",
+    "data-and-api-contracts": "backend/alembic/versions/0009_x.py",
+    "dependency-and-config-audit": "backend/pyproject.toml",
+    "frontend-review": "frontend/src/App.tsx",
+    "performance-review": "backend/src/duelo/adapters/persistence/review_repository.py",
+    "temporal-review": "backend/src/duelo/workflows/review_change.py",
+}
+MAX_BASE_INSTRUCTIONS = 30_000
+MAX_ALL_INSTRUCTIONS = 60_000
 
 
-def test_the_instructions_come_from_the_versioned_prompt_file() -> None:
-    from duelo.adapters.agents.review_payload import PROMPT_VERSION, PROMPTS_DIR
+def _diff(*paths: str) -> str:
+    return "".join(f"diff --git a/{p} b/{p}\n@@ -1 +1 @@\n+x\n" for p in paths)
 
-    assert PROMPT_VERSION == "v2"
-    on_disk = (PROMPTS_DIR / "v2.md").read_text(encoding="utf-8")
+
+def _skills_in(prompt: str) -> tuple[str, ...]:
+    instructions = prompt.split("Datos del cambio")[0]
+    return tuple(
+        line.removeprefix("## Skill: ")
+        for line in instructions.splitlines()
+        if line.startswith("## Skill: ")
+    )
+
+
+def test_the_prompt_starts_with_the_agent_body_and_the_mark_replaced() -> None:
+    from duelo.adapters.agents.review_payload import AGENT_NAME, AGENTS_DIR, prompt_version
+
+    on_disk = (AGENTS_DIR / AGENT_NAME / "AGENT.md").read_text(encoding="utf-8")
+    body = on_disk.split("---\n", 2)[2].lstrip("\n")
     prompt = build_prompt(_change(), nonce="N1")
 
-    assert prompt.startswith(on_disk.replace("{mark}", "N1"))
+    assert prompt_version() == "v3"
+    assert prompt.startswith(body.rstrip().replace("{mark}", "N1"))
     assert "{mark}" not in prompt
-    assert "{mark}" in on_disk  # el fichero es el que lleva el marcador, no el código
+    assert "{mark}" in body  # el fichero es el que lleva el marcador, no el código
 
 
-def test_injected_instructions_replace_the_file() -> None:
+def test_an_empty_diff_gets_exactly_the_always_on_skills_in_order() -> None:
+    assert _skills_in(build_prompt(_change(diff=""), nonce="N1")) == ALWAYS_ON
+
+
+@pytest.mark.parametrize(("skill", "path"), sorted(CONDITIONAL.items()))
+def test_each_conditional_skill_is_activated_by_a_file_of_the_diff(skill: str, path: str) -> None:
+    skills = _skills_in(build_prompt(_change(diff=_diff(path)), nonce="N1"))
+
+    assert skills[: len(ALWAYS_ON)] == ALWAYS_ON
+    assert skill in skills[len(ALWAYS_ON) :]
+
+
+def test_a_frontend_diff_does_not_bring_the_temporal_skill() -> None:
+    skills = _skills_in(build_prompt(_change(diff=_diff("frontend/src/App.tsx")), nonce="N1"))
+
+    assert "frontend-review" in skills
+    assert "temporal-review" not in skills
+
+
+def test_conditional_skills_follow_in_alphabetical_order() -> None:
+    diff = _diff(
+        "backend/src/duelo/workflows/a.py", "frontend/src/x.tsx", "backend/alembic/versions/b.py"
+    )
+
+    extra = _skills_in(build_prompt(_change(diff=diff), nonce="N1"))[len(ALWAYS_ON) :]
+
+    assert extra == tuple(sorted(extra))
+    assert set(extra) >= {"temporal-review", "frontend-review", "data-and-api-contracts"}
+
+
+def test_composing_twice_with_the_same_mark_is_identical() -> None:
+    change = _change(diff=_diff("frontend/src/x.tsx"))
+
+    assert build_prompt(change, nonce="N1") == build_prompt(change, nonce="N1")
+
+
+def test_every_skill_on_disk_is_reachable_and_no_conditional_one_is_dead() -> None:
+    from duelo.adapters.agents.review_payload import active_agent
+
+    agent = active_agent()
+    unreachable = [n for n, s in agent.skills.items() if n not in agent.always and not s.paths]
+
+    assert unreachable == []
+    assert set(agent.always) == set(ALWAYS_ON)
+    assert set(agent.skills) - set(ALWAYS_ON) == set(CONDITIONAL)
+
+
+def test_instruction_sizes_stay_within_budget() -> None:
+    base = build_prompt(_change(diff=""), nonce="N1").split("Datos del cambio")[0]
+    everything = build_prompt(_change(diff=_diff(*CONDITIONAL.values())), nonce="N1")
+    all_instructions = everything.split("Datos del cambio")[0]
+
+    assert len(base.encode()) <= MAX_BASE_INSTRUCTIONS
+    assert len(all_instructions.encode()) <= MAX_ALL_INSTRUCTIONS
+    assert _skills_in(everything) == (*ALWAYS_ON, *sorted(CONDITIONAL))
+
+
+def test_injected_instructions_replace_the_agent() -> None:
     prompt = build_prompt(_change(), nonce="N1", instructions="Revisa esto: {mark}\n")
 
     assert prompt.startswith("Revisa esto: N1\n")
-    assert "Eres un revisor" not in prompt
+    assert "Code Guardian" not in prompt
 
 
-def test_a_missing_prompt_version_fails_naming_the_path() -> None:
-    from duelo.adapters.agents.review_payload import PROMPTS_DIR, load_instructions
-
-    with pytest.raises(FileNotFoundError, match=str(PROMPTS_DIR / "v99.md")):
-        load_instructions("v99")
-
-
-def test_v2_carries_the_guardian_criteria() -> None:
-    prompt = build_prompt(_change(), nonce="N1")
+def test_v3_carries_the_guardian_criteria() -> None:
+    # Con todas las skills: lo que se exige vale para el prompt completo, no solo para el base.
+    prompt = build_prompt(_change(diff=_diff(*CONDITIONAL.values())), nonce="N1")
     instructions = prompt.split("Datos del cambio")[0]
 
     # Prioridades, evidencia, rúbrica y severidades: lo que exige la spec `review-criteria`.
     assert "Errores reales" in instructions
-    assert "Evidencia antes de reportar" in instructions
     assert "Intenta refutarlo" in instructions
+    assert "solo un hallazgo confirmado puede ser bloqueante" in instructions
     for band in ("0–3", "4–6", "7–10"):
         assert band in instructions
     for severity in SEVERITIES:
         assert f"`{severity}`:" in instructions
+    # Ninguna skill pide ejecutar comandos ni modificar el repositorio.
+    for forbidden in ("just ", "uv run", "pnpm ", "Bash("):
+        assert forbidden not in instructions
     # Y la delimitación de los datos sigue precediendo a los datos.
     assert instructions.index("DATOS NO CONFIABLES") < prompt.index("<<<DATOS-N1")

@@ -59,8 +59,9 @@ context: |
 
   Repo layout is a monorepo: backend/ (hexagonal src/duelo/{domain,application,
   adapters,workflows,entrypoints}), frontend/ (feature-organized src/features/*), e2e/
-  (Playwright with FakeAgent), benchmark/ (promptfoo), prompts/review/v{n}.md (versioned
-  agent prompts), docs/adr/ (one ADR per significant decision), scripts/install-hook.sh.
+  (Playwright with FakeAgent), benchmark/ (promptfoo), Agents/<agent>/ (AGENT.md with a
+  `version` plus skills/<name>/SKILL.md; the backend composes the review prompt from them),
+  docs/adr/ (one ADR per significant decision), scripts/install-hook.sh.
 
   Hard constraints:
   - No multi-user/login, no auto-applying agent suggestions, no desktop app - web only,

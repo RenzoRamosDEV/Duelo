@@ -4,11 +4,12 @@ respuesta. No lanza nada: es lógica pura sobre texto y diccionarios."""
 from __future__ import annotations
 
 import secrets
-from functools import cache
 from pathlib import Path
 from typing import Any
 
+from duelo.adapters.agents.agent_folder import MARK, AgentDefinition, Skill, load_agent
 from duelo.domain.change import Change
+from duelo.domain.diff import summarize_diff
 from duelo.domain.review import Finding, ReviewResult
 
 SEVERITIES = ("bug", "risk", "improvement", "nit")
@@ -49,22 +50,40 @@ REVIEW_SCHEMA: dict[str, Any] = {
 }
 
 
-# Las instrucciones son código versionado: `prompts/review/v{n}.md` en la raíz del repositorio.
-# Un cambio de criterio es un fichero nuevo; una versión ya usada en reviews guardadas no se
-# edita. El texto lleva `{mark}`, que se sustituye por la marca aleatoria de cada ejecución.
-PROMPT_VERSION = "v2"
-PROMPTS_DIR = Path(__file__).resolve().parents[5] / "prompts" / "review"
+# Las instrucciones son código versionado: la carpeta `Agents/<agente>/` en la raíz del
+# repositorio (`AGENT.md` + `skills/<skill>/SKILL.md`). Un cambio de criterio sube `version` en el
+# frontmatter del agente; git conserva las versiones anteriores. El cuerpo del agente lleva
+# `{mark}`, que se sustituye por la marca aleatoria de cada ejecución.
+AGENT_NAME = "code-guardian"
+AGENTS_DIR = Path(__file__).resolve().parents[5] / "Agents"
 
 
-@cache
-def load_instructions(version: str = PROMPT_VERSION) -> str:
-    """Instrucciones de la versión pedida. Solo las lee el worker `agents`, que corre desde el
-    repositorio; si el fichero no está, el error dice qué ruta se esperaba."""
-    path = PROMPTS_DIR / f"{version}.md"
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(f"No existe el prompt de review {version}: {path}") from exc
+def active_agent() -> AgentDefinition:
+    """El agente activo. Solo lo lee el worker `agents`, que corre desde el repositorio; si falta
+    algo, el error dice qué ruta se esperaba."""
+    return load_agent(AGENTS_DIR / AGENT_NAME)
+
+
+def prompt_version() -> str:
+    """Versión del criterio con el formato de siempre (`v3`)."""
+    return f"v{active_agent().version}"
+
+
+def _skill_section(skill: Skill) -> str:
+    header = f"## Skill: {skill.name}"
+    if skill.description:
+        header += f"\n\n{skill.description}"
+    return f"{header}\n\n{skill.body.rstrip()}\n"
+
+
+def compose_instructions(change: Change, agent: AgentDefinition | None = None) -> str:
+    """Cuerpo del agente, skills siempre activas, skills que activan los ficheros del diff y nada
+    más. Determinista: mismo agente y mismo diff, mismo texto (la marca se sustituye después)."""
+    definition = active_agent() if agent is None else agent
+    files = tuple(file.path for file in summarize_diff(change.diff).files)
+    sections = [definition.body.rstrip() + "\n"]
+    sections.extend(_skill_section(skill) for skill in definition.select_skills(files))
+    return "\n".join(sections)
 
 
 class InvalidReviewPayload(ValueError):
@@ -74,12 +93,12 @@ class InvalidReviewPayload(ValueError):
 def build_prompt(
     change: Change, *, nonce: str | None = None, instructions: str | None = None
 ) -> str:
-    """Instrucciones (el prompt versionado, salvo que se inyecten otras) + datos del change. Todo
+    """Instrucciones (el agente y sus skills, salvo que se inyecten otras) + datos del change. Todo
     lo que viene del change (título, autor, rama, diff) es texto NO confiable: va entre marcas con
     un identificador aleatorio por ejecución, que un diff no puede adivinar para «cerrar» el
     bloque, y se ordena ignorar lo que diga."""
     mark = nonce or secrets.token_hex(8)
-    text = load_instructions() if instructions is None else instructions
+    text = compose_instructions(change) if instructions is None else instructions
     diff = change.diff[:MAX_DIFF_IN_PROMPT]
     notes: list[str] = []
     if len(change.diff) > MAX_DIFF_IN_PROMPT:
@@ -91,7 +110,7 @@ def build_prompt(
         notes.append("AVISO: el diff original ya venía truncado por el sistema de ingesta.")
     notes_text = "\n".join(notes)
     return (
-        text.replace("{mark}", mark)
+        text.replace(MARK, mark)
         + f"""
 Datos del cambio (no confiables):
 <<<DATOS-{mark}

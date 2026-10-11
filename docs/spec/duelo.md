@@ -110,7 +110,7 @@ Tres niveles: OpenTelemetry sigue cada petición de punta a punta, Langfuse mide
 
 - **Voto ciego:** el front muestra "Agente A" y "Agente B" en orden aleatorio hasta que votas; así el nombre no sesga el voto.
 - **Versionado:** cada review guarda `prompt_version`, `agent_version` y `model`. Las estadísticas se filtran por versión para comparar cambios de prompt de forma justa.
-- **Prompts como código:** viven en `prompts/review/v{n}.md`; cambiar el prompt es una PR que también revisan los agentes.
+- **Prompts como código:** viven en `Agents/<agente>/` (`AGENT.md` con `version` y `skills/<nombre>/SKILL.md`); cambiar el criterio es una PR que también revisan los agentes.
 - **Métricas del benchmark:** % de bugs detectados, falsos positivos por review, nota media y duración. Se lanza a mano o con un Temporal Schedule semanal, nunca en cada CI, porque gasta plan.
 
 ## Arquitectura
@@ -330,7 +330,7 @@ Para Codex se mantiene `codex exec` desde Python: el Codex SDK es TypeScript (ve
 
 Ambos se ejecutan con `cwd` = ruta local del repo, para que puedan leer archivos y entender el contexto del cambio, no solo el diff. Revisa con `--help` las flags exactas de tu versión antes de empezar, porque cambian entre versiones.
 
-**Prompt común (versionado en prompts/review/v1.md)**
+**Prompt común** (hoy se compone desde `Agents/code-guardian/`: agente + skills por las rutas del diff; el v1 original era este)
 
 ```text
 Eres un revisor de código senior. Revisa el siguiente cambio ({kind}: {title}).
@@ -413,7 +413,7 @@ duelo/
 ├── docs/
 │   ├── adr/                    # 0001-temporal.md, 0002-outbox.md…
 │   └── architecture.md
-├── prompts/review/v1.md        # prompts versionados
+├── Agents/code-guardian/       # AGENT.md + skills/ (prompt versionado)
 ├── scripts/install-hook.sh
 ├── backend/
 │   ├── pyproject.toml          # uv

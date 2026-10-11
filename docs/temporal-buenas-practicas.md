@@ -73,7 +73,9 @@ Leyenda: **Cumple** · **No aplica** (con motivo) · **Diferido** (con destino).
 
 ## Checklist de revisión de PR
 
-Al tocar `backend/src/duelo/workflows/`, `worker.py` o los adaptadores de orquestación:
+Al tocar `backend/src/duelo/workflows/`, `worker.py` o los adaptadores de orquestación (es el
+mismo criterio que aplica la skill `temporal-review` del producto,
+`Agents/code-guardian/skills/temporal-review/SKILL.md`, que se activa sola con esas rutas):
 
 - [ ] ¿El workflow sigue sin I/O, reloj ni aleatorios propios (solo APIs del SDK)?
 - [ ] ¿La entrada sigue siendo un único objeto con valores por defecto en los campos nuevos?

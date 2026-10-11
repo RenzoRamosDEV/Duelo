@@ -13,11 +13,21 @@ antes de cada push.
 ## Revisión de código
 
 La revisión de commits es cosa del producto, no de un agente de Claude Code: los dos agentes
-de Duelo (Claude Code y Codex) revisan cada commit con el **mismo prompt versionado**,
-`prompts/review/v2.md` (criterio: errores reales > seguridad > regresiones > tests > mejoras;
-evidencia antes de reportar; nota 0–3 / 4–6 / 7–10 según el estado del cambio; severidades
-`bug`, `risk`, `improvement`, `nit`). Cambiar el criterio es crear `v{n+1}.md`, nunca editar
-una versión ya usada en reviews guardadas (spec `review-criteria`).
+de Duelo (Claude Code y Codex) revisan cada commit con el **mismo agente**, que vive en
+`Agents/code-guardian/`:
+
+- `AGENT.md`: principios, prioridades (errores reales > seguridad > regresiones > tests >
+  mejoras), flujo, formato JSON y el bloque de datos no confiables; `version` en el frontmatter.
+- `skills/<nombre>/SKILL.md`: una lista de comprobación por tema. Las declaradas en `skills:` del
+  agente entran siempre (`bug-detection`, `security-audit`, `safe-refactoring`, `test-coverage`,
+  `change-hygiene`, `finding-verification`, `review-report`); las demás llevan `paths` y entran
+  solo si algún fichero del diff casa con ellos (`architecture-review`, `data-and-api-contracts`,
+  `dependency-and-config-audit`, `frontend-review`, `performance-review`, `temporal-review`).
+
+El backend compone el prompt (agente + skills seleccionadas + datos del change) en
+`adapters/agents/review_payload.py`. Las skills no piden ejecutar comandos ni modificar nada:
+los agentes son de solo lectura. Cambiar el criterio (agente o skills) exige subir `version`
+en `AGENT.md`; git conserva las versiones anteriores (spec `review-criteria`).
 
 En `.claude/` solo quedan las skills de OpenSpec. Antes de un push o de un PR, la verificación
 es determinista: `just ci`.
