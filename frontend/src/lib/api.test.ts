@@ -503,3 +503,25 @@ describe("createHttpSource local projects", () => {
     expect(htmlError.message).toBe("El servidor respondió 502.");
   });
 });
+
+describe("setAgents", () => {
+  it("PUTs the selection with the token and maps the returned agents", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ id: "1", slug: "acme/widgets", agents: ["codex"] }),
+    );
+    const project = await createHttpSource("http://api.test", fetchMock).setAgents(
+      "acme/widgets",
+      ["codex"],
+      "tok",
+    );
+    expect(project.agents).toEqual(["codex"]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/projects/acme/widgets/agents",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({ "X-Ingest-Token": "tok" }),
+        body: JSON.stringify({ agents: ["codex"] }),
+      }),
+    );
+  });
+});

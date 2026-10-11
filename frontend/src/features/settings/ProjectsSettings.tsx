@@ -3,6 +3,7 @@ import { AsyncBoundary } from "../../components/AsyncBoundary";
 import { Busy } from "../../components/Busy";
 import { Modal } from "../../components/Modal";
 import { MetalButton } from "../../components/fx/MetalButton";
+import { agentLabel } from "../../components/ui/AgentAvatar";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
@@ -121,17 +122,75 @@ function RemoveDialog({
   );
 }
 
+/**
+ * Which agents review the project. Mounted with the server's selection (the parent re-keys it when
+ * that changes), so the boxes are a draft until "Guardar"; at least one must stay checked.
+ */
+function AgentPicker({
+  project,
+  available,
+  saving,
+  onSave,
+}: {
+  project: ProjectRef;
+  available: readonly string[];
+  saving: boolean;
+  onSave: (agents: string[]) => void;
+}) {
+  const saved = project.agents ?? available;
+  const [picked, setPicked] = useState<readonly string[]>(saved);
+  const chosen = available.filter((name) => picked.includes(name));
+  const changed = chosen.join() !== available.filter((n) => saved.includes(n)).join();
+  const toggle = (name: string) =>
+    setPicked((current) =>
+      current.includes(name) ? current.filter((n) => n !== name) : [...current, name],
+    );
+  return (
+    <fieldset className="agent-picker">
+      <legend>Agentes que revisan</legend>
+      {available.map((name) => (
+        <label key={name} className="agent-option">
+          <input
+            type="checkbox"
+            checked={picked.includes(name)}
+            onChange={() => toggle(name)}
+            disabled={saving}
+          />
+          {agentLabel(name)}
+        </label>
+      ))}
+      <Button
+        size="sm"
+        onClick={() => onSave(chosen)}
+        disabled={saving || !changed || chosen.length === 0}
+        aria-label={`Guardar agentes de ${project.name}`}
+      >
+        Guardar
+      </Button>
+      <span className="muted agent-hint">
+        {chosen.length === 0 ? "Elige al menos uno." : "Aplica a los próximos commits."}
+      </span>
+    </fieldset>
+  );
+}
+
 function ProjectRow({
   project,
+  available,
   message,
   syncing,
+  savingAgents,
   onSync,
+  onSaveAgents,
   onRemove,
 }: {
   project: ProjectRef;
+  available: readonly string[] | null;
   message: Message | undefined;
   syncing: boolean;
+  savingAgents: boolean;
   onSync: () => void;
+  onSaveAgents: (agents: string[]) => void;
   onRemove: () => void;
 }) {
   return (
@@ -172,6 +231,15 @@ function ProjectRow({
           Quitar proyecto
         </Button>
       </div>
+      {available && available.length > 1 && (
+        <AgentPicker
+          key={`${project.slug}:${(project.agents ?? available).join()}`}
+          project={project}
+          available={available}
+          saving={savingAgents}
+          onSave={onSaveAgents}
+        />
+      )}
       {message &&
         (message.tone === "error" ? (
           <p className="notice project-message" role="alert">
@@ -185,12 +253,13 @@ function ProjectRow({
 }
 
 /** Settings section: the live list of projects with their path and hooks, sync and removal. */
-export function ProjectsSettings() {
+export function ProjectsSettings({ available }: { available: readonly string[] | null }) {
   const source = useDataSource();
   const { projects, openAddProject } = useProjects();
   const [token] = useIngestToken();
   const [messages, setMessages] = useState<Record<string, Message>>({});
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [savingAgents, setSavingAgents] = useState<string | null>(null);
   const [removing, setRemoving] = useState<ProjectRef | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const tokenId = useId();
@@ -218,6 +287,34 @@ export function ProjectsSettings() {
     }
   }
 
+  async function saveAgents(project: ProjectRef, agents: string[]) {
+    if (savingAgents) return;
+    if (!token.trim()) {
+      say(project.slug, { tone: "error", text: MISSING_TOKEN });
+      return;
+    }
+    setSavingAgents(project.slug);
+    try {
+      await source.setAgents(project.slug, agents, token.trim());
+      say(project.slug, {
+        tone: "ok",
+        text: `Agentes guardados: ${agents.map(agentLabel).join(" y ")}. Aplica a los próximos commits.`,
+      });
+      projects.refresh();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) clearIngestToken();
+      say(project.slug, {
+        tone: "error",
+        text:
+          e instanceof ApiError && e.status === 422
+            ? `Selección no válida: ${e.message}`
+            : failureMessage(e, "guardar los agentes"),
+      });
+    } finally {
+      setSavingAgents(null);
+    }
+  }
+
   return (
     <section className="box" aria-labelledby="settings-projects">
       <div className="box-title row">
@@ -241,9 +338,12 @@ export function ProjectsSettings() {
                   <ProjectRow
                     key={p.slug}
                     project={p}
+                    available={available}
                     message={messages[p.slug]}
                     syncing={syncing === p.slug}
+                    savingAgents={savingAgents === p.slug}
                     onSync={() => sync(p)}
+                    onSaveAgents={(agents) => saveAgents(p, agents)}
                     onRemove={() => setRemoving(p)}
                   />
                 ))}

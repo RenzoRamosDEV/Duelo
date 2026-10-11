@@ -16,7 +16,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -35,6 +35,8 @@ class ProjectModel(Base):
         Boolean(), default=False, server_default=text("false")
     )
     github: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=text("false"))
+    # Agentes elegidos para evaluar el proyecto; `NULL` = todos los disponibles (`AGENT_NAMES`).
+    agents: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)), nullable=True)
 
 
 class ChangeModel(Base):

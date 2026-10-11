@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -31,6 +32,15 @@ class Project:
     path: str | None = None
     hooks_installed: bool = False
     github: bool = False
+    # Selección efectiva de agentes que lo evalúan (ver `effective_agents`); `()` si no se conoce.
+    agents: tuple[str, ...] = ()
+
+
+def effective_agents(saved: Sequence[str] | None, available: Sequence[str]) -> tuple[str, ...]:
+    """Agentes que evalúan un proyecto: los guardados que sigan disponibles, en el orden de
+    `available`. Sin selección guardada, o si ninguna sigue disponible, evalúan todos."""
+    chosen = tuple(name for name in available if saved is not None and name in saved)
+    return chosen or tuple(available)
 
 
 def _valid_segment(segment: str) -> bool:

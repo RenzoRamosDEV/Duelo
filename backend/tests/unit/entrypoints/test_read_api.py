@@ -60,6 +60,7 @@ async def test_projects_lists_id_slug_and_local_folder_data() -> None:
             "path": None,
             "hooks_installed": False,
             "github": False,
+            "agents": ["agent_1", "agent_2"],
         }
     ]
 

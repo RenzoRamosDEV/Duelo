@@ -224,3 +224,24 @@ async def test_path_of_returns_the_folder_of_a_local_project_and_none_otherwise(
     assert await repo.path_of(local.id) == f"/home/u/{slug}"
     assert await repo.path_of(without_folder) is None  # existe, pero sin carpeta
     assert await repo.path_of(uuid4()) is None  # no existe
+
+
+async def test_the_agent_selection_is_saved_and_defaults_to_every_available_agent(
+    session_factory: async_sessionmaker,
+) -> None:
+    repo = SqlAlchemyProjectRepository(session_factory, ["claude", "codex"])
+    project_id = await create_project(session_factory)
+    slug = f"test-{project_id}"
+    assert (await repo.get_by_slug(slug)).agents == ("claude", "codex")  # type: ignore[union-attr]
+
+    saved = await repo.save_agents(slug, ["codex"])
+
+    assert saved is not None and saved.agents == ("codex",)
+    assert (await repo.get_by_slug(slug)).agents == ("codex",)  # type: ignore[union-attr]
+    assert await repo.agents_of(project_id) == ("codex",)
+    # Un agente que sale de AGENT_NAMES deja de contar; si no queda ninguno, evalúan todos.
+    assert (
+        await SqlAlchemyProjectRepository(session_factory, ["claude"]).agents_of(project_id)
+    ) == ("claude",)
+    assert await repo.save_agents("no/existe", ["codex"]) is None
+    assert await repo.agents_of(uuid4()) == ()

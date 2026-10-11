@@ -104,6 +104,11 @@ export AGENT_NAMES=claude,codex          # en la API y en el worker
 just worker                              # en TU máquina: ahí están los CLI con la sesión iniciada
 ```
 
+`AGENT_NAMES` es el conjunto de agentes **disponibles**. Desde Ajustes (o con `PUT /projects/{slug}/agents`
+y `{"agents": ["codex"]}`, con `X-Ingest-Token`) eliges, por proyecto, cuáles lo evalúan: uno o varios,
+siempre al menos uno. Sin elección, lo evalúan todos. Aplica a los commits que lleguen después; las
+reviews ya hechas no se tocan.
+
 Requisitos y garantías:
 
 - `claude` y `codex` instalados y con sesión iniciada (`claude` y `codex login`). Si no hay sesión o no
@@ -139,7 +144,7 @@ Requisitos y garantías:
 
 | Variable (worker) | Por defecto | Qué hace |
 | --- | --- | --- |
-| `AGENT_NAMES` | `agent_1,agent_2` | `claude` y `codex` usan los CLI reales; cualquier otro nombre, el agente de prueba |
+| `AGENT_NAMES` | `agent_1,agent_2` | Agentes disponibles. `claude` y `codex` usan los CLI reales; cualquier otro nombre, el agente de prueba. Cada proyecto elige cuáles lo evalúan |
 | `AGENT_TIMEOUT_SECONDS` | `240` | Plazo de cada ejecución del CLI. Máximo 270: la activity dura 5 minutos y se reservan 30 s para limpiar y guardar la review fallida |
 | `AGENT_MAX_CONCURRENCY` | `2` | CLI simultáneos en este worker; el resto espera en la cola de Temporal |
 | `CLAUDE_BIN` / `CODEX_BIN` | en el `PATH` | Ruta del ejecutable si no está en el `PATH` |

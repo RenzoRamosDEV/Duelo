@@ -116,6 +116,7 @@ async def test_adding_a_project_returns_201_and_it_shows_up_in_the_list() -> Non
         "path": ROOT,
         "hooks_installed": True,
         "github": True,
+        "agents": ["agent_1", "agent_2"],
     }
     assert api.hooks.installed == [(ROOT, SLUG)]
     assert {k: v for k, v in listing[1].items() if k != "id"} == {
@@ -123,6 +124,7 @@ async def test_adding_a_project_returns_201_and_it_shows_up_in_the_list() -> Non
         "path": ROOT,
         "hooks_installed": True,
         "github": True,
+        "agents": ["agent_1", "agent_2"],
     }
 
 

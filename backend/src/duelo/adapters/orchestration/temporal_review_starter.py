@@ -6,7 +6,7 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
 from duelo.adapters.orchestration.temporal_client import LazyTemporalClient
-from duelo.application.ports import ProjectSlugs, ReviewStartError
+from duelo.application.ports import ProjectAgents, ProjectSlugs, ReviewStartError
 from duelo.application.review_requests import ReviewCommitInput
 from duelo.application.task_queues import PLATFORM_TASK_QUEUE
 from duelo.application.workflow_naming import (
@@ -45,10 +45,19 @@ class TemporalReviewStarter:
         client: LazyTemporalClient,
         agent_names: list[str],
         slugs: ProjectSlugs | None = None,
+        project_agents: ProjectAgents | None = None,
     ) -> None:
         self._client = client
         self._agent_names = agent_names
         self._slugs = slugs
+        self._project_agents = project_agents
+
+    async def _agents_of(self, change: Change) -> list[str]:
+        """Los agentes elegidos del proyecto del change; los configurados si no se conocen."""
+        chosen = (
+            await self._project_agents.agents_of(change.project_id) if self._project_agents else ()
+        )
+        return list(chosen) or self._agent_names
 
     async def start(self, change: Change) -> None:
         try:
@@ -61,7 +70,7 @@ class TemporalReviewStarter:
                 "ReviewCommitWorkflow",
                 ReviewCommitInput(
                     change_id=str(change.id),
-                    agent_names=self._agent_names,
+                    agent_names=await self._agents_of(change),
                     run=change.run,
                     kind=kind,
                     project_slug=slug,

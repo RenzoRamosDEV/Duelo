@@ -12,6 +12,7 @@ from temporalio.worker import Worker
 from duelo.adapters.agents.fake import FakeAgent
 from duelo.adapters.orchestration.temporal_client import LazyTemporalClient
 from duelo.adapters.orchestration.temporal_review_starter import TemporalReviewStarter, workflow_id
+from duelo.adapters.persistence.project_repository import SqlAlchemyProjectRepository
 from duelo.application.ports import ReviewStartError
 from duelo.application.task_queues import AGENTS_TASK_QUEUE, PLATFORM_TASK_QUEUE
 from duelo.domain.change import Change, ChangeKind
@@ -191,3 +192,24 @@ async def test_the_second_run_gets_its_own_workflow_id_and_its_reviews_carry_the
     assert (await first.describe()).run_id != (await second.describe()).run_id
     runs = sorted((r.agent, r.run) for r in await reviews_for(session_factory, change))
     assert runs == [("agent_1", 1), ("agent_1", 2), ("agent_2", 1), ("agent_2", 2)]
+
+
+async def test_only_the_agents_chosen_for_the_project_review_the_change(
+    temporal_env: WorkflowEnvironment, session_factory: async_sessionmaker
+) -> None:
+    projects = SqlAlchemyProjectRepository(session_factory, ["agent_1", "agent_2"])
+    address = temporal_env.client.service_client.config.target_host
+    starter = TemporalReviewStarter(
+        LazyTemporalClient(address), ["agent_1", "agent_2"], projects, projects
+    )
+    change = await persist_change(session_factory, "d" * 40)
+    slug = await projects.slug_of(change.project_id)
+    assert slug is not None
+    await projects.save_agents(slug, ["agent_2"])
+    handle = temporal_env.client.get_workflow_handle(workflow_id(change, slug))
+
+    async with _workers(temporal_env, session_factory):
+        await starter.start(change)
+        await handle.result()
+
+    assert [r.agent for r in await reviews_for(session_factory, change)] == ["agent_2"]

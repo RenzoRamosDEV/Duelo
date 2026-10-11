@@ -59,6 +59,9 @@ class ApiDependencies:
     # Proyectos desde carpetas locales (LOCAL_PROJECTS_ENABLED): `None` = función no cableada y
     # sus endpoints responden 404. Lanzan `InvalidRepository`, `ProjectAlreadyExists`,
     # `HookInstallError`, `ProjectNotFound`, `ProjectHasNoFolder`, `GithubUnavailable`...
+    # Guarda la selección de agentes de un proyecto; lanza `InvalidAgentSelection` o
+    # `ProjectNotFound`.
+    set_project_agents: Callable[[str, list[str]], Awaitable[Project]] | None = None
     add_local_project: Callable[[str], Awaitable[Project]] | None = None
     remove_project: Callable[[str], Awaitable[None]] | None = None
     sync_pull_requests: Callable[[str], Awaitable[SyncResult]] | None = None
