@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "82c3b00",
+  "kind": "commit",
+  "title": "test(temporal): probar los workers contra el servidor real y documentar el incidente del 10-10",
+  "run": 1,
+  "written_at": "2026-10-11T11:35:10.953555+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: el test utiliza los workers de producción, acota la ejecución y verifica tanto los resultados como las reviews persistidas. La documentación explica el alcance y las diferencias respecto al servidor desplegado. No pude leer el repositorio ni comprobar los llamadores y tests existentes; la valoración se limita al diff.",
+      "findings": [],
+      "duration_ms": 16987,
+      "error": null,
+      "created_at": "2026-10-11T11:34:06.109777+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 9,
+      "summary": "El cambio hace lo que promete: añade una fixture `local_temporal_env` (`WorkflowEnvironment.start_local()`) y un test que arranca los dos workers reales de `build_workers` contra el servidor de desarrollo de Temporal, revisa un commit de punta a punta con plazo de 45 s y comprueba las dos filas `completed` en Postgres; sustituye el aviso TXT de la raíz por un postmortem verificado y actualiza ADR 0007, testing.md y la matriz de buenas prácticas. He contrastado el test con `worker.py`, `config.py`, `registry.py` (los nombres `agent_1`/`agent_2` dan `FakeAgent`, que siempre completa), los helpers de integración y el patrón de `test_worker_agents.py`; el flujo es el mismo que usan los demás tests de workflow y no hay código de producción tocado. Solo quedan dos detalles menores: el motor de SQLAlchemy que crea `build_workers` no se libera al terminar el test, y la CI pasa a depender de descargar el binario del CLI de Temporal en cada job sin caché ni versión fijada (decisión consciente y documentada en el design, pero es el punto que más probablemente haga fallar la suite por causas ajenas al código).",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "backend/tests/integration/conftest.py",
+          "line": 72,
+          "message": "`start_local()` descarga el binario del CLI de Temporal desde GitHub en cada job de CI (el runner no cachea el directorio temporal del SDK y `ci.yml` no cambia), con la versión que elija el SDK instalado. Comprobado en `ci.yml`: `backend-test` ejecuta `uv run pytest` con la suite completa y un `timeout-minutes: 15`; un fallo o lentitud de la descarga tumba toda la suite, no solo este test. El design lo asume y lo difiere, así que no bloquea; propuesta de dos líneas: fijar la versión y la caché en la fixture, p. ej. `WorkflowEnvironment.start_local(dev_server_download_version=\"1.x.y\", dev_server_download_dest_dir=<ruta estable>)`, y añadir `actions/cache` sobre esa ruta en `ci.yml`. Así además la versión que valida el test queda escrita y comparable con la 1.26.2 del compose que cita el postmortem."
+        },
+        {
+          "severity": "nit",
+          "file": "backend/tests/integration/workflows/test_real_server.py",
+          "line": 41,
+          "message": "`build_workers` crea su propio `AsyncEngine` (`worker.py:69`) y el test no lo libera: a diferencia de `test_worker_agents.py`, aquí las activities sí abren conexiones asyncpg al persistir las reviews, y al cerrarse el event loop de la función de test las conexiones del pool quedan sin `dispose()` (avisos tipo «Event loop is closed» y conexiones abiertas en el Postgres del contenedor hasta que termina el módulo). Visto en el diff y en `worker.py`. Arreglo local: que `build_workers` reciba opcionalmente el `session_factory` (el test le pasaría el de la fixture, cuyo `engine` sí se dispone) o devuelva el `engine` para que el test haga `await engine.dispose()` tras el `async with`."
+        }
+      ],
+      "duration_ms": 81765,
+      "error": null,
+      "created_at": "2026-10-11T11:35:10.885226+00:00"
+    }
+  ]
+}
