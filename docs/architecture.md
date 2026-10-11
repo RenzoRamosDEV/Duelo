@@ -77,6 +77,17 @@ que ya está en el spec o en `openspec/specs/`.
   30 s). `changes.run_started_at` (migración `f6c4d8a2b915`, rellena desde `created_at`) lo fija la
   ingesta y lo refresca `advance_run`; `stale` se mide desde ahí, de modo que un reintento sobre
   un change antiguo no nace `stale`.
+- `review-notes` y `data-backups` (change `review-notes-and-backups`): al terminar los agentes de
+  una run, el hijo ejecuta la activity `archive_reviews` (queue `agents`, bajo
+  `workflow.patched("archive-reviews")`), que escribe en el repositorio local del proyecto una
+  nota de git en `refs/notes/duelo` con las reviews de la run (puerto `ReviewArchive`, adaptador
+  `adapters/git/notes_archive.py`; el JSON lo construye `application/review_notes.py`, sin salida
+  cruda) y la empuja a `origin` con la credencial del usuario, nunca interactiva. Sin carpeta
+  local, sin el commit o sin red responde `skipped`/`failed` y la revisión termina igual: su
+  resultado no altera el del workflow. `REVIEW_NOTES` y `REVIEW_NOTES_PUSH` lo gobiernan. La base
+  de datos entera (incluidas las de Temporal) se copia con `just backup` (`pg_dumpall` + `zstd`,
+  retención) y se recupera con `just restore` sobre un volumen vacío; ver README, «Que no se
+  pierda lo ya evaluado».
 - `commit-state` (change `mark-undone-commits`): un commit puede estar **deshecho** (su SHA ya no
   es alcanzable desde ninguna referencia ni desde `HEAD` del repo local: `reset`, `amend`, `rebase`,
   rama borrada) o **revertido** (otro commit lo invierte con `git revert`); el change y sus reviews
@@ -241,6 +252,7 @@ que ya está en el spec o en `openspec/specs/`.
 | `WORKER_SHUTDOWN_GRACE_SECONDS` | `30` | Worker: al recibir `SIGTERM`/`SIGINT`, segundos que espera a las activities en curso antes de cancelarlas (ver «Operación del worker») |
 | `TEMPORAL_METRICS_ADDRESS` | sin configurar | Worker: `host:puerto` donde expone las métricas del SDK en `/metrics` (Prometheus); sin ella no abre ningún puerto |
 | `CLAUDE_BIN`, `CODEX_BIN`, `CLAUDE_MODEL`, `CODEX_MODEL`, `CLAUDE_MAX_BUDGET_USD` | PATH / el del CLI / `2` | Worker: ruta de los ejecutables, modelo y tope de gasto de Claude Code |
+| `REVIEW_NOTES` / `REVIEW_NOTES_PUSH` | `true` / `true` | Worker: nota de git por commit con las reviews de cada run en el repositorio local del proyecto, y si se empuja `refs/notes/duelo` a `origin` |
 | `MAX_INGEST_BODY_BYTES` | `1500000` | Tamaño máximo del cuerpo de `POST /ingest/commit` y `/ingest/pr` (413 si lo supera); protege la memoria y es independiente de `MAX_DIFF_CHARS` |
 | `ALLOWED_ORIGINS` | vacía (sin CORS) | Orígenes `esquema://host[:puerto]` separados por comas, p. ej. `http://localhost:5173`; no admite `*` |
 | `RATE_LIMIT_REQUESTS` | `300` | Peticiones por IP y ventana en ingesta y reintento; `0` lo desactiva |

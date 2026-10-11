@@ -25,6 +25,8 @@ from duelo.application.review_requests import ReviewCommitInput
 from duelo.domain.review import Review
 
 __all__ = [
+    "ArchiveReviewsInput",
+    "ArchiveReviewsResult",
     "FindingPayload",
     "ReviewChangeInput",
     "ReviewCommitInput",
@@ -116,3 +118,19 @@ def result_from_review(review: Review) -> RunReviewResult:
         duration_ms=review.duration_ms,
         truncated=truncated,
     )
+
+
+@dataclass
+class ArchiveReviewsInput:
+    """Qué run de qué change guardar como nota de git en el repositorio revisado."""
+
+    change_id: str
+    run: int = 1
+
+
+@dataclass
+class ArchiveReviewsResult:
+    """`status`: `pushed`, `written`, `skipped` o `failed`; `detail`, un motivo corto."""
+
+    status: str
+    detail: str = ""

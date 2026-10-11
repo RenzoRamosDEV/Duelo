@@ -22,6 +22,9 @@ frontend/dist/
 # Docker / Temporal
 *.log
 
+# Copias de seguridad (just backup)
+backups/
+
 # Editors / OS
 .vscode/
 .idea/

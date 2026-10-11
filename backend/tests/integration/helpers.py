@@ -49,10 +49,14 @@ def make_activities(
     session_factory: async_sessionmaker,
     agents: dict[str, Any],
     review_repository: Callable[[AsyncSession], Any] = SqlAlchemyReviewRepository,
+    **extra: Any,
 ) -> ReviewActivities:
+    """`extra`: `archive`, `project_paths`, `project_slugs`, `clock` (la nota de git); sin ellos la
+    activity `archive_reviews` responde `skipped`."""
     return ReviewActivities(
         session_factory=session_factory,
         change_repository=SqlAlchemyChangeRepository,
         review_repository=review_repository,
         agents=agents,
+        **extra,
     )

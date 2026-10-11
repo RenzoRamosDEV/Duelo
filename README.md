@@ -238,6 +238,65 @@ access log JSON por petición en stdout, sin query, cuerpo ni tokens.
 | `just test`       | Tests de backend (`pytest`) y build de frontend          |
 | `just lint`       | Ruff, mypy strict, import-linter y Biome                 |
 | `just gen-client` | Genera el cliente TS desde el OpenAPI (desde la Fase 4)  |
+| `just backup`     | Copia de todas las bases del Postgres local en `backups/` (comprimida, 14 copias) |
+| `just restore f`  | Restaura una copia de `just backup` sobre un Postgres vacío |
+
+## Que no se pierda lo ya evaluado
+
+Las reviews, los votos y las estadísticas viven en el Postgres de `docker-compose.yml`
+(volumen `postgres_data`), y Temporal guarda ahí mismo sus workflows. Dos mecanismos evitan que
+una evaluación dependa de ese volumen:
+
+**Nota de git por commit.** Al terminar los agentes, el worker escribe en el repositorio local del
+proyecto una nota en `refs/notes/duelo` con el JSON de las reviews de esa run (resumen, nota,
+hallazgos, duración, error; nunca la salida cruda) y empuja esa referencia a `origin` con tu
+credencial de git (nunca pide contraseña: sin credencial no interactiva, falla y la nota queda en
+local). Si el proyecto no tiene carpeta local o el commit no está en ella, se omite; la revisión
+termina igual.
+
+```bash
+git notes --ref=duelo show <sha>                      # leer la nota de un commit
+git fetch origin refs/notes/duelo:refs/notes/duelo    # traerlas en otra máquina
+git log --notes=duelo -1 <sha>                        # verla junto al commit
+```
+
+Variables del worker: `REVIEW_NOTES` (`true`; `false` no escribe notas) y `REVIEW_NOTES_PUSH`
+(`true`; `false` las deja solo en local).
+
+**Copia de la base de datos.** `just backup` vuelca todas las bases del servidor (`duelo`,
+`temporal`, `temporal_visibility`) con `pg_dumpall`, comprime con `zstd` y deja
+`backups/duelo-<fecha>.sql.zst` (unos MB; conserva las últimas 14; `just backup backups 30` para
+más). Requiere `zstd` y la infra arriba. Trátala como privada: incluye los roles del servidor.
+Para que no viva solo en esta máquina, programa la copia y sácala fuera:
+
+```bash
+# cron: cada día a las 03:00
+0 3 * * * cd /ruta/a/Duelo && just backup >/dev/null 2>&1 && rclone sync backups/ remoto:duelo-backups
+```
+
+```ini
+# systemd de usuario: ~/.config/systemd/user/duelo-backup.service y .timer
+[Service]
+Type=oneshot
+WorkingDirectory=/ruta/a/Duelo
+ExecStart=/usr/bin/just backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+```
+
+(`systemctl --user enable --now duelo-backup.timer`; `loginctl enable-linger $USER` para que
+corra sin sesión abierta.) O deja `backups/` dentro de una carpeta sincronizada (Syncthing,
+Dropbox). Para restaurar, parte de un volumen vacío y con solo Postgres arriba (la copia
+reemplaza también las bases de Temporal, que no se pueden borrar mientras esté conectado):
+
+```bash
+just down && podman volume rm duelo_postgres_data
+podman-compose --profile infra up -d postgres
+just restore backups/duelo-<fecha>.sql.zst   # se niega si la base ya tiene datos o Temporal corre
+just dev
+```
 
 ## Estructura
 

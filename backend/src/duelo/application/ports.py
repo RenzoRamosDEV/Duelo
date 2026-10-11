@@ -115,6 +115,24 @@ class ProjectPaths(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class ArchiveOutcome:
+    """Qué pasó al guardar la nota: `written` (en local), `pushed` (y en el remoto), `skipped`
+    (no procedía: sin carpeta, sin el commit, sin remoto) o `failed` (git o el push fallaron).
+    `detail` es un motivo corto sin rutas ni salida de comandos."""
+
+    status: str
+    detail: str = ""
+
+
+class ReviewArchive(Protocol):
+    async def archive(self, repo_path: str, sha: str, note: str) -> ArchiveOutcome:
+        """Guarda `note` como nota de git del commit `sha` en el repositorio `repo_path` y, si
+        procede, la empuja al remoto. Nunca lanza por un fallo de git: lo devuelve como
+        `failed`/`skipped` con su motivo."""
+        ...
+
+
 class ProjectSlugs(Protocol):
     async def slug_of(self, project_id: UUID) -> str | None:
         """Devuelve el nombre (`owner/repo`) del proyecto, o `None` si no existe.

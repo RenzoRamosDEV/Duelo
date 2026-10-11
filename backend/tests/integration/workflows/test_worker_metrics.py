@@ -61,7 +61,11 @@ async def test_the_worker_exposes_sdk_metrics_in_prometheus_format(
 
     async with (
         Worker(client, task_queue=PLATFORM_TASK_QUEUE, workflows=[ReviewChangeWorkflow]),
-        Worker(client, task_queue=AGENTS_TASK_QUEUE, activities=[activities.run_review]),
+        Worker(
+            client,
+            task_queue=AGENTS_TASK_QUEUE,
+            activities=[activities.run_review, activities.archive_reviews],
+        ),
     ):
         await client.execute_workflow(
             ReviewChangeWorkflow.run,
@@ -78,4 +82,5 @@ async def test_the_worker_exposes_sdk_metrics_in_prometheus_format(
     assert "temporal_workflow_task_schedule_to_start_latency" in body
     assert "temporal_activity_schedule_to_start_latency" in body
     assert "temporal_worker_task_slots_available" in body
-    assert "temporal_request_failure" in body
+    # `temporal_request_failure` solo aparece cuando alguna petición al servidor ha fallado: no se
+    # exige, porque dependería de un fallo incidental (así falló una vez en CI).

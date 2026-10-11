@@ -15,7 +15,13 @@ from duelo.application.review_timeouts import (
     RUN_REVIEW_START_TO_CLOSE,
 )
 from duelo.application.task_queues import AGENTS_TASK_QUEUE
-from duelo.workflows.dto import ReviewChangeInput, RunReviewInput, RunReviewResult
+from duelo.workflows.dto import (
+    ArchiveReviewsInput,
+    ArchiveReviewsResult,
+    ReviewChangeInput,
+    RunReviewInput,
+    RunReviewResult,
+)
 from duelo.workflows.review_details import render_details
 
 # Cambiar estas opciones es seguro para las ejecuciones en vuelo: no altera los comandos del
@@ -34,6 +40,9 @@ COMPENSATE_PATCH = "compensate-infra-failure"
 # Marca del historial de los nombres legibles: las ejecuciones anteriores no la tienen, así que se
 # reproducen con su id antiguo y sin resúmenes ni detalles de usuario.
 READABLE_PATCH = "readable-workflow-names"
+
+# Marca del historial de la nota de git: las ejecuciones anteriores terminan sin ella.
+ARCHIVE_PATCH = "archive-reviews"
 
 
 # Semántica Auto-Upgrade (docs/adr/0007): una ejecución en vuelo pasa al código nuevo, que debe
@@ -73,7 +82,20 @@ class ReviewChangeWorkflow:
                 workflow.set_current_details(render_details(review_input.agent_names, results))
             return result
 
-        return list(await asyncio.gather(*(review(name) for name in review_input.agent_names)))
+        reviewed = list(await asyncio.gather(*(review(name) for name in review_input.agent_names)))
+        if workflow.patched(ARCHIVE_PATCH):
+            # Copia duradera de la run en el repositorio revisado. Su resultado no cambia el de la
+            # revisión: la activity nunca falla por git (devuelve `skipped`/`failed`).
+            await workflow.execute_activity(
+                "archive_reviews",
+                ArchiveReviewsInput(change_id=review_input.change_id, run=review_input.run),
+                task_queue=AGENTS_TASK_QUEUE,
+                result_type=ArchiveReviewsResult,
+                start_to_close_timeout=timedelta(minutes=2),
+                retry_policy=RETRY,
+                summary=f"guarda la nota de {review_input.head_sha[:7]}".rstrip(),
+            )
+        return reviewed
 
     async def _review_one(
         self, run_input: RunReviewInput, *, summary: str | None = None

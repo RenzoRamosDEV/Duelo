@@ -56,7 +56,10 @@ def _agents_worker(
     return Worker(
         env.client,
         task_queue=AGENTS_TASK_QUEUE,
-        activities=[make_activities(session_factory, {AGENT: agent}).run_review],
+        activities=[
+            make_activities(session_factory, {AGENT: agent}).run_review,
+            make_activities(session_factory, {AGENT: agent}).archive_reviews,
+        ],
         graceful_shutdown_timeout=grace,
     )
 
@@ -120,7 +123,11 @@ async def test_a_review_that_finishes_within_the_grace_is_persisted_and_not_canc
         # El apagado esperó a que la review terminara en lugar de cancelarla.
 
         assert not quick.cancelled
-        results = await handle.result()
+        # La nota de git (`archive_reviews`) necesita un worker `agents` vivo para cerrar la run.
+        async with _agents_worker(
+            temporal_env, session_factory, FakeAgent(AGENT), grace=timedelta(seconds=5)
+        ):
+            results = await handle.result()
 
     assert [r.status for r in results] == ["completed"]
     reviews = await reviews_for(session_factory, change)

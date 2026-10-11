@@ -475,3 +475,16 @@ def test_shutdown_grace_cannot_be_negative(monkeypatch: pytest.MonkeyPatch) -> N
 
     with pytest.raises(ValidationError):
         WorkerSettings()
+
+
+def test_review_notes_are_on_by_default_and_can_be_turned_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("REVIEW_NOTES", raising=False)
+    monkeypatch.delenv("REVIEW_NOTES_PUSH", raising=False)
+    assert (WorkerSettings().review_notes, WorkerSettings().review_notes_push) == (True, True)
+
+    monkeypatch.setenv("REVIEW_NOTES_PUSH", "false")
+    assert WorkerSettings().review_notes_push is False
+    monkeypatch.setenv("REVIEW_NOTES", "0")
+    assert WorkerSettings().review_notes is False

@@ -40,7 +40,11 @@ async def _run(
         Worker(
             env.client,
             task_queue=AGENTS_TASK_QUEUE,
-            activities=[activities.run_review, activities.record_review_infrastructure_failure],
+            activities=[
+                activities.run_review,
+                activities.record_review_infrastructure_failure,
+                activities.archive_reviews,
+            ],
         ),
     ):
         handle = await env.client.start_workflow(

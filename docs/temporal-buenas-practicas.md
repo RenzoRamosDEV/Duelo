@@ -14,7 +14,7 @@ Leyenda: **Cumple** · **No aplica** (con motivo) · **Diferido** (con destino).
 | WF-1 Deterministas, sin I/O ni reloj propio | Cumple | `workflows/review_change.py`, `review_commit.py`: solo APIs del SDK, `asyncio.gather` sobre una lista; `render_details` es pura. Replays en `tests/integration/workflows/test_*_still_replays` |
 | WF-2 Un único objeto de entrada | Cumple | `ReviewCommitInput`, `ReviewChangeInput`, `RunReviewInput` (`workflows/dto.py`), campos nuevos con valor por defecto |
 | WF-3 Sin efectos en el workflow | Cumple | Toda persistencia y los CLI viven en `workflows/activities.py` |
-| WF-4 Cambios de comandos bajo versionado | Cumple | `workflow.patched("compensate-infra-failure")`, `("readable-workflow-names")`; regla en `docs/adr/0007` |
+| WF-4 Cambios de comandos bajo versionado | Cumple | `workflow.patched("compensate-infra-failure")`, `("readable-workflow-names")`, `("archive-reviews")`; regla en `docs/adr/0007`; historia previa a cada parche en `tests/integration/workflows/legacy_*.py` |
 | WF-5 Id de negocio determinista y política de reuso | Cumple | `application/workflow_naming.py`, `ALLOW_DUPLICATE_FAILED_ONLY` en `adapters/orchestration/temporal_review_starter.py` |
 | WF-6 Tipo de versionado declarado | Cumple (en el ADR) | Auto-Upgrade documentado en `docs/adr/0007` y en los comentarios de los `@workflow.defn`; no se declara al SDK porque sin Worker Versioning el servidor real lo rechaza |
 | WF-7 Continue-As-New fuera de handlers | No aplica | Sin señales ni Continue-As-New: los workflows duran minutos |

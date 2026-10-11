@@ -52,6 +52,10 @@ class WorkerSettings(BaseSettings):
     codex_model: str | None = None
     # Tope de gasto (en USD de lista) de una sola ejecución de Claude Code.
     claude_max_budget_usd: float = Field(default=2.0, gt=0)
+    # Nota de git por commit con las reviews de cada run (`refs/notes/duelo` en el repositorio local
+    # del proyecto), y si se empuja a `origin` con la credencial del usuario.
+    review_notes: bool = True
+    review_notes_push: bool = True
 
     @field_validator("agent_names", mode="before")
     @classmethod

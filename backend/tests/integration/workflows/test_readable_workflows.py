@@ -95,7 +95,11 @@ def _workers(
         Worker(
             env.client,
             task_queue=AGENTS_TASK_QUEUE,
-            activities=[activities.run_review, activities.record_review_infrastructure_failure],
+            activities=[
+                activities.run_review,
+                activities.record_review_infrastructure_failure,
+                activities.archive_reviews,
+            ],
         ),
     )
 
@@ -104,10 +108,19 @@ def _events(history: WorkflowHistory, event_type: EventType.ValueType) -> Iterat
     return (event for event in history.events if event.event_type == event_type)
 
 
-def _completed_activity_results(history: WorkflowHistory) -> list[dict[str, Any]]:
+def _completed_activity_results(
+    history: WorkflowHistory, activity: str = "run_review"
+) -> list[dict[str, Any]]:
+    """Resultados de las activities `activity` completadas (por defecto las reviews; la nota de
+    git, `archive_reviews`, también deja el suyo en la historia)."""
+    types = {
+        event.event_id: event.activity_task_scheduled_event_attributes.activity_type.name
+        for event in _events(history, EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
+    }
     return [
         CONVERTER.from_payload(event.activity_task_completed_event_attributes.result.payloads[0])
         for event in _events(history, EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED)
+        if types[event.activity_task_completed_event_attributes.scheduled_event_id] == activity
     ]
 
 
@@ -191,7 +204,11 @@ async def test_every_activity_has_a_one_line_summary(
         CONVERTER.from_payload(event.user_metadata.summary)
         for event in _events(history, EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
     ]
-    assert sorted(scheduled) == ["agent_1 revisa 5555555", "agent_2 revisa 5555555"]
+    assert sorted(scheduled) == [
+        "agent_1 revisa 5555555",
+        "agent_2 revisa 5555555",
+        "guarda la nota de 5555555",
+    ]
 
 
 async def test_the_workflows_carry_a_summary_and_a_card_in_the_list(

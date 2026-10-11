@@ -4,15 +4,30 @@ import asyncio
 import contextlib
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from duelo.application.ports import ChangeRepository, ReviewAgent, ReviewRepository
+from duelo.application.ports import (
+    ChangeRepository,
+    ProjectPaths,
+    ProjectSlugs,
+    ReviewAgent,
+    ReviewArchive,
+    ReviewRepository,
+)
 from duelo.application.record_review import record_review_failure, record_review_success
-from duelo.workflows.dto import RunReviewInput, RunReviewResult, result_from_review
+from duelo.application.review_notes import render_review_note
+from duelo.workflows.dto import (
+    ArchiveReviewsInput,
+    ArchiveReviewsResult,
+    RunReviewInput,
+    RunReviewResult,
+    result_from_review,
+)
 
 # Un tercio del `heartbeat_timeout` (30 s) del workflow: aguanta que se pierda algún latido.
 HEARTBEAT_INTERVAL_SECONDS = 10.0
@@ -48,6 +63,11 @@ class ReviewActivities:
         agents: dict[str, ReviewAgent],
         heartbeat: Callable[..., None] = _temporal_heartbeat,
         heartbeat_interval: float = HEARTBEAT_INTERVAL_SECONDS,
+        # Nota de git de cada run: `None` (o sin carpeta local) = no se escribe.
+        archive: ReviewArchive | None = None,
+        project_paths: ProjectPaths | None = None,
+        project_slugs: ProjectSlugs | None = None,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._session_factory = session_factory
         self._change_repository = change_repository
@@ -55,6 +75,10 @@ class ReviewActivities:
         self._agents = agents
         self._heartbeat = heartbeat
         self._heartbeat_interval = heartbeat_interval
+        self._archive = archive
+        self._project_paths = project_paths
+        self._project_slugs = project_slugs
+        self._clock = clock
 
     async def _beat_until_cancelled(self, details: tuple[object, ...]) -> None:
         """Latido inmediato y luego uno por intervalo, hasta que se cancele la tarea."""
@@ -140,3 +164,34 @@ class ReviewActivities:
                 error=INFRASTRUCTURE_FAILURE_MESSAGE,
             )
         return result_from_review(review)
+
+    @activity.defn
+    async def archive_reviews(self, archive_input: ArchiveReviewsInput) -> ArchiveReviewsResult:
+        """Guarda las reviews de la run como nota de git del commit, en el repositorio local del
+        proyecto, y la empuja al remoto. Nunca falla por git: devuelve `skipped`/`failed` con el
+        motivo y el workflow termina igual. Idempotente: la nota se sustituye."""
+        async with self._session_factory() as session:
+            change = await self._change_repository(session).get(UUID(archive_input.change_id))
+        if change is None:
+            raise ApplicationError(
+                f"Change {archive_input.change_id} no existe", non_retryable=True
+            )
+        if self._archive is None or self._project_paths is None:
+            return ArchiveReviewsResult("skipped", "las notas de git están desactivadas")
+        repo_path = await self._project_paths.path_of(change.project_id)
+        if repo_path is None:
+            return ArchiveReviewsResult("skipped", "el proyecto no tiene carpeta local")
+        async with self._session_factory() as session:
+            reviews = await self._review_repository(session).list_for_change(change.id)
+        slug = None
+        if self._project_slugs is not None:
+            slug = await self._project_slugs.slug_of(change.project_id)
+        note = render_review_note(
+            change,
+            reviews,
+            project=slug or str(change.project_id),
+            run=archive_input.run,
+            written_at=self._clock(),
+        )
+        outcome = await self._archive.archive(repo_path, change.head_sha, note)
+        return ArchiveReviewsResult(outcome.status, outcome.detail)

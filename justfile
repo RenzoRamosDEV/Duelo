@@ -22,6 +22,54 @@ migrate:
 worker:
     cd backend && uv run python -m duelo.worker
 
+# Trátala como privada: lleva los roles y contraseñas (de desarrollo) del servidor.
+# Copia de todas las bases del Postgres local (duelo + Temporal) en <dir>/duelo-<fecha>.sql.zst; conserva <keep> copias
+backup dir="backups" keep="14":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! podman ps --format '{{{{.Names}}' | grep -qx duelo_postgres_1; then
+        echo "backup: el contenedor duelo_postgres_1 no está en marcha (just dev)" >&2; exit 1
+    fi
+    command -v zstd >/dev/null || { echo "backup: falta zstd" >&2; exit 1; }
+    mkdir -p "{{dir}}"
+    file="{{dir}}/duelo-$(date +%Y%m%d-%H%M%S).sql.zst"
+    podman exec duelo_postgres_1 pg_dumpall -U duelo --clean --if-exists | zstd -q -o "$file"
+    echo "backup: $file ($(du -h "$file" | cut -f1))"
+    ls -1 "{{dir}}"/duelo-*.sql.zst | sort | head -n -{{keep}} | while read -r old; do
+        rm -f "$old" && echo "backup: borrada $old"
+    done
+
+# Solo sobre un volumen vacío y con Temporal parado: just down && podman volume rm duelo_postgres_data
+# && podman-compose --profile infra up -d postgres && just restore <fichero> && just dev
+# Restaura una copia de `just backup` en el Postgres local (solo sobre una base vacía, con Temporal parado)
+restore file:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! podman ps --format '{{{{.Names}}' | grep -qx duelo_postgres_1; then
+        echo "restore: el contenedor duelo_postgres_1 no está en marcha (just dev)" >&2; exit 1
+    fi
+    [ -f "{{file}}" ] || { echo "restore: no existe {{file}}" >&2; exit 1; }
+    if podman ps --format '{{{{.Names}}' | grep -qE '^duelo_temporal(-ui)?_1$'; then
+        echo "restore: para Temporal antes (podman-compose --profile infra stop temporal temporal-ui):" \
+             "la copia reemplaza sus bases y no se pueden borrar mientras esté conectado" >&2; exit 1
+    fi
+    # Por TCP: el servidor temporal de la inicialización del contenedor solo escucha en el socket,
+    # así que esto no responde hasta que el servidor definitivo está arriba con la base creada.
+    for _ in $(seq 1 60); do
+        podman exec duelo_postgres_1 psql -h 127.0.0.1 -U duelo -d postgres -Atc "select 1" >/dev/null 2>&1 && break
+        sleep 1
+    done
+    rows=$(podman exec duelo_postgres_1 psql -h 127.0.0.1 -U duelo -d duelo -Atc \
+        "select count(*) from changes" 2>/dev/null || echo 0)
+    if [ "$rows" != "0" ]; then
+        echo "restore: la base duelo ya tiene $rows changes; restaura sobre un volumen vacío" >&2; exit 1
+    fi
+    # El dump lleva `DROP/CREATE/ALTER ROLE duelo`: es el rol con el que nos conectamos (lo crea el
+    # contenedor) y Postgres no deja borrarlo; el resto del dump se aplica tal cual.
+    zstd -dc "{{file}}" | grep -vE '^(DROP ROLE( IF EXISTS)?|CREATE ROLE|ALTER ROLE) duelo( |;)' \
+        | podman exec -i duelo_postgres_1 psql -h 127.0.0.1 -U duelo -d postgres -q -v ON_ERROR_STOP=1
+    echo "restore: {{file}} cargada; reinicia la API y el worker (just down && just dev)"
+
 # Regenera el snapshot del contrato (docs/openapi.json) tras un cambio deliberado de la API
 openapi:
     cd backend && PYTHONPATH=. uv run python ../scripts/dump_openapi.py

@@ -27,6 +27,7 @@ from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 from temporalio.worker import Worker
 
 from duelo.adapters.agents.registry import CliAgentConfig, build_agents, is_real_agent
+from duelo.adapters.git.notes_archive import GitNotesArchive
 from duelo.adapters.persistence.change_repository import SqlAlchemyChangeRepository
 from duelo.adapters.persistence.db import create_engine, create_session_factory
 from duelo.adapters.persistence.project_repository import SqlAlchemyProjectRepository
@@ -67,15 +68,15 @@ def build_runtime(settings: WorkerSettings) -> Runtime | None:
 def build_workers(client: Client, settings: WorkerSettings) -> tuple[Worker, Worker]:
     engine = create_engine(settings.database_url)
     session_factory = create_session_factory(engine)
+    projects = SqlAlchemyProjectRepository(session_factory)
     activities = ReviewActivities(
         session_factory=session_factory,
         change_repository=SqlAlchemyChangeRepository,
         review_repository=SqlAlchemyReviewRepository,
-        agents=build_agents(
-            settings.agent_names,
-            cli_agent_config(settings),
-            SqlAlchemyProjectRepository(session_factory),
-        ),
+        agents=build_agents(settings.agent_names, cli_agent_config(settings), projects),
+        archive=GitNotesArchive(push=settings.review_notes_push) if settings.review_notes else None,
+        project_paths=projects,
+        project_slugs=projects,
     )
     # Con CLI reales, los huecos de la queue `agents` se limitan a `AGENT_MAX_CONCURRENCY`: las
     # reviews sobrantes esperan en la cola de Temporal, donde no gastan el plazo de la activity,
@@ -93,7 +94,11 @@ def build_workers(client: Client, settings: WorkerSettings) -> tuple[Worker, Wor
         Worker(
             client,
             task_queue=AGENTS_TASK_QUEUE,
-            activities=[activities.run_review, activities.record_review_infrastructure_failure],
+            activities=[
+                activities.run_review,
+                activities.record_review_infrastructure_failure,
+                activities.archive_reviews,
+            ],
             max_concurrent_activities=settings.agent_max_concurrency if real else None,
             graceful_shutdown_timeout=grace,
         ),

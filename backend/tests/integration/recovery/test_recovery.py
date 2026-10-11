@@ -96,7 +96,11 @@ async def _run_review_workflow(
         Worker(
             env.client,
             task_queue=AGENTS_TASK_QUEUE,
-            activities=[activities.run_review, activities.record_review_infrastructure_failure],
+            activities=[
+                activities.run_review,
+                activities.record_review_infrastructure_failure,
+                activities.archive_reviews,
+            ],
         ),
     ):
         return await env.client.execute_workflow(
@@ -132,7 +136,11 @@ async def test_workflow_waits_for_a_missing_agents_worker_and_finishes_when_it_a
         async with Worker(
             temporal_env.client,
             task_queue=AGENTS_TASK_QUEUE,
-            activities=[activities.run_review, activities.record_review_infrastructure_failure],
+            activities=[
+                activities.run_review,
+                activities.record_review_infrastructure_failure,
+                activities.archive_reviews,
+            ],
         ):
             results = await handle.result()
 
