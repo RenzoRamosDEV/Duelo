@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { DataSourceProvider } from "../data/source";
-import { ApiError, type ChangePage, type DataSource } from "../lib/api";
+import { ApiError, type DataSource } from "../lib/api";
 import { makeChange, makeFinding, makeReview, makeSource } from "../test/fixtures";
 
 function renderWith(source: Partial<DataSource>, path: string) {
@@ -75,7 +75,9 @@ describe("configured agents", () => {
   });
 });
 
-describe("channel reviews from the real API", () => {
+describe("project rows with the light reviews of the real API", () => {
+  // Origin: the listing brings reviews without summary or findings; the row only needs the state
+  // of each agent, so the list never asks for the detail (it is the change page's job).
   const light = (agent: string, extra = {}) =>
     makeReview({
       id: `c9:${agent}:1`,
@@ -87,75 +89,28 @@ describe("channel reviews from the real API", () => {
       ...extra,
     });
 
-  const channel = (reviews = [light("agent_1"), light("agent_2")]): ChangePage => ({
+  const channel = (reviews = [light("agent_1"), light("agent_2", { status: "failed" })]) => ({
     items: [makeChange({ id: "c9", title: "con respuestas", reviews, run: 1 })],
     nextCursor: null,
   });
 
-  it("shows the light reviews at once and the full ones once the detail loads", async () => {
-    // Origin: the listing had no reviews, so «Ver respuestas» was empty with the real API.
-    let resolveDetail: (c: ReturnType<typeof makeChange>) => void = () => {};
-    const change = vi.fn<DataSource["change"]>(
-      () =>
-        new Promise((resolve) => {
-          resolveDetail = resolve;
-        }),
-    );
+  it("shows each agent's state from the light reviews without requesting the detail", async () => {
+    const change = vi.fn<DataSource["change"]>();
     renderWith({ changes: async () => channel(), change }, "/p/demo");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Ver respuestas" }));
-
-    expect(change).toHaveBeenCalledExactlyOnceWith("c9");
-    expect(screen.getByText("Agent_1")).toBeInTheDocument();
-    expect(screen.getByText("Agent_2")).toBeInTheDocument();
-    expect(screen.getByText("Cargando respuestas…")).toBeInTheDocument();
-    expect(screen.queryByText("Resumen completo")).toBeNull();
-
-    resolveDetail(
-      makeChange({
-        id: "c9",
-        reviews: [
-          makeReview({ agent: "agent_1", summary: "Resumen completo", run: 1 }),
-          makeReview({ agent: "agent_2", summary: "Otro resumen", run: 1 }),
-        ],
-      }),
-    );
-    expect(await screen.findByText("Resumen completo")).toBeInTheDocument();
-    expect(screen.getByText("Otro resumen")).toBeInTheDocument();
-    expect(screen.queryByText("Cargando respuestas…")).toBeNull();
-  });
-
-  it("does not request the detail for reviews that are already complete", async () => {
-    const change = vi.fn<DataSource["change"]>();
-    const full = makeReview({ agent: "claude", summary: "ya completa", run: 1 });
-    renderWith({ changes: async () => channel([full]), change }, "/p/demo");
-    await userEvent.click(await screen.findByRole("button", { name: "Ver respuestas" }));
-    expect(await screen.findByText("ya completa")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Agent_1: completada" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Agent_2: fallida" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ver respuestas" })).toBeNull();
     expect(change).not.toHaveBeenCalled();
   });
 
-  it("keeps the light reviews and lets the user retry when the detail fails", async () => {
-    const change = vi
-      .fn<DataSource["change"]>()
-      .mockRejectedValueOnce(new ApiError("x", 503))
-      .mockResolvedValue(
-        makeChange({
-          id: "c9",
-          reviews: [makeReview({ agent: "agent_1", summary: "ahora sí", run: 1 })],
-        }),
-      );
-    renderWith({ changes: async () => channel(), change }, "/p/demo");
-
-    await userEvent.click(await screen.findByRole("button", { name: "Ver respuestas" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("No se pudieron cargar las respuestas completas.");
-    expect(screen.getByText("Agent_2")).toBeInTheDocument();
-
-    await userEvent.click(within(alert).getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByText("ahora sí")).toBeInTheDocument();
+  it("links the whole row to the change page instead of expanding it", async () => {
+    renderWith({ changes: async () => channel() }, "/p/demo");
+    const link = await screen.findByRole("link", { name: "con respuestas" });
+    expect(link).toHaveAttribute("href", "/p/demo/changes/c9");
   });
 
-  it("keeps the aggregate status badge for a change without reviews yet", async () => {
+  it("shows the expected agents as waiting for a change without reviews yet", async () => {
     renderWith(
       {
         changes: async () => ({
@@ -165,8 +120,9 @@ describe("channel reviews from the real API", () => {
       },
       "/p/demo",
     );
-    const summary = await screen.findByRole("list", { name: "Resumen de reviews" });
-    expect(within(summary).getByText("Pendiente")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Claude: en espera" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Codex: en espera" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Pendiente" })).toBeInTheDocument();
   });
 });
 

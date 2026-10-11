@@ -132,34 +132,21 @@ describe("compact channel", () => {
     makeChange({ title: "beta", author: "bob" }),
   ];
 
-  it("toggles density and keeps the search and the thread controls", async () => {
+  it("searches by author and lists one compact row per match, with no density switch", async () => {
     const changes: DataSource["changes"] = async (_slug, query) => ({
       items: items.filter((c) => !query?.q || c.author === query.q),
       nextCursor: null,
     });
     renderWith({ changes }, "/p/demo");
     await screen.findByText("alpha");
-    const list = () => document.querySelector(".list-box");
-    expect(list()).toHaveAttribute("data-density", "cards");
+    expect(screen.queryByRole("button", { name: "Compacta" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Tarjetas" })).toBeNull();
 
     await userEvent.type(screen.getByRole("searchbox"), "ana");
-    await userEvent.click(screen.getByRole("button", { name: "Compacta" }));
     // Wait for the filtered result itself: "beta" also disappears while the list is loading.
     await waitFor(() => expect(document.querySelectorAll(".change-row")).toHaveLength(1));
-    expect(list()).toHaveAttribute("data-density", "compact");
     expect(screen.queryByText("beta")).toBeNull();
-
-    expect(screen.getByRole("button", { name: "Compacta" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "Tarjetas" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-    expect(document.querySelectorAll(".change-row")).toHaveLength(1);
     expect(screen.getByRole("searchbox")).toHaveValue("ana");
-    expect(screen.getByRole("button", { name: "Ver respuestas" })).toBeInTheDocument();
   });
 });
 

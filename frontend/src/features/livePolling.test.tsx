@@ -151,17 +151,17 @@ describe("live channel", () => {
   });
 });
 
-describe("live sidebar", () => {
+describe("live project picker", () => {
   it("lists a project added elsewhere without reloading", async () => {
     let projects = [{ slug: "demo", name: "demo" }];
-    renderApp(makeSource({ projects: async () => projects }), "/settings");
+    renderApp(makeSource({ projects: async () => projects }), "/");
     await tick(0);
-    const nav = within(screen.getByRole("navigation", { name: "Principal" }));
-    expect(nav.queryByRole("link", { name: /nuevo/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /demo/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /nuevo/ })).toBeNull();
 
     projects = [...projects, { slug: "me/nuevo", name: "me/nuevo" }];
     await tick(POLL_MS);
-    expect(nav.getByRole("link", { name: /me\/nuevo/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /me\/nuevo/ })).toBeInTheDocument();
     expect(screen.queryByText("Cargando proyectos…")).toBeNull();
   });
 });

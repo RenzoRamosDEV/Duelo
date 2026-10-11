@@ -1,21 +1,19 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
+import { AgentChecks } from "../../components/AgentChecks";
 import { AsyncBoundary } from "../../components/AsyncBoundary";
 import { Busy } from "../../components/Busy";
 import { CopyButton } from "../../components/CopyButton";
 import { EmptyState } from "../../components/EmptyState";
-import { ReviewCard } from "../../components/ReviewCard";
 import { StatusIcon } from "../../components/StatusIcon";
 import { UndoneLabel, UndoneStatusIcon } from "../../components/UndoneNotice";
 import { UpdatedAgo } from "../../components/UpdatedAgo";
 import { HERO } from "../../components/brand";
 import { Beam } from "../../components/fx/Beam";
 import { CommitIcon, PullRequestIcon, SearchIcon } from "../../components/icons";
-import { AgentAvatar, agentLabel } from "../../components/ui/AgentAvatar";
-import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import type { Change, ChangeKind, Review } from "../../data/mock";
-import { useAgentNames, useDataSource } from "../../data/source";
+import type { Change, ChangeKind } from "../../data/mock";
+import { useAgentNames } from "../../data/source";
 import { agentList } from "../../lib/agents";
 import { ApiError } from "../../lib/api";
 import type { StateFilter } from "../../lib/channelQuery";
@@ -25,11 +23,8 @@ import { useNow } from "../../lib/now";
 import { isWaiting } from "../../lib/pending";
 import { changePath } from "../../lib/projectPath";
 import { relativeTime } from "../../lib/relativeTime";
-import { AGGREGATE_LABEL, AGGREGATE_TONE } from "../../lib/reviewStatus";
-import { summarizeReviews } from "../../lib/reviewSummary";
 import { shortSha } from "../../lib/url";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import { PendingAgents } from "../review/PendingAgents";
 import { useChannel } from "./useChannel";
 
 type Filter = "all" | ChangeKind;
@@ -49,13 +44,6 @@ const STATE_FILTERS: { value: StateFilter; label: string }[] = [
 
 const SEARCH_DELAY_MS = 300;
 
-type Density = "cards" | "compact";
-
-const DENSITIES: { value: Density; label: string }[] = [
-  { value: "cards", label: "Tarjetas" },
-  { value: "compact", label: "Compacta" },
-];
-
 function Age({ iso }: { iso: string | undefined }) {
   const now = useNow();
   const text = iso ? relativeTime(iso, now) : null;
@@ -67,83 +55,13 @@ function Age({ iso }: { iso: string | undefined }) {
   );
 }
 
-type Tone = "neutral" | "success" | "danger" | "warning";
-
-/** Per-review counts when the change has reviews, else the aggregate status (e.g. `pending`). */
-function summaryItems(change: Change): { key: string; tone: Tone; text: string }[] {
-  if (change.reviews && change.reviews.length > 0) {
-    return summarizeReviews(change.reviews).map((item) => ({
-      key: item.status,
-      tone:
-        item.status === "completed" ? "success" : item.status === "failed" ? "danger" : "neutral",
-      text: item.text,
-    }));
-  }
-  const status = change.reviewStatus;
-  return status
-    ? [{ key: status, tone: AGGREGATE_TONE[status], text: AGGREGATE_LABEL[status] }]
-    : [];
-}
-
-type FullReviews =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "ready"; reviews: Review[] };
-
 /**
- * The channel listing only brings light reviews (agent, status, score, duration). When the thread
- * is opened, the full ones (summary, findings, error) are requested from the change detail.
+ * One compact line per change. The whole row is the link to the change page (the title is its
+ * only focusable element; its `::after` stretches over the row), so there is nothing to expand
+ * here: the answers of each agent live on the detail page. A commit that is no longer on its
+ * branch (or was reverted) is shown in amber, with its state said in words in the row.
  */
-function useFullReviews(change: Change, open: boolean): [FullReviews, () => void] {
-  const source = useDataSource();
-  const [full, setFull] = useState<FullReviews>({ status: "idle" });
-  const [attempt, setAttempt] = useState(0);
-  const needsDetail = (change.reviews ?? []).some((r) => r.partial);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` re-runs it on retry; a new run or status means new reviews
-  useEffect(() => {
-    if (!open || !needsDetail) return;
-    let current = true;
-    setFull((prev) => (prev.status === "ready" ? prev : { status: "loading" }));
-    source
-      .change(change.id)
-      .then((detail) => current && setFull({ status: "ready", reviews: detail.reviews ?? [] }))
-      .catch(() => current && setFull({ status: "error" }));
-    return () => {
-      current = false;
-    };
-  }, [open, needsDetail, source, change.id, change.run, change.reviewStatus, attempt]);
-
-  return [full, () => setAttempt((n) => n + 1)];
-}
-
-const REVIEW_STATE_TEXT = { running: "en curso", completed: "completada", failed: "fallida" };
-
-/** The agents' "checks" on the right of a row: one avatar per review with its state. */
-function Checks({ reviews }: { reviews: Review[] }) {
-  if (reviews.length === 0) return null;
-  return (
-    <ul className="checks" aria-label="Checks de los agentes">
-      {reviews.map((r) => (
-        <li key={r.id}>
-          <span
-            className="check"
-            data-status={r.status}
-            role="img"
-            aria-label={`${agentLabel(r.agent)}: ${REVIEW_STATE_TEXT[r.status]}`}
-            title={`${agentLabel(r.agent)}: ${REVIEW_STATE_TEXT[r.status]}`}
-          >
-            <AgentAvatar agent={r.agent} size={20} />
-            <span className="check-dot" aria-hidden="true" />
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ChangeThread({
+function ChangeRow({
   change,
   slug,
   agentNames,
@@ -152,13 +70,7 @@ function ChangeThread({
   slug: string;
   agentNames: readonly string[] | null;
 }) {
-  const [open, setOpen] = useState(false);
-  const [full, retryFull] = useFullReviews(change, open);
-  const panelId = useId();
-  const reviews = full.status === "ready" ? full.reviews : (change.reviews ?? []);
   const KindIcon = change.kind === "pr" ? PullRequestIcon : CommitIcon;
-  // A commit that is no longer on its branch (or was reverted) is shown in amber, with its state
-  // said in words in the middle of the row. Its reviews are untouched.
   const undone = undoneNotice(change);
   return (
     <li
@@ -174,66 +86,27 @@ function ChangeThread({
             <StatusIcon status={change.reviewStatus} />
           )}
           <div className="change-main">
-            <div className="change-title">
-              <Link to={changePath(slug, change.id)}>
-                <strong>{change.title}</strong>
-              </Link>
-              <span className="kind-label" data-kind={change.kind}>
-                <KindIcon size={12} />
-                {change.kind === "pr" ? "PR" : "Commit"}
-              </span>
-            </div>
-            <p className="change-meta muted">
-              #<span className="mono">{shortSha(change.sha)}</span> · por {change.author}
-              {change.createdAt && (
-                <>
-                  {" · "}
-                  <Age iso={change.createdAt} />
-                </>
-              )}
-            </p>
-            <ul className="review-summary" aria-label="Resumen de reviews">
-              {summaryItems(change).map((item) => (
-                <li key={item.key}>
-                  <Badge tone={item.tone}>{item.text}</Badge>
-                </li>
-              ))}
-            </ul>
-            <PendingAgents change={change} agentNames={agentNames} />
+            <Link className="change-link" to={changePath(slug, change.id)}>
+              <strong>{change.title}</strong>
+            </Link>
+            <span className="kind-label" data-kind={change.kind}>
+              <KindIcon size={12} />
+              {change.kind === "pr" ? "PR" : "Commit"}
+            </span>
+            {undone && <UndoneLabel notice={undone} />}
           </div>
-          {undone && <UndoneLabel notice={undone} />}
-          <div className="change-side">
-            <Checks reviews={change.reviews ?? []} />
-            <Button
-              size="sm"
-              aria-expanded={open}
-              aria-controls={panelId}
-              onClick={() => setOpen((o) => !o)}
-            >
-              {open ? "Ocultar respuestas" : "Ver respuestas"}
-            </Button>
-          </div>
+          <span className="change-meta muted">
+            #<span className="mono">{shortSha(change.sha)}</span> · por {change.author}
+            {change.createdAt && (
+              <>
+                {" · "}
+                <Age iso={change.createdAt} />
+              </>
+            )}
+          </span>
+          <AgentChecks reviews={change.reviews ?? []} run={change.run} expected={agentNames} />
         </div>
       </Beam>
-      {open && (
-        <div className="thread reviews" id={panelId}>
-          {full.status === "loading" && <Busy activity="load" label="Cargando respuestas…" />}
-          {full.status === "error" && (
-            <p className="notice" role="alert">
-              No se pudieron cargar las respuestas completas.{" "}
-              <Button size="sm" onClick={retryFull}>
-                Reintentar
-              </Button>
-            </p>
-          )}
-          {reviews.length === 0 && full.status !== "loading" && (
-            <p className="muted">Aún no hay respuestas de los agentes.</p>
-          )}
-          {reviews.map((r) => (
-            <ReviewCard key={r.id} review={r} sha={change.sha} />
-          ))}
-        </div>
-      )}
     </li>
   );
 }
@@ -320,7 +193,6 @@ export function ChannelPage({ slug }: { slug: string }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [stateFilter, setStateFilter] = useState<StateFilter>("all");
   const [query, setQuery] = useState("");
-  const [density, setDensity] = useState<Density>("cards");
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
   useSlashToSearch(searchRef);
@@ -387,21 +259,8 @@ export function ChannelPage({ slug }: { slug: string }) {
             </button>
           ))}
         </fieldset>
-        <fieldset className="segmented" aria-label="Densidad">
-          {DENSITIES.map((d) => (
-            <button
-              type="button"
-              className="segment"
-              key={d.value}
-              aria-pressed={density === d.value}
-              onClick={() => setDensity(d.value)}
-            >
-              {d.label}
-            </button>
-          ))}
-        </fieldset>
       </div>
-      <div className="list-box" data-density={density}>
+      <div className="list-box">
         <div className="list-head">
           <fieldset className="state-tabs" aria-label="Estado de la review">
             {STATE_FILTERS.map((f) => (
@@ -440,7 +299,7 @@ export function ChannelPage({ slug }: { slug: string }) {
               {items.length > 0 && (
                 <ul className="change-list">
                   {items.map((c) => (
-                    <ChangeThread key={c.id} change={c} slug={slug} agentNames={agentNames} />
+                    <ChangeRow key={c.id} change={c} slug={slug} agentNames={agentNames} />
                   ))}
                 </ul>
               )}

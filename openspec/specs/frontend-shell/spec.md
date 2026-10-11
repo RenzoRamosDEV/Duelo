@@ -6,22 +6,6 @@ una estructura de canales por proyecto y una representación clara de los estado
 
 ## Requirements
 
-### Requirement: Navegación por canales
-La interfaz SHALL mostrar una barra lateral con un canal por proyecto y una sección General con
-enlaces a Estadísticas y Ajustes, y SHALL marcar el destino activo con el color de énfasis.
-
-#### Scenario: Abrir un canal
-- **WHEN** el usuario selecciona un proyecto en la barra lateral
-- **THEN** la ruta es `/p/:slug` y el canal aparece marcado como activo
-
-### Requirement: Hilos de reviews desplegables
-Cada change del canal SHALL permitir desplegar sus reviews por agente, exponiendo su estado
-con `aria-expanded` y operable con teclado.
-
-#### Scenario: Desplegar con teclado
-- **WHEN** el usuario enfoca "Ver respuestas" y pulsa Enter
-- **THEN** se muestran las reviews de cada agente y `aria-expanded` pasa a `true`
-
 ### Requirement: Estado de review en curso
 Una review en curso SHALL mostrarse como un mensaje con el orbe de «pensando» y su etiqueta; una
 completada o fallida SHALL mostrarse sin animación y con indicación textual del estado.
@@ -38,8 +22,8 @@ completada o fallida SHALL mostrarse sin animación y con indicación textual de
 ### Requirement: Contraste accesible
 El texto y los controles interactivos SHALL cumplir contraste WCAG AA en el tema claro y en el
 oscuro: el texto atenuado sobre cada superficie, los colores de estado sobre las superficies y
-sobre sus fondos tintados, el botón principal (normal y con el cursor encima), el elemento
-seleccionado de la barra lateral y el texto sobre los fondos del diff.
+sobre sus fondos tintados, el botón principal (normal y con el cursor encima), el enlace activo
+de la barra superior y el texto sobre los fondos del diff.
 
 #### Scenario: Texto secundario
 - **WHEN** se muestra texto atenuado sobre una superficie, en cualquiera de los dos temas
@@ -48,19 +32,6 @@ seleccionado de la barra lateral y el texto sobre los fondos del diff.
 #### Scenario: Estados sobre su fondo
 - **WHEN** se muestra un estado (éxito, fallo, aviso) sobre su fondo tintado
 - **THEN** su ratio de contraste es al menos 4.5:1 en ambos temas
-
-### Requirement: Navegación adaptable
-En pantallas estrechas la barra lateral SHALL ocultar sus enlaces tras un botón "Menú" que
-exponga su estado con `aria-expanded`, SHALL cerrarse al navegar o al pulsar Escape, y SHALL
-mantener los enlaces operables con teclado.
-
-#### Scenario: Abrir y cerrar el menú
-- **WHEN** el usuario activa el botón "Menú"
-- **THEN** `aria-expanded` pasa a `true` y, al pulsar Escape, vuelve a `false`
-
-#### Scenario: Navegar con el menú abierto
-- **WHEN** el menú está abierto y el usuario sigue un enlace
-- **THEN** la ruta cambia y el menú queda cerrado
 
 ### Requirement: Búsqueda en el canal
 El canal SHALL ofrecer un campo de búsqueda que filtre los changes por título, autor, SHA o ref
@@ -75,19 +46,6 @@ cargado.
 #### Scenario: Sin coincidencias
 - **WHEN** ningún change cumple la búsqueda y el filtro
 - **THEN** se muestra "Ningún cambio coincide con la búsqueda."
-
-### Requirement: Resumen de reviews por change
-Cada change del canal SHALL mostrar, sin desplegar el hilo, cuántas reviews están completadas,
-en curso o fallidas, con texto además de color. Si la fuente no trae las reviews pero sí el estado
-agregado (`review_status`), SHALL mostrar ese estado como insignia de texto.
-
-#### Scenario: Change con reviews mixtas
-- **WHEN** un change tiene una review completada y otra en curso
-- **THEN** su card muestra "1 completada" y "1 en curso"
-
-#### Scenario: Solo estado agregado
-- **WHEN** el listado de la API trae `review_status: "partial_failed"` y ninguna review
-- **THEN** la card muestra la insignia "Fallo parcial"
 
 ### Requirement: Diff legible
 El detalle de un change SHALL mostrar el diff con líneas numeradas, la cabecera de archivo
@@ -204,14 +162,6 @@ con la fecha absoluta en `datetime` y `title`. Si el change no tiene fecha SHALL
 #### Scenario: Cambio reciente
 - **WHEN** un change se creó hace 12 minutos
 - **THEN** se muestra «hace 12 min» y el `datetime` contiene la fecha ISO original
-
-### Requirement: Vista compacta del canal
-El canal SHALL ofrecer un interruptor entre tarjetas y filas compactas, conservando búsqueda,
-filtros y la posibilidad de ver las respuestas de cada change.
-
-#### Scenario: Cambiar a compacta
-- **WHEN** el usuario pulsa «Compacta»
-- **THEN** los changes se listan en filas, el botón queda con `aria-pressed="true"` y los filtros se mantienen
 
 ### Requirement: Estado vacío accionable
 Un canal sin changes y sin filtros activos SHALL mostrar el comando mínimo para ingestar un commit
@@ -392,7 +342,7 @@ nombre y un avatar de iniciales neutro, y SHALL NOT atribuirse a Claude.
 - **THEN** la card muestra «Codex»
 
 ### Requirement: Añadir un proyecto desde una carpeta local
-La interfaz SHALL ofrecer un botón «Añadir proyecto» en la barra lateral y en el estado vacío que
+La interfaz SHALL ofrecer un botón «Añadir proyecto» en el selector de proyectos de la entrada y en el estado vacío que
 abre un diálogo accesible (`role` de diálogo, foco inicial en el campo de ruta, Tab sin salir del
 diálogo, Escape lo cierra y el foco vuelve al botón que lo abrió). El diálogo SHALL pedir la ruta
 absoluta del repositorio y el token de ingesta (campo de contraseña, solo en memoria) y SHALL
@@ -401,7 +351,7 @@ pueden desinstalar. Una ruta que no sea absoluta SHALL rechazarse sin llamar a l
 
 #### Scenario: Alta correcta
 - **WHEN** el usuario escribe una ruta válida y el token y pulsa «Añadir»
-- **THEN** el proyecto aparece en la barra lateral, queda seleccionado y el diálogo se cierra
+- **THEN** el proyecto aparece en el selector de proyectos, se abre su página y el diálogo se cierra
 
 #### Scenario: Función desactivada
 - **WHEN** la API responde 404
@@ -453,7 +403,7 @@ con el foco inicial en «Cancelar».
   hasta que el usuario la confirma
 
 ### Requirement: Auto-actualización
-La barra lateral, el canal y el detalle de un change SHALL refrescarse solos cada pocos segundos
+El selector de proyectos, la lista de changes del proyecto y el detalle de un change SHALL refrescarse solos cada pocos segundos
 sin recargar la página, de modo que un commit o una PR nuevos aparezcan solos. El refresco SHALL
 ser silencioso (sin estado de carga ni parpadeo), SHALL pausarse mientras la pestaña esté oculta y
 refrescar al volver a mostrarla, SHALL conservar la búsqueda, los filtros y los elementos cargados
@@ -463,7 +413,7 @@ discreta cuándo se actualizó por última vez y avisar si el último refresco f
 datos anteriores.
 
 #### Scenario: Aparece un commit nuevo
-- **WHEN** llega un commit nuevo mientras el canal está abierto
+- **WHEN** llega un commit nuevo mientras la lista del proyecto está abierta
 - **THEN** aparece en la lista sin recargar y sin mostrar «Cargando»
 
 #### Scenario: Se conservan búsqueda y páginas cargadas
@@ -482,27 +432,6 @@ datos anteriores.
 #### Scenario: Detalle terminado
 - **WHEN** la review de un change ya terminó
 - **THEN** el detalle deja de refrescarse
-
-### Requirement: Respuestas del canal con la API real
-El canal SHALL mostrar en «Ver respuestas» las reviews ligeras que trae el listado (agente, estado,
-nota y duración) de inmediato, y SHALL pedir el detalle completo del change (`GET /changes/{id}`)
-al abrir el hilo cuando alguna review sea ligera, para mostrar resumen, hallazgos y motivo del fallo.
-Mientras carga SHALL indicarlo; si falla SHALL avisar sin perder las reviews ligeras y ofrecer
-«Reintentar». Un change sin reviews SHALL conservar en su resumen el badge del estado agregado en
-lugar de quedarse vacío, y su hilo SHALL decir que aún no hay respuestas.
-
-#### Scenario: Se abre un hilo
-- **WHEN** el usuario abre «Ver respuestas» de un change con reviews ligeras
-- **THEN** ve al instante los agentes con su estado, y cuando llega el detalle ve sus resúmenes y
-  hallazgos
-
-#### Scenario: El detalle falla
-- **WHEN** el detalle del change falla al abrir el hilo
-- **THEN** las reviews ligeras siguen visibles, aparece un aviso y «Reintentar» vuelve a pedirlo
-
-#### Scenario: Reviews ya completas
-- **WHEN** las reviews del change ya traen su resumen (datos de ejemplo)
-- **THEN** no se pide el detalle
 
 ### Requirement: Agentes configurados en la interfaz
 La interfaz SHALL tomar los nombres de los agentes de `agent_names` del diagnóstico del servidor y
@@ -571,16 +500,17 @@ sin montar ningún canvas.
 - **THEN** el orbe se dibuja con la tinta oscura del tema claro
 
 ### Requirement: Agentes pendientes de un change
-Las tarjetas del canal y el detalle de un change con estado agregado `pending` o `running` SHALL
+El detalle de un change con estado agregado `pending` o `running` SHALL
 mostrar un orbe `working` con el nombre de cada agente esperado (`agent_names` del diagnóstico) que
 aún no tiene review del run actual, y SHALL retirarlo cuando esa review llega. Un agente con review
 de un run anterior SHALL seguir contando como pendiente en el run actual. Mientras los agentes
 esperados no se conozcan, SHALL mostrarse un único orbe genérico en lugar de inventar nombres. Un
-change `completed`, `failed` o `partial_failed` no SHALL mostrar agentes pendientes.
+change `completed`, `failed` o `partial_failed` no SHALL mostrar agentes pendientes. En la lista
+del proyecto el agente pendiente se muestra como check en espera, no como orbe.
 
 #### Scenario: Ninguna review todavía
 - **WHEN** un change `pending` tiene agentes esperados `agent_1` y `agent_2` y ninguna review
-- **THEN** se muestran dos orbes, «Agent_1 está revisando…» y «Agent_2 está revisando…»
+- **THEN** su detalle muestra dos orbes, «Agent_1 está revisando…» y «Agent_2 está revisando…»
 
 #### Scenario: Review parcial
 - **WHEN** `agent_1` ya entregó su review y `agent_2` no
@@ -621,45 +551,6 @@ preferencia elegida (`localStorage`), nunca datos del usuario.
 #### Scenario: Almacenamiento bloqueado
 - **WHEN** `localStorage` no se puede escribir
 - **THEN** el tema cambia igualmente y la elección dura hasta cerrar la página
-
-### Requirement: Marco de la aplicación
-La interfaz SHALL tener una barra superior con la marca (enlace al inicio) y el selector de tema, y
-una barra lateral estilo Slack con la sección Proyectos como lista de canales (`#`), colapsable con
-`aria-expanded`, una acción «Añadir proyecto» y la sección General. En pantallas estrechas la barra
-lateral SHALL ser un cajón con velo que se cierra con Escape, con el velo o al navegar, y sus
-enlaces no SHALL ser alcanzables con Tab mientras esté cerrado.
-
-#### Scenario: Colapsar los proyectos
-- **WHEN** el usuario pulsa «Proyectos» en la barra lateral
-- **THEN** la lista de canales se oculta, `aria-expanded` pasa a `false` y los enlaces de General
-  siguen disponibles
-
-#### Scenario: Orden de tabulación
-- **WHEN** el usuario recorre la página con Tab
-- **THEN** pasa por el menú, la marca, el selector de tema, la barra lateral y la página
-
-### Requirement: Lista de changes estilo PR
-El canal SHALL listar sus changes como la lista de PRs de GitHub: un icono de estado con texto
-alternativo (pendiente, en curso, fallo parcial, fallida, completada), el título enlazado en
-negrita, `#sha · por autor · antigüedad`, una etiqueta Commit o PR y, a la derecha, un «check» por
-agente con su estado como texto. La cabecera de la lista SHALL ofrecer el filtro de estado como
-pestañas y contar lo **cargado** por estado, añadiendo «+» cuando haya otra página.
-
-#### Scenario: Estado con texto alternativo
-- **WHEN** se muestra un change con `review_status` `partial_failed`
-- **THEN** su icono es una imagen con el texto «Fallo parcial»
-
-#### Scenario: Checks de los agentes
-- **WHEN** un change tiene reviews de `agent_1` (completada) y `agent_2` (fallida)
-- **THEN** la fila muestra dos checks con los nombres «Agent_1: completada» y «Agent_2: fallida»
-
-#### Scenario: Sin reviews todavía
-- **WHEN** un change aún no tiene ninguna review
-- **THEN** la fila no muestra checks y sí los agentes pendientes
-
-#### Scenario: Contadores de lo cargado
-- **WHEN** hay tres changes cargados y hay otra página
-- **THEN** la cabecera dice «3+ cambios» seguido del desglose por estado
 
 ### Requirement: Reviews como mensajes
 Cada review SHALL mostrarse como un mensaje de una app: avatar con color estable por agente,
@@ -942,27 +833,19 @@ oscuro, y un icono de Apple. SHALL NOT quedar referencia al icono anterior de la
 - **THEN** el documento declara un icono para el esquema oscuro, otro para el claro y el icono de Apple
 
 ### Requirement: Commits deshechos y revertidos en el canal
-La interfaz SHALL pintar la fila de un commit con `commit_state` `discarded` o `reverted` en ámbar
-(fondo tintado y borde izquierdo ámbar con los tokens del tema, legible en oscuro y en claro), con un
-icono de «deshacer» ámbar cuyo texto alternativo diga el estado, y SHALL mostrar en el centro de la
-fila una etiqueta en mayúsculas («COMMIT DESHECHO» o «COMMIT REVERTIDO») con su subtítulo («Ya no
-está en la rama» o «Revertido por `<sha corto>`»). El estado SHALL comunicarse también con texto y
-no solo con el color. Las reviews, «Ver respuestas», los checks de los agentes y la vista compacta
-SHALL seguir funcionando. Un commit deshecho o revertido SHALL contar como un cambio normal en los
-contadores de revisión. La cabecera de la lista SHALL añadir los recuentos «N deshechos» y «N
-revertidos» (de los cargados) cuando haya alguno.
+La lista de changes del proyecto SHALL pintar la fila de un commit con `commit_state` `discarded` o `reverted` en amarillo, como define la capacidad `project-browser` («Commits revertidos y deshechos en amarillo en la lista»). El detalle SHALL mostrar su aviso («Aviso en el detalle de un commit deshecho o revertido»). Las reviews y los checks de los agentes SHALL seguir funcionando y un commit deshecho o revertido SHALL contar como un cambio normal en los contadores de revisión.
 
 #### Scenario: Commit deshecho
 - **WHEN** un commit llega con `commit_state = discarded`
-- **THEN** su fila es ámbar, muestra «COMMIT DESHECHO» y «Ya no está en la rama»
+- **THEN** su fila es amarilla, muestra «COMMIT DESHECHO» y «Ya no está en la rama»
 
 #### Scenario: Commit revertido
 - **WHEN** un commit llega con `commit_state = reverted`
 - **THEN** su fila muestra «COMMIT REVERTIDO» y «Revertido por <sha corto>»
 
 #### Scenario: Vista compacta
-- **WHEN** la densidad es compacta
-- **THEN** la etiqueta se muestra en la misma línea y la fila sigue siendo ámbar
+- **WHEN** la lista se muestra (siempre compacta, también en pantalla estrecha)
+- **THEN** la etiqueta se muestra en la misma fila y la fila sigue siendo amarilla
 
 #### Scenario: Commit normal
 - **WHEN** un commit es `active`

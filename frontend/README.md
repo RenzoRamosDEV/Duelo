@@ -3,6 +3,20 @@
 React 19 + Vite + TypeScript. `pnpm dev` arranca el servidor de desarrollo, `pnpm build` genera
 `dist/`, `pnpm preview` lo sirve, `pnpm test` ejecuta Vitest y `pnpm lint` pasa Biome.
 
+## Navegación
+
+Tres niveles, cada uno con su ruta:
+
+| Ruta | Qué muestra |
+| --- | --- |
+| `/` | Selector de proyectos: una tarjeta por repositorio vigilado (y «Añadir proyecto»). No salta al primero. |
+| `/p/<owner>/<repo>` | Lista compacta de sus commits y PRs: una fila por change con estado, tipo, título, `#sha`, autor, antigüedad y un check por agente (logo + ✓ respondió, ✕ falló, atenuado en espera). Los commits revertidos o deshechos salen en amarillo. |
+| `/p/<owner>/<repo>/changes/<id>` | Página del change: reviews por agente, hallazgos, diff, acciones y reintento. |
+
+La fila entera es un enlace a la página del change; no hay hilo desplegable en la lista. La barra
+superior lleva la marca, un selector del proyecto actual (solo dentro de un proyecto), Estadísticas,
+Ajustes y el tema; en pantallas estrechas los enlaces quedan como iconos.
+
 ## PWA
 
 El build de producción es instalable (manifiesto web) y su interfaz abre sin conexión: un service

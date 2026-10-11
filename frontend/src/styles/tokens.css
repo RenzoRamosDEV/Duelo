@@ -35,7 +35,6 @@
   --diff-hunk-bg: #131d2e;
 
   --header-bg: #161b22;
-  --sidebar-bg: #010409;
   --shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
 
   --radius-sm: 4px;
@@ -85,7 +84,6 @@
   --diff-hunk-bg: #ddf4ff;
 
   --header-bg: #f6f8fa;
-  --sidebar-bg: #f6f8fa;
   --shadow: 0 8px 24px rgba(140, 149, 159, 0.3);
 }
 
@@ -124,7 +122,6 @@
     --diff-hunk-bg: #ddf4ff;
 
     --header-bg: #f6f8fa;
-    --sidebar-bg: #f6f8fa;
     --shadow: 0 8px 24px rgba(140, 149, 159, 0.3);
   }
 }

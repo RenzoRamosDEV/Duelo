@@ -21,7 +21,7 @@ function renderWith(source: Partial<DataSource>, path: string) {
 const srcOf = (element: Element | null) => element?.querySelector("img")?.getAttribute("src");
 
 describe("agent logos across the app", () => {
-  it("shows the logo of Claude and Codex as the checks of a channel row, and initials for others", async () => {
+  it("shows the logo of Claude and Codex as the checks of a project row, and initials for others", async () => {
     const change = makeChange({
       id: "c1",
       title: "con checks",
@@ -33,15 +33,16 @@ describe("agent logos across the app", () => {
       ],
     });
     renderWith({ changes: async () => ({ items: [change], nextCursor: null }) }, "/p/demo");
-    const checks = await screen.findByRole("list", { name: "Checks de los agentes" });
-    const [claude, codex, other] = within(checks).getAllByRole("img");
+    const checks = await screen.findByRole("list", { name: "Respuesta de cada agente" });
+    // Alphabetical, so the agent without a logo comes first.
+    const [other, claude, codex] = within(checks).getAllByRole("img");
     expect(srcOf(claude as Element)).toBe(agentLogo("claude"));
     expect(srcOf(codex as Element)).toBe(agentLogo("codex"));
     expect(srcOf(other as Element)).toBeUndefined();
     expect(other).toHaveTextContent("A9");
   });
 
-  it("shows the logo of the agent a change is still waiting for", async () => {
+  it("shows the logo of an agent the change is still waiting for, dimmed", async () => {
     const change = makeChange({
       id: "c2",
       title: "en curso",
@@ -55,12 +56,12 @@ describe("agent logos across the app", () => {
       },
       "/p/demo",
     );
-    const waiting = await screen.findByRole("list", { name: "Agentes pendientes" });
-    const items = within(waiting).getAllByRole("listitem");
+    const checks = await screen.findByRole("list", { name: "Respuesta de cada agente" });
+    const items = within(checks).getAllByRole("img");
     expect(items).toHaveLength(2);
     expect(srcOf(items[0] as Element)).toBe(agentLogo("claude"));
     expect(srcOf(items[1] as Element)).toBe(agentLogo("codex"));
-    expect(items[0]).toHaveTextContent("Claude está revisando…");
+    expect(items[0]).toHaveAttribute("aria-label", "Claude: en espera");
   });
 
   it("shows the agents' logos in the thread of a change", async () => {

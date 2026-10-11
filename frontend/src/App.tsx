@@ -1,45 +1,14 @@
-import { Link, Navigate, Route, Routes, useParams } from "react-router";
-import { AsyncBoundary } from "./components/AsyncBoundary";
+import { Link, Route, Routes, useParams } from "react-router";
 import { EmptyState } from "./components/EmptyState";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { HERO } from "./components/brand";
-import { MetalButton } from "./components/fx/MetalButton";
 import { ChannelPage } from "./features/channel/ChannelPage";
-import { useProjects } from "./features/projects/ProjectsContext";
+import { ProjectPicker } from "./features/projects/ProjectPicker";
 import { ChangeDetailPage } from "./features/review/ChangeDetailPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { StatsPage } from "./features/stats/StatsPage";
 import { Shell } from "./layout/Shell";
-import { parseProjectPath, projectPath } from "./lib/projectPath";
-
-function FirstProject() {
-  const { projects, openAddProject } = useProjects();
-  return (
-    <div className="page">
-      <AsyncBoundary state={projects} loadingLabel="Cargando proyectos…">
-        {(list) =>
-          list.length > 0 ? (
-            <Navigate to={projectPath(list[0].slug)} replace />
-          ) : (
-            <EmptyState
-              hero={HERO}
-              title="Aún no hay proyectos vigilados."
-              action={
-                <MetalButton variant="primary" onClick={openAddProject}>
-                  Añadir proyecto
-                </MetalButton>
-              }
-            >
-              <p className="muted">
-                Añade la carpeta de un repositorio git y Duelo revisará cada commit y push.
-              </p>
-            </EmptyState>
-          )
-        }
-      </AsyncBoundary>
-    </div>
-  );
-}
+import { parseProjectPath } from "./lib/projectPath";
 
 function NotFoundPage() {
   return (
@@ -74,7 +43,7 @@ function App() {
     <>
       <Routes>
         <Route element={<Shell />}>
-          <Route index element={<FirstProject />} />
+          <Route index element={<ProjectPicker />} />
           <Route path="p/*" element={<ProjectRoute />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="settings" element={<SettingsPage />} />
