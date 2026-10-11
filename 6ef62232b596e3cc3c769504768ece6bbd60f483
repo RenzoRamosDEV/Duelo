@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "6ef62232b596e3cc3c769504768ece6bbd60f483",
+  "kind": "commit",
+  "title": "feat(agents): elegir por proyecto qué agentes evalúan, Claude, Codex o ambos",
+  "run": 1,
+  "written_at": "2026-10-11T17:01:04.003963+00:00",
+  "reviews": [
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 6,
+      "summary": "El cambio está bien armado: la migración es nullable y reversible, la selección se valida en el caso de uso y en el esquema, y el endpoint exige token. Además trae tests en varias capas. Lo que más pesa en la nota es un riesgo probable de regresión en el estado de las reviews ya hechas cuando se amplía la selección. Solo he visto el diff, que además venía recortado: no he leído `review_status_of_run` y el código del frontend se corta a mitad de `AgentPicker`.",
+      "findings": [
+        {
+          "severity": "risk",
+          "file": "backend/src/duelo/application/queries.py",
+          "line": 67,
+          "message": "El estado de un change se recalcula con el número de agentes elegidos *ahora* (`len(project.agents)`, y `expected_agents_for` en `get_change_detail` y `retry_review`), no con los que lo evaluaron. Escenario: el proyecto elige solo `codex` y se ingiere un commit, que queda `completed` con 1 review. Luego se amplía la selección a `claude,codex`. El mismo commit pasa a esperar 2 reviews, tiene 1 y, si `review_status_of_run` cuenta las reviews contra lo esperado (visto solo en el diff, no leí esa función), pasa a `running` y luego a obsoleto. Además, `retry` lo reintentaría con el conjunto nuevo. Esto contradice la promesa del README de que las reviews ya hechas no se tocan. El test `test_changing_the_selection_keeps_the_existing_reviews_and_status` solo cubre el sentido de estrechar la selección. Arreglo: derivar lo esperado de los agentes con los que se lanzó el run (por ejemplo, persistir `agent_names` en el change, o usar los agentes presentes en las reviews del run cuando no hay en vuelo). Alternativa mínima: añadir un test para ampliar la selección y documentar el comportamiento si es intencionado."
+        },
+        {
+          "severity": "nit",
+          "file": "backend/src/duelo/entrypoints/api/routers/project_agents.py",
+          "line": 24,
+          "message": "Se documenta un 400 (`ErrorResponse`) que este handler nunca devuelve: la selección inválida sale como 422 `RequestValidationError`. Quita el 400 de `responses` y de `docs/openapi.json`."
+        }
+      ],
+      "duration_ms": 18432,
+      "error": null,
+      "created_at": "2026-10-11T17:00:46.730074+00:00"
+    },
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 5,
+      "summary": "La selección y su validación están cubiertas, pero el cambio recalcula el estado de reviews anteriores usando la selección actual del proyecto, contradiciendo la garantía de que solo afecta a evaluaciones posteriores. Requiere cambios. Revisión limitada al diff recortado; no fue posible leer el repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "backend/src/duelo/application/queries.py",
+          "line": 96,
+          "message": "El estado de un change anterior depende ahora de la selección actual del proyecto. Si un commit terminó con solo Codex y después se seleccionan ambos agentes, expected_agents pasa de 1 a 2 y ese commit vuelve a aparecer como running aunque su ejecución ya terminó. Visto solo en el diff: los tests test_the_only_chosen_agent_completes_the_change y test_with_both_agents_one_review_is_still_running demuestran ambos resultados para una única review de Codex. El test de conservación solo reduce de dos agentes a uno y no detecta esta regresión. El mismo defecto afecta al listado y a retry_review, que puede impedir reintentar una ejecución fallida anterior al aumentar la selección. Guarda los agentes esperados por change y run al iniciar la evaluación y usa esa selección para calcular su estado y permitir reintentos; la configuración actual debe determinar únicamente los agentes del nuevo run. Añade regresiones que cambien de uno a ambos después de una ejecución completada y de otra fallida."
+        }
+      ],
+      "duration_ms": 35660,
+      "error": null,
+      "created_at": "2026-10-11T17:01:03.938076+00:00"
+    }
+  ]
+}
