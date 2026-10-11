@@ -279,11 +279,12 @@ REST + un stream SSE. Todos los modelos son Pydantic y el OpenAPI resultante gen
 
 ## Frontend
 
-Layout tipo Slack con la estética de GitHub y tema Sistema / Claro / Oscuro (ver ADR 0003): barra lateral con un canal por proyecto y una sección General. La demo interactiva está en el canvas "Duelo · Demo del front".
+Layout tipo Slack con la estética de GitHub y tema Sistema / Claro / Oscuro (ver ADR 0003): sin barra lateral: la entrada elige el proyecto y la barra superior lleva un selector del proyecto actual, Estadísticas y Ajustes (change `front-v2-project-first-navigation`). La demo interactiva está en el canvas "Duelo · Demo del front".
 
 | Pantalla | Ruta | Contenido |
 | --- | --- | --- |
-| Canal | `/p/:slug` | Mensajes de commits y PRs; bajo cada uno, "Ver respuestas" despliega las reviews de Claude y Codex. Filtro Todo / PRs / Commits y caja de chat para preguntar con `@claude` o `@codex` |
+| Proyectos | `/` | Tarjetas de los proyectos vigilados y «Añadir proyecto» |
+| Canal | `/p/:slug` | Lista compacta de commits y PRs, una fila por change con un check por agente (logo y ✓/✕/en espera); los commits revertidos o deshechos en amarillo. Filtro Todo / PRs / Commits, estado y búsqueda. Pulsar la fila abre el detalle |
 | Detalle | `/p/:slug/changes/:id` | Diff en Monaco (lado a lado) y las dos reviews; votos, reintentar y enlace a Langfuse |
 | Estadísticas | `/stats` | Por agente y versión de prompt: % útiles, nota media, duración, fallos y benchmark |
 | Ajustes | `/settings` | Color secundario, voto ciego, proyectos vigilados y agentes activos |

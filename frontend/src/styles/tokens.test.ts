@@ -76,7 +76,7 @@ describe.each(["dark", "light"] as const)("%s theme contrast (WCAG AA)", (theme)
     expect(contrastRatio(token(theme, fg), token(theme, bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("the selected sidebar item (on-emphasis on accent-emphasis) is readable", () => {
+  it("the active top-bar link (on-emphasis on accent-emphasis) is readable", () => {
     expect(
       contrastRatio(token(theme, "on-emphasis"), token(theme, "accent-emphasis")),
     ).toBeGreaterThanOrEqual(4.5);

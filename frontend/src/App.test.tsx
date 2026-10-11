@@ -26,74 +26,49 @@ function setReducedMotion(reduced: boolean) {
 
 afterEach(() => vi.restoreAllMocks());
 
+const changeLinks = () =>
+  screen.getAllByRole("link").filter((a) => a.getAttribute("href")?.includes("/changes/"));
+
 describe("navigation", () => {
-  it("redirects / to the first project channel and marks it active", async () => {
+  it("opens on the project picker and does not jump into the first project", async () => {
     renderAt("/");
-    expect(await screen.findByRole("heading", { name: "#duelo" })).toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "Principal" });
-    expect(await within(nav).findByRole("link", { name: /duelo/ })).toHaveClass("active");
+    expect(await screen.findByRole("heading", { name: "Proyectos" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /duelo/ })).toHaveAttribute("href", "/p/duelo");
+    expect(screen.queryByRole("heading", { name: "#duelo" })).toBeNull();
   });
 
-  it("navigates to stats and settings from the sidebar", async () => {
+  it("goes from the picker to a project and marks nothing as a sidebar channel", async () => {
+    renderAt("/");
+    await userEvent.click(await screen.findByRole("link", { name: /duelo/ }));
+    expect(await screen.findByRole("heading", { name: "#duelo" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Proyecto" })).toHaveValue("duelo");
+  });
+
+  it("navigates to stats and settings from the top bar", async () => {
     renderAt("/");
     const nav = screen.getByRole("navigation", { name: "Principal" });
-    await screen.findByRole("heading", { name: "#duelo" });
     await userEvent.click(within(nav).getByRole("link", { name: "Estadísticas" }));
     expect(screen.getByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
     await userEvent.click(within(nav).getByRole("link", { name: "Ajustes" }));
     expect(screen.getByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
   });
-
-  it("reaches interactive controls in order with Tab", async () => {
-    renderAt("/p/duelo");
-    await screen.findByRole("link", { name: /acme\/widgets/ });
-    // Header first (menu, brand, theme), then the sidebar, then the page.
-    await userEvent.tab();
-    expect(screen.getByRole("button", { name: "Menú" })).toHaveFocus();
-    await userEvent.tab();
-    expect(screen.getByRole("link", { name: "Duelo" })).toHaveFocus();
-    for (const theme of ["Tema sistema", "Tema claro", "Tema oscuro"]) {
-      await userEvent.tab();
-      expect(screen.getByRole("button", { name: theme })).toHaveFocus();
-    }
-    await userEvent.tab();
-    expect(screen.getByRole("button", { name: /Proyectos/ })).toHaveFocus();
-    await userEvent.tab();
-    expect(screen.getByRole("link", { name: /duelo/ })).toHaveFocus();
-    await userEvent.tab();
-    expect(screen.getByRole("link", { name: /acme\/widgets/ })).toHaveFocus();
-  });
 });
 
-describe("mobile menu", () => {
-  it("toggles with the button and closes with Escape", async () => {
+describe("project page: compact list", () => {
+  it("lists one row per change, each a single link to its page, with no thread", async () => {
     renderAt("/p/duelo");
-    const toggle = screen.getByRole("button", { name: "Menú" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await userEvent.keyboard("{Escape}");
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await screen.findByText("feat: exponer ingesta de commits");
+    // Four commits (two of them undone) and one PR.
+    expect(changeLinks()).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "Ver respuestas" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Compacta" })).toBeNull();
   });
 
-  it("closes after following a link", async () => {
-    renderAt("/p/duelo");
-    const toggle = screen.getByRole("button", { name: "Menú" });
-    await userEvent.click(toggle);
-    const nav = screen.getByRole("navigation", { name: "Principal" });
-    await userEvent.click(within(nav).getByRole("link", { name: "Estadísticas" }));
-    expect(screen.getByRole("button", { name: "Menú" })).toHaveAttribute("aria-expanded", "false");
-  });
-});
-
-describe("channel search and summary", () => {
   it("filters by SHA and combines with the kind filter", async () => {
     renderAt("/p/duelo");
-    await screen.findAllByRole("button", { name: "Ver respuestas" });
+    await screen.findByText("feat: exponer ingesta de commits");
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar cambios" }), "9BE0");
-    await waitFor(() =>
-      expect(screen.getAllByRole("button", { name: "Ver respuestas" })).toHaveLength(1),
-    );
+    await waitFor(() => expect(changeLinks()).toHaveLength(1));
     expect(screen.getByText("feat: exponer ingesta de commits")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Commits" }));
     expect(await screen.findByText("Ningún cambio coincide con la búsqueda.")).toBeInTheDocument();
@@ -104,34 +79,21 @@ describe("channel search and summary", () => {
     expect(await screen.findByText("Aún no hay cambios en este canal.")).toBeInTheDocument();
   });
 
-  it("shows the review summary without expanding the thread", async () => {
-    renderAt("/p/duelo");
-    const [first] = await screen.findAllByRole("list", { name: "Resumen de reviews" });
-    expect(within(first).getByText("1 completada")).toBeInTheDocument();
-    expect(within(first).getByText("1 en curso")).toBeInTheDocument();
-  });
-});
-
-describe("channel threads", () => {
-  it("expands replies with the keyboard and toggles aria-expanded", async () => {
-    renderAt("/p/duelo");
-    const [toggle] = await screen.findAllByRole("button", { name: "Ver respuestas" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    toggle.focus();
-    await userEvent.keyboard("{Enter}");
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getAllByText("Claude").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Codex").length).toBeGreaterThan(0);
-  });
-
   it("filters by kind", async () => {
     renderAt("/p/duelo");
-    // Four commits (two of them undone) and one PR.
-    expect(await screen.findAllByRole("button", { name: "Ver respuestas" })).toHaveLength(5);
+    await screen.findByText("feat: exponer ingesta de commits");
+    expect(changeLinks()).toHaveLength(5);
     await userEvent.click(screen.getByRole("button", { name: "PRs" }));
-    await waitFor(() =>
-      expect(screen.getAllByRole("button", { name: "Ver respuestas" })).toHaveLength(1),
-    );
+    await waitFor(() => expect(changeLinks()).toHaveLength(1));
+  });
+
+  it("opens the change page when a row is followed, and the breadcrumb comes back", async () => {
+    renderAt("/p/duelo");
+    await screen.findByText("feat: exponer ingesta de commits");
+    await userEvent.click(changeLinks()[0]);
+    expect(await screen.findByLabelText("Diff")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "#duelo" }));
+    expect(await screen.findByRole("heading", { name: "#duelo" })).toBeInTheDocument();
   });
 });
 

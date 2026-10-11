@@ -48,35 +48,23 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("app frame", () => {
-  it("has a top bar with the brand and the theme switch, and a Slack-like sidebar", async () => {
+  it("has a top bar with the brand, the project switcher, the links and the theme switch", async () => {
     renderWith({}, "/p/demo");
     await screen.findByRole("heading", { name: "#demo" });
     expect(screen.getByRole("link", { name: "Duelo" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("group", { name: "Tema (cabecera)" })).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Proyecto" })).toHaveValue("demo");
     const nav = within(screen.getByRole("navigation", { name: "Principal" }));
-    expect(nav.getByRole("button", { name: /Proyectos/ })).toHaveAttribute("aria-expanded", "true");
-    expect(nav.getByRole("link", { name: /demo/ })).toBeVisible();
+    expect(nav.getByRole("link", { name: "Estadísticas" })).toBeVisible();
+    expect(nav.getByRole("link", { name: "Ajustes" })).toBeVisible();
   });
 
-  it("collapses and expands the project channels", async () => {
+  it("has no sidebar: no channel list, no collapsible «Proyectos» section", async () => {
     renderWith({}, "/p/demo");
     await screen.findByRole("heading", { name: "#demo" });
-    const nav = within(screen.getByRole("navigation", { name: "Principal" }));
-    const toggle = nav.getByRole("button", { name: /Proyectos/ });
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(nav.queryByRole("link", { name: /demo/ })).toBeNull();
-    await userEvent.click(toggle);
-    expect(nav.getByRole("link", { name: /demo/ })).toBeInTheDocument();
-  });
-
-  it("the channels list is an actual section: General links stay reachable while it is collapsed", async () => {
-    renderWith({}, "/p/demo");
-    await screen.findByRole("heading", { name: "#demo" });
-    const nav = within(screen.getByRole("navigation", { name: "Principal" }));
-    await userEvent.click(nav.getByRole("button", { name: /Proyectos/ }));
-    expect(nav.getByRole("link", { name: "Estadísticas" })).toBeInTheDocument();
-    expect(nav.getByRole("link", { name: "Ajustes" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Proyectos/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Menú" })).toBeNull();
+    expect(screen.getAllByRole("navigation")).toHaveLength(1);
   });
 });
 
@@ -117,15 +105,16 @@ describe("channel rows (GitHub-style list)", () => {
     renderWith(changes(rows), "/p/demo");
     await screen.findByText("feat: pagos");
     const row = within((await screen.findByText("feat: pagos")).closest("li") as HTMLElement);
-    const checks = row.getByRole("list", { name: "Checks de los agentes" });
+    const checks = row.getByRole("list", { name: "Respuesta de cada agente" });
     expect(within(checks).getByRole("img", { name: "Agent_1: completada" })).toBeInTheDocument();
     expect(within(checks).getByRole("img", { name: "Agent_2: fallida" })).toBeInTheDocument();
   });
 
-  it("has no checks for a change nobody has reviewed yet", async () => {
+  it("shows the expected agents as waiting for a change nobody has reviewed yet", async () => {
     renderWith(changes(rows), "/p/demo");
     const row = within((await screen.findByText("chore: deps")).closest("li") as HTMLElement);
-    expect(row.queryByRole("list", { name: "Checks de los agentes" })).toBeNull();
+    expect(await row.findByRole("img", { name: "Agent_1: en espera" })).toBeInTheDocument();
+    expect(row.getByRole("img", { name: "Agent_2: en espera" })).toBeInTheDocument();
   });
 
   it("counts what is loaded by state in the list header", async () => {
@@ -231,33 +220,6 @@ describe("change detail as a conversation", () => {
     await screen.findByRole("heading", { name: "Hallazgos" });
     expect(screen.getAllByText(/Falta un caso/)).toHaveLength(1);
     expect(screen.getAllByText(/Renombra x/)).toHaveLength(1);
-  });
-
-  it("keeps the findings inside the messages of the channel thread, where there is no panel", async () => {
-    const full = makeChange({
-      id: "c2",
-      title: "fix: hilo",
-      reviewStatus: "completed",
-      reviews: [light("agent_1", "completed")],
-    });
-    renderWith(
-      {
-        ...changes([full]),
-        change: async () => ({
-          ...full,
-          reviews: [
-            makeReview({
-              agent: "agent_1",
-              summary: "Todo bien",
-              findings: [makeFinding({ message: "Detalle importante" })],
-            }),
-          ],
-        }),
-      },
-      "/p/demo",
-    );
-    await userEvent.click(await screen.findByRole("button", { name: "Ver respuestas" }));
-    expect(await screen.findByText("Detalle importante")).toBeInTheDocument();
   });
 
   it("colors a finding's bar by severity: bug is red, risk amber, the rest neutral", async () => {

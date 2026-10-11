@@ -16,7 +16,7 @@ interface ProjectsValue {
 const ProjectsContext = createContext<ProjectsValue | null>(null);
 
 /**
- * One shared, live list of projects for the sidebar, Settings and the `/` redirect, plus the "add
+ * One shared, live list of projects for the entry page, the top-bar switcher and Settings, plus the "add
  * project" dialog, so adding or removing a project shows up everywhere at once.
  */
 export function ProjectsProvider({ children }: { children: ReactNode }) {

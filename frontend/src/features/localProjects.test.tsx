@@ -43,9 +43,9 @@ function renderApp(source: DataSource, path = "/") {
   );
 }
 
-const sidebar = () => within(screen.getByRole("navigation", { name: "Principal" }));
-const openFromSidebar = async () => {
-  await userEvent.click(await sidebar().findByRole("button", { name: "Añadir proyecto" }));
+/** Opens the dialog from the entry page (empty state: its «Añadir proyecto» button). */
+const openFromEntry = async () => {
+  await userEvent.click(await screen.findByRole("button", { name: "Añadir proyecto" }));
   return screen.findByRole("dialog", { name: "Añadir proyecto" });
 };
 
@@ -55,7 +55,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("add project dialog", () => {
   it("opens an accessible dialog focused on the path with the hooks explained", async () => {
     renderApp(projectSource([]));
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     expect(dialog).toHaveAttribute("aria-modal", "true");
     const path = within(dialog).getByLabelText("Ruta del repositorio");
     expect(path).toHaveFocus();
@@ -66,7 +66,7 @@ describe("add project dialog", () => {
 
   it("keeps Tab inside the dialog in both directions", async () => {
     renderApp(projectSource([]));
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     const path = within(dialog).getByLabelText("Ruta del repositorio");
     const add = within(dialog).getByRole("button", { name: "Añadir" });
 
@@ -80,13 +80,13 @@ describe("add project dialog", () => {
 
   it("closes on Escape or Cancel and gives the focus back to the button that opened it", async () => {
     renderApp(projectSource([]));
-    const opener = await sidebar().findByRole("button", { name: "Añadir proyecto" });
-    await openFromSidebar();
+    const opener = await screen.findByRole("button", { name: "Añadir proyecto" });
+    await openFromEntry();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(opener).toHaveFocus();
 
-    await openFromSidebar();
+    await openFromEntry();
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(opener).toHaveFocus();
@@ -95,7 +95,7 @@ describe("add project dialog", () => {
   it("rejects a relative path without calling the API", async () => {
     const source = projectSource([]);
     renderApp(source);
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "mi/repo");
     await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
     await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
@@ -106,17 +106,17 @@ describe("add project dialog", () => {
   it("asks for the token before calling the API", async () => {
     const source = projectSource([]);
     renderApp(source);
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
     await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("token de ingesta");
     expect(source.addProject).not.toHaveBeenCalled();
   });
 
-  it("adds the project, lists it in the sidebar, selects it and never stores the token", async () => {
+  it("adds the project, opens its page with the switcher on it and never stores the token", async () => {
     const source = projectSource([]);
     renderApp(source);
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     await userEvent.type(
       within(dialog).getByLabelText("Ruta del repositorio"),
       "  /home/me/acme/widgets  ",
@@ -127,7 +127,7 @@ describe("add project dialog", () => {
     expect(await screen.findByRole("heading", { name: "#acme/widgets" })).toBeInTheDocument();
     expect(source.addProject).toHaveBeenCalledWith("/home/me/acme/widgets", "secret-token");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(await sidebar().findByRole("link", { name: /acme\/widgets/ })).toHaveClass("active");
+    expect(await screen.findByRole("combobox", { name: "Proyecto" })).toHaveValue("acme/widgets");
     expect(JSON.stringify({ ...localStorage })).not.toContain("secret-token");
     expect(JSON.stringify({ ...sessionStorage })).not.toContain("secret-token");
   });
@@ -144,7 +144,7 @@ describe("add project dialog", () => {
       }),
     });
     renderApp(source);
-    const dialog = await openFromSidebar();
+    const dialog = await openFromEntry();
     await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
     await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
     await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
@@ -247,7 +247,7 @@ describe("project settings", () => {
     expect(screen.getAllByText("acme/widgets", { selector: "strong" })).toHaveLength(1);
   });
 
-  it("removes the project once confirmed and updates the list and the sidebar", async () => {
+  it("removes the project once confirmed and updates the list and the entry page", async () => {
     const source = projectSource([github, plain]);
     renderApp(source, "/settings");
     setIngestToken("tok");
@@ -262,8 +262,9 @@ describe("project settings", () => {
     await waitFor(() =>
       expect(screen.queryByText("acme/widgets", { selector: "strong" })).toBeNull(),
     );
-    expect(sidebar().queryByRole("link", { name: /acme\/widgets/ })).toBeNull();
-    expect(sidebar().getByRole("link", { name: /me\/plain/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "Duelo" }));
+    expect(await screen.findByRole("link", { name: /me\/plain/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /acme\/widgets/ })).toBeNull();
   });
 
   it("does not remove without a token and explains a 404", async () => {

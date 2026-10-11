@@ -89,10 +89,12 @@ export function ChangeDetailPage({ slug, id }: { slug: string; id: string }) {
         return (
           <div className="page">
             <div className="detail-head">
-              <p className="crumbs">
-                <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
-                <span className="mono">{shortSha(change.sha)}</span>
-              </p>
+              <nav className="crumbs" aria-label="Migas">
+                <Link to="/">Proyectos</Link> / <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
+                <span className="mono" aria-current="page">
+                  {shortSha(change.sha)}
+                </span>
+              </nav>
               <h1>{change.title}</h1>
               <UndoneBanner change={change} slug={slug} />
               {change.reviewStatus && (

@@ -65,9 +65,8 @@ describe("loads show an orb of their own state", () => {
     expect(orbNear("Cargando estadísticas…")).toBe("searching");
   });
 
-  it("the sidebar and the first-project redirect are searching", async () => {
+  it("the project picker is searching", async () => {
     renderApp({ projects: never }, "/");
-    expect(orbNear("Cargando…")).toBe("searching");
     expect(orbNear("Cargando proyectos…")).toBe("searching");
   });
 
@@ -88,23 +87,9 @@ describe("loads show an orb of their own state", () => {
     expect(orbNear("Comprobando dependencias…")).toBe("connecting");
   });
 
-  it("opening a thread whose full reviews are loading is searching", async () => {
-    const light = makeChange({
-      id: "c1",
-      title: "ligero",
-      reviewStatus: "completed",
-      run: 1,
-      reviews: [makeReview({ agent: "claude", partial: true, run: 1 })],
-    });
-    renderApp(
-      {
-        changes: async () => ({ items: [light], nextCursor: null }),
-        change: never,
-      },
-      "/p/demo",
-    );
-    await userEvent.click(await screen.findByRole("button", { name: "Ver respuestas" }));
-    expect(orbNear("Cargando respuestas…")).toBe("searching");
+  it("a change page waiting for its detail is searching", async () => {
+    renderApp({ change: never }, "/p/demo/changes/c1");
+    expect(orbNear("Cargando change…")).toBe("searching");
   });
 });
 
@@ -141,8 +126,7 @@ describe("actions in progress show an orb inside their disabled button", () => {
   it("adding a project is connecting", async () => {
     setIngestToken("tok");
     renderApp({ projects: async () => [], addProject: never }, "/");
-    const nav = within(await screen.findByRole("navigation", { name: "Principal" }));
-    await userEvent.click(await nav.findByRole("button", { name: "Añadir proyecto" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Añadir proyecto" }));
     const dialog = await screen.findByRole("dialog", { name: "Añadir proyecto" });
     await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
     await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
@@ -249,7 +233,7 @@ describe("agents the change is still waiting for", () => {
     expect(screen.queryByText(/está revisando/)).toBeNull();
   });
 
-  it("the channel card of a pending change lists the agents it waits for", async () => {
+  it("the row of a pending change dims the agents it waits for, without orbs", async () => {
     const waiting = makeChange({
       id: "w1",
       title: "esperando",
@@ -268,10 +252,10 @@ describe("agents the change is still waiting for", () => {
       { health, changes: async () => ({ items: [waiting, done], nextCursor: null }) },
       "/p/demo",
     );
-    expect(await screen.findByText("Agent_1 está revisando…")).toBeInTheDocument();
-    expect(screen.queryByText("Agent_2 está revisando…")).toBeNull();
-    // Only the waiting card has orbs: the finished one does not.
-    expect(allOrbs()).toHaveLength(1);
+    expect(await screen.findByRole("img", { name: "Agent_1: en espera" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Agent_2: en espera" })).toBeNull();
+    // The list rows show the state as checks; the orbs belong to the change page.
+    expect(allOrbs()).toHaveLength(0);
   });
 });
 

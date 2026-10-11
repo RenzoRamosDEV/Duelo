@@ -368,8 +368,8 @@ describe("review metadata", () => {
   });
 });
 
-describe("aggregate status in the channel", () => {
-  it("shows the aggregate status badge when the listing has no reviews", async () => {
+describe("aggregate status in the row", () => {
+  it("shows the aggregate status as the row icon when the listing has no reviews", async () => {
     renderWith(
       {
         changes: async () => ({
@@ -379,11 +379,10 @@ describe("aggregate status in the channel", () => {
       },
       "/p/demo",
     );
-    const summary = await screen.findByRole("list", { name: "Resumen de reviews" });
-    expect(within(summary).getByText("Fallo parcial")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Fallo parcial" })).toBeInTheDocument();
   });
 
-  it("prefers the per-review counts when the reviews are present", async () => {
+  it("shows the state icon and one check per agent when the reviews are present", async () => {
     renderWith(
       {
         changes: async () => ({
@@ -391,7 +390,7 @@ describe("aggregate status in the channel", () => {
             makeChange({
               title: "x",
               reviewStatus: "completed",
-              reviews: [makeReview(), makeReview()],
+              reviews: [makeReview({ agent: "claude" }), makeReview({ agent: "codex" })],
             }),
           ],
           nextCursor: null,
@@ -399,8 +398,8 @@ describe("aggregate status in the channel", () => {
       },
       "/p/demo",
     );
-    const summary = await screen.findByRole("list", { name: "Resumen de reviews" });
-    expect(within(summary).getByText("2 completadas")).toBeInTheDocument();
-    expect(within(summary).queryByText("Completada")).toBeNull();
+    expect(await screen.findByRole("img", { name: "Completada" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Claude: completada" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Codex: completada" })).toBeInTheDocument();
   });
 });

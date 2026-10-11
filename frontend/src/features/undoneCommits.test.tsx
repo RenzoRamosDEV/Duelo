@@ -27,7 +27,7 @@ const REVERTED = "feat: filtros del canal en el servidor";
 const REVERT = 'Revert "feat: filtros del canal en el servidor"';
 
 describe("undone commits in the channel", () => {
-  it("paints a discarded commit in amber and says so in the middle of its row", async () => {
+  it("paints a discarded commit in amber and says so in its row", async () => {
     renderAt("/p/duelo");
     const row = await rowOf(DISCARDED);
     expect(row).toHaveAttribute("data-commit-state", "discarded");
@@ -53,13 +53,14 @@ describe("undone commits in the channel", () => {
     }
   });
 
-  it("keeps the reviews: «Ver respuestas» still opens the thread of an undone commit", async () => {
+  it("keeps the agents' checks on an undone commit and its row still opens the change page", async () => {
     renderAt("/p/duelo");
     const row = await rowOf(DISCARDED);
-    const toggle = within(row).getByRole("button", { name: "Ver respuestas" });
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(within(row).getAllByText("APP").length).toBeGreaterThan(0);
+    expect(within(row).getByRole("img", { name: /Claude: / })).toBeInTheDocument();
+    expect(within(row).getByRole("img", { name: /Codex: / })).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Ver respuestas" })).toBeNull();
+    await userEvent.click(within(row).getByRole("link", { name: DISCARDED }));
+    expect(await screen.findByRole("complementary", { name: "Estado del commit" })).toBeVisible();
   });
 
   it("still counts an undone commit as a normal change in the review counters", async () => {
@@ -71,13 +72,13 @@ describe("undone commits in the channel", () => {
     expect(count).toHaveTextContent("1 deshecho · 1 revertido");
   });
 
-  it("keeps the amber row and its label in the compact view", async () => {
+  it("keeps the label in the row itself, next to the title (the list is always compact)", async () => {
     renderAt("/p/duelo");
     const row = await rowOf(DISCARDED);
-    await userEvent.click(screen.getByRole("button", { name: "Compacta" }));
-    expect(document.querySelector('.list-box[data-density="compact"]')).not.toBeNull();
-    expect(row).toHaveAttribute("data-commit-state", "discarded");
-    expect(within(row).getByText("COMMIT DESHECHO")).toBeInTheDocument();
+    const main = row.querySelector(".change-main") as HTMLElement;
+    expect(within(main).getByRole("link", { name: DISCARDED })).toBeInTheDocument();
+    expect(within(main).getByText("COMMIT DESHECHO")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Compacta" })).toBeNull();
   });
 
   it("does not show the amber state on a PR", async () => {

@@ -32,12 +32,16 @@ afterEach(() => vi.restoreAllMocks());
  * contra el backend real en la ronda 4.
  */
 describe("project routes with an owner/repo slug (regression)", () => {
-  it("redirects / to the channel of the first project", async () => {
+  it("lists the project on / and opens its channel from the card", async () => {
     const changes = vi.fn(async () => ({
       items: [makeChange({ id: "c1", title: "hola" })],
       nextCursor: null,
     }));
     renderWith({ changes }, "/");
+    const card = await screen.findByRole("link", { name: new RegExp(SLUG) });
+    expect(card).toHaveAttribute("href", `/p/${SLUG}`);
+    expect(changes).not.toHaveBeenCalled();
+    await userEvent.click(card);
     expect(await screen.findByText("hola")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: `#${SLUG}` })).toBeInTheDocument();
     expect(changes).toHaveBeenCalledWith(SLUG, expect.anything());
@@ -51,7 +55,7 @@ describe("project routes with an owner/repo slug (regression)", () => {
     expect(screen.getByRole("link", { name: `#${SLUG}` })).toHaveAttribute("href", `/p/${SLUG}`);
   });
 
-  it("navigates from a card to its detail and from the sidebar to the channel", async () => {
+  it("navigates from a row to its detail and back to the channel", async () => {
     const item = makeChange({ id: "c9", title: "abrir" });
     renderWith(
       {
