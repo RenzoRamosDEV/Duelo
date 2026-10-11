@@ -67,9 +67,9 @@ Leyenda: **Cumple** · **No aplica** (con motivo) · **Diferido** (con destino).
 
 | Regla | Estado | Evidencia |
 | --- | --- | --- |
-| TEST-1 Tests de workflow con time-skipping | Cumple | `WorkflowEnvironment.start_time_skipping()` en `tests/integration/conftest.py`; `workflows/`, `recovery/`, `orchestration/`, `regression/` |
+| TEST-1 Tests de workflow con time-skipping | Cumple | `WorkflowEnvironment.start_time_skipping()` en `tests/integration/conftest.py`; `workflows/`, `recovery/`, `orchestration/`, `regression/`. Y contra el servidor real (`start_local()`): `workflows/test_real_server.py`, porque el de test no valida las opciones del `Worker`/`@workflow.defn` |
 | TEST-2 Replay tests en CI | Cumple | Ver VER-3 |
-| TEST-3 Failure injection, carga, game day | Parcial | Fallos inyectados en `recovery/` (worker ausente, persistencia transitoria, acuse perdido, permanente) y en `test_infrastructure_failure.py`; carga con `scripts/load_ingest.py` (`just load`); game day no aplica a un sistema de un solo usuario |
+| TEST-3 Failure injection, carga, game day | Parcial | Fallos inyectados en `recovery/` (worker ausente, persistencia transitoria, acuse perdido, permanente) y en `test_infrastructure_failure.py`; carga con `scripts/load_ingest.py` (`just load`); game day no aplica a un sistema de un solo usuario; los incidentes reales se documentan en `docs/postmortems/` |
 
 ## Checklist de revisión de PR
 

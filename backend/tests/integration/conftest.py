@@ -62,3 +62,12 @@ async def temporal_env() -> AsyncIterator[WorkflowEnvironment]:
     """Servidor de test efímero de Temporal con salto de tiempo (sin Docker)."""
     async with await WorkflowEnvironment.start_time_skipping() as env:
         yield env
+
+
+@pytest.fixture
+async def local_temporal_env() -> AsyncIterator[WorkflowEnvironment]:
+    """Servidor de desarrollo REAL de Temporal (`temporal server start-dev`, en memoria): el mismo
+    código que el servidor de producción, con las validaciones que el de test no aplica (p. ej.
+    rechaza `versioning_behavior` sin deployment). El SDK descarga el binario la primera vez."""
+    async with await WorkflowEnvironment.start_local() as env:
+        yield env

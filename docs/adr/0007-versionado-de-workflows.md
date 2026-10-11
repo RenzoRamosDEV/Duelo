@@ -26,8 +26,10 @@ minutos y tienen pocas decenas de eventos. Ya hay dos marcadores de parche
    con `versioning_behavior`: sin un `deployment_config` (Worker Versioning) el servidor real
    rechaza cada activación con «deployment must be set when versioning behavior specified»,
    aunque el servidor de test (time-skipping) la acepte — se comprobó al revés en una primera
-   versión de este ADR y rompió las reviews. Cualquier opción nueva de `@workflow.defn` o del
-   `Worker` se valida contra el servidor real (`just dev` + `just worker`) antes de integrarla.
+   versión de este ADR y rompió las reviews (`docs/postmortems/2026-10-10-reviews-tardias.md`).
+   `tests/integration/workflows/test_real_server.py` ejecuta los workers reales contra el servidor
+   de desarrollo de Temporal en CI y falla si el servidor rechaza una opción; cualquier opción
+   nueva de `@workflow.defn` o del `Worker` se prueba además a mano con `just dev` + `just worker`.
 2. **Cada cambio de comandos va bajo `workflow.patched("<marcador>")`** con un replay test que
    reproduce una historia grabada con el código anterior (`handle.fetch_history()` guardada en
    `tests/integration/workflows/`). Sin esa historia el cambio no se considera seguro.
