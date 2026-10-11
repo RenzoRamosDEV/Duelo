@@ -16,6 +16,7 @@ from duelo.entrypoints.api.routers.health import ready_router
 from duelo.entrypoints.api.routers.health import router as health_router
 from duelo.entrypoints.api.routers.ingest import router as ingest_router
 from duelo.entrypoints.api.routers.local_projects import router as local_projects_router
+from duelo.entrypoints.api.routers.project_agents import router as project_agents_router
 from duelo.entrypoints.api.routers.projects import router as projects_router
 from duelo.entrypoints.api.routers.reviews import router as reviews_router
 from duelo.entrypoints.api.routers.stats import router as stats_router
@@ -70,6 +71,7 @@ def create_app(
         app.include_router(ready_router)
         app.include_router(ingest_router)
         app.include_router(projects_router)
+        app.include_router(project_agents_router)
         app.include_router(local_projects_router)
         app.include_router(changes_router)
         app.include_router(reviews_router)

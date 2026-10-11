@@ -18,6 +18,7 @@ from duelo.application.local_projects import (
     sync_pull_requests,
 )
 from duelo.application.ports import RateLimiter
+from duelo.application.project_agents import set_project_agents
 from duelo.application.read_models import (
     AgentStats,
     ChangeCursor,
@@ -89,12 +90,12 @@ def build_fake_api(
         **({"agent_names": agent_names} if agent_names else {}),
     )
     stale_after = timedelta(seconds=settings.stale_after_seconds)
-    project = Project(id=uuid4(), slug=PROJECT_SLUG)
+    project = Project(id=uuid4(), slug=PROJECT_SLUG, agents=tuple(settings.agent_names))
     event_log = FakeEventLog()
     reviews = FakeReviewRepository(event_log)
     changes = FakeChangeRepository(reviews, event_log)
     starter = starter or FakeReviewStarter()
-    projects = FakeProjectRepository(project)
+    projects = FakeProjectRepository(project, available_agents=settings.agent_names)
     checks: dict[str, Check] = {}
 
     async def ingest(submission: ChangeSubmission) -> IngestResult:
@@ -142,12 +143,22 @@ def build_fake_api(
             expected_agents=EXPECTED_AGENTS,
             now=clock(),
             stale_after=stale_after,
+            project_agents=projects,
         )
 
     async def retry(change_id: UUID) -> Change:
         return await retry_review(
-            changes, reviews, starter, change_id, expected_agents=EXPECTED_AGENTS, now=clock()
+            changes,
+            reviews,
+            starter,
+            change_id,
+            expected_agents=EXPECTED_AGENTS,
+            now=clock(),
+            project_agents=projects,
         )
+
+    async def set_agents(slug: str, agents: list[str]) -> Project:
+        return await set_project_agents(projects, slug, agents, available=settings.agent_names)
 
     async def agent_stats(project_slug: str | None) -> list[AgentStats]:
         return await queries.agent_stats(projects, reviews, project=project_slug)
@@ -178,6 +189,7 @@ def build_fake_api(
         ingest_commit=ingest,
         ingest_pr=ingest_pull_request,
         list_projects=lambda: queries.list_projects(projects),
+        set_project_agents=set_agents,
         list_changes=list_changes,
         get_change=get_change,
         retry_review=retry,

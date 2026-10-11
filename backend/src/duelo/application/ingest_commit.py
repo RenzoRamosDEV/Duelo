@@ -81,7 +81,7 @@ async def _ingest(
         diff=submission.diff[:max_diff_chars],
         diff_truncated=len(submission.diff) > max_diff_chars,
         change_id=candidate_id,
-        agent_names=agent_names,
+        agent_names=project.agents or agent_names,
         reverts_sha=_reverted_sha(kind, submission),
     )
     # Con las reviews ya copiadas no hay nada que revisar: arrancar el workflow gastaría la

@@ -37,6 +37,7 @@ from duelo.application.local_projects import (
     sync_all_pull_requests,
     sync_pull_requests,
 )
+from duelo.application.project_agents import set_project_agents
 from duelo.application.reachability import sweep_all
 from duelo.application.read_models import (
     AgentStats,
@@ -63,8 +64,8 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
     session_factory = create_session_factory(engine)
     temporal = LazyTemporalClient(settings.temporal_address, settings.temporal_namespace)
 
-    projects = SqlAlchemyProjectRepository(session_factory)
-    starter = TemporalReviewStarter(temporal, settings.agent_names, projects)
+    projects = SqlAlchemyProjectRepository(session_factory, settings.agent_names)
+    starter = TemporalReviewStarter(temporal, settings.agent_names, projects, projects)
 
     async def ingest(submission: ChangeSubmission) -> IngestResult:
         async with session_factory() as session:
@@ -86,6 +87,9 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
                 max_diff_chars=settings.max_diff_chars,
                 agent_names=settings.agent_names,
             )
+
+    async def set_agents(slug: str, agents: list[str]) -> Project:
+        return await set_project_agents(projects, slug, agents, available=settings.agent_names)
 
     # Cada lectura abre y cierra su propia sesión: ninguna deja transacciones abiertas.
     async def list_projects() -> list[Project]:
@@ -126,6 +130,7 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
                 expected_agents=expected_agents,
                 now=datetime.now(UTC),
                 stale_after=stale_after,
+                project_agents=projects,
             )
 
     async def retry(change_id: UUID) -> Change:
@@ -137,6 +142,7 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
                 change_id,
                 expected_agents=expected_agents,
                 now=datetime.now(UTC),
+                project_agents=projects,
             )
 
     async def agent_stats(project: str | None) -> list[AgentStats]:
@@ -183,6 +189,7 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
         ingest_commit=ingest,
         ingest_pr=ingest_pull_request,
         list_projects=list_projects,
+        set_project_agents=set_agents,
         list_changes=list_changes,
         get_change=get_change,
         retry_review=retry,

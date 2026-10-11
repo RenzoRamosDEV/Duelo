@@ -139,7 +139,7 @@ que ya está en el spec o en `openspec/specs/`.
   elemento del canal lleva `reviews`, una lista ligera (`agent`, `status`, `score`, `duration_ms`,
   `run`) solo del `run` actual, obtenida con **una** consulta adicional por página y sin las
   columnas pesadas (`ReviewBrief` en `application/read_models.py`); `GET /health/dependencies`
-  añade `agent_names` (de `AGENT_NAMES`) para que la UI no suponga «Claude y Codex». El frontend
+  añade `agent_names` (de `AGENT_NAMES`, los agentes disponibles; cada proyecto elige un subconjunto en `projects.agents` y `GET /projects` devuelve la selección efectiva) para que la UI no suponga «Claude y Codex». El frontend
   pinta con ellas los checks por agente de cada fila (la lista nunca pide el detalle) y pide el
   detalle completo solo al abrir la página del change, donde muestra solo el run actual, con los
   anteriores colapsados.

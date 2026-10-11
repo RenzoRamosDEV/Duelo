@@ -99,7 +99,7 @@ export function SettingsPage() {
           )}
         </div>
       </section>
-      <ProjectsSettings />
+      <ProjectsSettings available={health.status === "ready" ? health.data.agentNames : null} />
       <section className="box" aria-labelledby="settings-health">
         <div className="box-title row">
           <h2 id="settings-health">Diagnóstico</h2>

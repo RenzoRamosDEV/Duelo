@@ -259,3 +259,20 @@ async def test_only_a_pr_with_expected_agents_looks_for_a_commit_to_reuse() -> N
     assert await _lookups(ChangeKind.PR, AGENTS) == 1
     assert await _lookups(ChangeKind.PR, ()) == 0  # sin agentes esperados no hay nada que comparar
     assert await _lookups(ChangeKind.COMMIT, AGENTS) == 0  # un commit nunca reutiliza
+
+
+async def test_a_pr_reuses_the_reviews_of_the_agents_chosen_for_the_project() -> None:
+    world = World()
+    # El proyecto solo elige a Claude: aunque `AGENT_NAMES` tenga dos, basta su review.
+    world.projects = FakeProjectRepository(
+        Project(id=PROJECT.id, slug=PROJECT.slug, agents=("claude",))
+    )
+    commit = (await world.commit()).change
+    await world.review(commit, "claude")
+
+    result = await world.pr()
+
+    assert result.reused
+    assert _started_kinds(world) == {"commit"}
+    copies = await world.reviews.list_for_change(result.change.id)
+    assert [c.agent for c in copies] == ["claude"]

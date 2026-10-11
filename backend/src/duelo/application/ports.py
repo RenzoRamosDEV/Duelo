@@ -183,6 +183,16 @@ class ProjectRepository(Protocol):
         ...
 
 
+class ProjectAgents(Protocol):
+    async def agents_of(self, project_id: UUID) -> tuple[str, ...]:
+        """Selección efectiva de agentes del proyecto; vacía si el proyecto no existe."""
+        ...
+
+    async def save_agents(self, slug: str, agents: Sequence[str]) -> Project | None:
+        """Guarda la selección de agentes del proyecto y lo devuelve; `None` si no existe."""
+        ...
+
+
 class ProjectAlreadyExists(Exception):
     """Ya hay un proyecto con ese slug o con esa carpeta."""
 

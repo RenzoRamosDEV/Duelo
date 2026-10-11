@@ -10,9 +10,11 @@ from duelo.application.ingest_commit import ProjectNotFound
 from duelo.application.ports import (
     ChangeEventRepository,
     ChangeRepository,
+    ProjectAgents,
     ProjectRepository,
     ReviewRepository,
 )
+from duelo.application.project_agents import expected_agents_for
 from duelo.application.read_models import (
     AgentStats,
     ChangeCursor,
@@ -62,7 +64,7 @@ async def list_changes(
         kind=kind,
         status=status,
         q=q,
-        expected_agents=expected_agents,
+        expected_agents=len(project.agents) or expected_agents,
         limit=limit + 1,
         after=after,
     )
@@ -86,10 +88,12 @@ async def get_change_detail(
     expected_agents: int,
     now: datetime,
     stale_after: timedelta,
+    project_agents: ProjectAgents | None = None,
 ) -> ChangeDetail | None:
     change = await changes.get(change_id)
     if change is None:
         return None
+    expected_agents = await expected_agents_for(project_agents, change.project_id, expected_agents)
     rows = await reviews.list_for_change(change_id)
     # Los findings de runs anteriores quedaron superados por el reintento: no cuentan.
     findings = summarize_severities(

@@ -50,6 +50,9 @@ export function makeSource(overrides: Partial<DataSource> = {}): DataSource {
     syncPrs: async () => {
       throw new ApiError("no", 404);
     },
+    setAgents: async () => {
+      throw new ApiError("no", 404);
+    },
     ...overrides,
   };
 }

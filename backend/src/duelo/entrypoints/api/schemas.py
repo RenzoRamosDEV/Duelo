@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -83,6 +83,8 @@ class ProjectResponse(BaseModel):
     path: str | None
     hooks_installed: bool
     github: bool
+    # Agentes que evalúan el proyecto (la selección efectiva), en el orden de `AGENT_NAMES`.
+    agents: list[str]
 
     @classmethod
     def from_domain(cls, project: Project) -> ProjectResponse:
@@ -92,7 +94,17 @@ class ProjectResponse(BaseModel):
             path=project.path,
             hooks_installed=project.hooks_installed,
             github=project.github,
+            agents=list(project.agents),
         )
+
+
+class AgentsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Qué agentes evalúan el proyecto; la validación contra los disponibles la hace el caso de uso.
+    agents: list[Annotated[str, Field(min_length=1, max_length=64, pattern=NO_NUL)]] = Field(
+        max_length=16
+    )
 
 
 class AddProjectRequest(BaseModel):

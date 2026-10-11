@@ -4,7 +4,8 @@ from dataclasses import replace
 from datetime import datetime
 from uuid import UUID
 
-from duelo.application.ports import ChangeRepository, ReviewRepository, ReviewStarter
+from duelo.application.ports import ChangeRepository, ProjectAgents, ReviewRepository, ReviewStarter
+from duelo.application.project_agents import expected_agents_for
 from duelo.domain.change import Change
 from duelo.domain.review_status import (
     RETRYABLE_STATUSES,
@@ -35,6 +36,7 @@ async def retry_review(
     *,
     expected_agents: int,
     now: datetime,
+    project_agents: ProjectAgents | None = None,
 ) -> Change:
     """Lanza una nueva ejecución (`run + 1`) para un change cuya review actual terminó con fallos.
 
@@ -47,6 +49,7 @@ async def retry_review(
         raise ChangeNotFound(change_id)
 
     rows = await reviews.list_for_change(change_id)
+    expected_agents = await expected_agents_for(project_agents, change.project_id, expected_agents)
     status = review_status_of_run(change.run, rows, expected_agents=expected_agents)
     if status not in RETRYABLE_STATUSES:
         raise RetryNotAllowed(status)

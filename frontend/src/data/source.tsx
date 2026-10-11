@@ -25,10 +25,16 @@ export function createMockSource(): DataSource {
   const restarted = new Map<string, number>();
   const added: ProjectRef[] = [];
   const removed = new Set<string>();
+  const chosen = new Map<string, string[]>();
 
   function currentProjects(): ProjectRef[] {
     const base = projects.map((p) => ({ slug: p.slug, name: p.name }));
-    return [...base, ...added].filter((p) => !removed.has(p.slug));
+    return [...base, ...added]
+      .filter((p) => !removed.has(p.slug))
+      .map((p) => {
+        const agents = chosen.get(p.slug);
+        return agents ? { ...p, agents } : p;
+      });
   }
 
   function requireToken(token: string) {
@@ -116,6 +122,22 @@ export function createMockSource(): DataSource {
       const index = added.findIndex((p) => p.slug === slug);
       if (index >= 0) added.splice(index, 1);
       else removed.add(slug);
+    },
+    async setAgents(slug, agents, token) {
+      requireToken(token);
+      const project = currentProjects().find((p) => p.slug === slug);
+      if (!project) throw new ApiError("Proyecto no encontrado.", 404);
+      const valid =
+        agents.length > 0 &&
+        new Set(agents).size === agents.length &&
+        agents.every((a) => health.agentNames.includes(a));
+      if (!valid) throw new ApiError("Selección de agentes no válida.", 422);
+      // Same order as the server: the one `AGENT_NAMES` defines.
+      chosen.set(
+        slug,
+        health.agentNames.filter((a) => agents.includes(a)),
+      );
+      return currentProjects().find((p) => p.slug === slug) as ProjectRef;
     },
     async syncPrs(slug, token) {
       requireToken(token);

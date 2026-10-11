@@ -82,6 +82,7 @@ async def test_a_pr_and_a_commit_show_up_in_the_channel_detail_and_stats(
         "path": None,
         "hooks_installed": False,
         "github": False,
+        "agents": ["agent_1", "agent_2"],
     } in projects
     # Mismo sha, dos changes: el PR (más reciente) primero y el commit en la segunda página.
     assert [i["id"] for i in first["items"] + second["items"]] == [pr_id, commit_id]

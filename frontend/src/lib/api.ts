@@ -17,6 +17,8 @@ interface ProjectDto {
   path?: string | null;
   hooks_installed?: boolean | null;
   github?: boolean | string | null;
+  /** Agents that review the project (the effective selection). */
+  agents?: string[] | null;
 }
 
 interface SyncPrsDto {
@@ -108,6 +110,8 @@ export interface ProjectRef {
   hooksInstalled?: boolean;
   /** The repository lives on GitHub, so its PRs can be synchronised. */
   github?: boolean;
+  /** Agents that review this project; absent when the server does not report them. */
+  agents?: string[];
 }
 
 export interface SyncResult {
@@ -149,6 +153,8 @@ export interface DataSource {
   removeProject(slug: string, token: string): Promise<void>;
   /** Imports the repository's PRs through `gh`; 503 when `gh` is missing or not logged in. */
   syncPrs(slug: string, token: string): Promise<SyncResult>;
+  /** Chooses which agents review the project (at least one); applies to what arrives next. */
+  setAgents(slug: string, agents: readonly string[], token: string): Promise<ProjectRef>;
 }
 
 export class ApiError extends Error {
@@ -172,6 +178,7 @@ function toProject(dto: ProjectDto): ProjectRef {
     ...(dto.path ? { path: dto.path } : {}),
     ...(dto.hooks_installed != null ? { hooksInstalled: dto.hooks_installed } : {}),
     ...(dto.github != null ? { github: Boolean(dto.github) } : {}),
+    ...(dto.agents ? { agents: dto.agents } : {}),
   };
 }
 
@@ -336,6 +343,14 @@ export function createHttpSource(
         method: "DELETE",
         headers: { "X-Ingest-Token": token },
       });
+    },
+    async setAgents(slug, agents, token) {
+      const dto = await request<ProjectDto>(`/projects/${slugPath(slug)}/agents`, {
+        method: "PUT",
+        headers: { "X-Ingest-Token": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ agents }),
+      });
+      return toProject(dto);
     },
     async syncPrs(slug, token) {
       const dto = await request<SyncPrsDto>(`/projects/${slugPath(slug)}/sync-prs`, {

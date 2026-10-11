@@ -112,3 +112,20 @@ describe("createMockSource local projects", () => {
     expect(await status(source.syncPrs("duelo", "tok"))).toBe(503);
   });
 });
+
+describe("mock source agent selection", () => {
+  const status = async (promise: Promise<unknown>) =>
+    ((await promise.catch((e: unknown) => e)) as ApiError).status;
+
+  it("validates like the server and keeps the order of the configured agents", async () => {
+    const source = createMockSource();
+    expect(await status(source.setAgents("duelo", ["codex"], ""))).toBe(401);
+    expect(await status(source.setAgents("nope", ["codex"], "tok"))).toBe(404);
+    expect(await status(source.setAgents("duelo", [], "tok"))).toBe(422);
+    expect(await status(source.setAgents("duelo", ["gemini"], "tok"))).toBe(422);
+
+    await source.setAgents("duelo", ["codex", "claude"], "tok");
+    const project = (await source.projects()).find((p) => p.slug === "duelo");
+    expect(project?.agents).toEqual(["claude", "codex"]);
+  });
+});
