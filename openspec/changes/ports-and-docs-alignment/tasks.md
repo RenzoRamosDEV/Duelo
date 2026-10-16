@@ -2,7 +2,7 @@
 
 ## 1. Puertos por capacidad
 
-- [ ] 1.1 Crear `application/ports/` con los siete módulos y la fachada `__init__.py` (`__all__`
+- [x] 1.1 Crear `application/ports/` con los siete módulos y la fachada `__init__.py` (`__all__`
       explícito); borrar `ports.py`; verificar `just lint` (import-linter incluido), que ningún
       importador cambia y que `just test-unit` pasa.
 
