@@ -1,78 +1,100 @@
 schema: spec-driven
 
 context: |
-  Project: "Duelo" - a portfolio project. A web app where every
-  tracked repo is a Slack-style channel; each commit/PR triggers Claude Code and Codex to
-  review it in parallel, the user votes blind on which review was more useful, and a
-  dashboard compares agents. Full spec lives at docs/spec/duelo.md - read it for
-  details beyond this summary; this context only lists what an agent cannot infer by
-  reading code.
+  Project: "Duelo" - a portfolio project. A web app where every tracked repo is a Slack-style
+  channel; each commit/PR triggers Claude Code and Codex to review it in parallel and a stats page
+  compares the agents with the user's own data. The blind vote between reviews is still planned
+  (Fase 6). Full spec lives at docs/spec/duelo.md - read it for details beyond this summary; this
+  context only lists what an agent cannot infer by reading code. README.md and
+  docs/architecture.md describe what exists today; when this file and the code disagree, the code
+  and its ADR win, and this file should be fixed.
 
   Write all OpenSpec artifacts (proposal, design, tasks, specs) in Spanish, matching the
-  project's documentation language. Code identifiers, comments, and commit messages stay
-  in English as usual.
+  project's documentation language. Code identifiers and commit messages stay in English;
+  comments and docstrings follow the file they live in (the backend is commented in Spanish).
 
-  Delivery is phased per docs/spec/duelo.md's "Plan de implementacion" (7 phases,
-  Fase 0 to Fase 6). Each OpenSpec change should scope to one phase (or a coherent slice
-  of one) rather than the whole system at once, and should follow that phase's
-  "Hecho cuando" (done-when) criterion as its acceptance bar. Do not jump ahead to a later
-  phase's capabilities (e.g. no PR workflow or blind voting before the base skeleton and
-  domain/workflow layers exist).
+  Delivery is phased per docs/spec/duelo.md's "Plan de implementacion" (7 phases, Fase 0 to
+  Fase 6). Each OpenSpec change should scope to one phase (or a coherent slice of one) rather
+  than the whole system at once, and should follow that phase's "Hecho cuando" (done-when)
+  criterion as its acceptance bar. Do not jump ahead to a later phase's capabilities (e.g. no
+  PR workflow with debounce or blind voting before their phase). Every change, including tooling,
+  refactors and docs, goes through OpenSpec; pure refactors declare `skip_specs: true`.
 
   Architecture (binding, do not deviate without an ADR):
-  - Hexagonal / ports & adapters. Domain (Change, Review, Finding, Vote) and use cases
-    import nothing from infrastructure. Temporal, FastAPI, Postgres, GitHub, and each
-    review agent are adapters behind ports: ReviewAgent, CodeHost, ChangeRepository,
-    EventPublisher.
+  - Hexagonal / ports & adapters. Domain (Change, Review, Finding, Project, commit state) and use
+    cases import nothing from infrastructure. Temporal, FastAPI, Postgres, git, `gh` and each
+    review agent are adapters behind the ports in `backend/src/duelo/application/ports/`
+    (ReviewAgent, ChangeRepository, ReviewRepository, ProjectRepository, ReviewStarter,
+    GitRepository, HookInstaller, GithubPrSource, RepositoryHistory, CommitMarks, RateLimiter...).
   - Dependency rule enforced by import-linter in CI: domain <- application <- adapters /
-    entrypoints / workflows.
-  - Single Python monolith package with three processes: API, worker `platform`
-    (Dockerized), worker `agents` (runs on the user's own machine, where Claude Code and
-    Codex CLIs are logged in - never containerize this worker).
-  - Temporal workflows/activities receive IDs and primitives, never raw diffs or raw CLI
-    output; diffs live in Postgres. The only review content that travels is a bounded
-    excerpt of the reviewer's answer (summary, score, findings, sanitized error) so it can
-    be read in the Temporal UI. Activities must be idempotent (upsert on natural keys).
+    entrypoints / workflows. `composition.py` (API) and `worker.py` (worker) are the only places
+    that know all three sibling layers.
+  - Single Python monolith package with three processes: API, worker `platform` (Dockerized),
+    worker `agents` (runs on the user's own machine, where the Claude Code and Codex CLIs are
+    logged in - never containerize this worker). `just worker` runs both workers in one process.
+  - Temporal workflows/activities receive IDs and primitives, never raw diffs or raw CLI output;
+    diffs live in Postgres. The only review content that travels is a bounded, credential-redacted
+    excerpt of the reviewer's answer (summary, score, findings, sanitized error) so it can be read
+    in the Temporal UI. Activities must be idempotent (upsert on natural keys). Workflow changes
+    use `workflow.patched` with replay tests, not Worker Versioning (docs/adr/0007).
   - Outbox pattern: every state change writes its row to the `events` table in the same
-    transaction; a trigger does NOTIFY; the API serves SSE from it with Last-Event-ID
-    replay.
-  - OpenAPI/Pydantic models are the source of truth; the frontend TS client is generated
-    from them (openapi-typescript + openapi-fetch) and CI fails on drift.
+    transaction (`adapters/persistence/events.py::append_event`). Today the API serves them with
+    `GET /changes/{id}/events` and the frontend refreshes by polling every 5 s; SSE with
+    Last-Event-ID replay over LISTEN/NOTIFY is still planned (Fase 4 of the spec, pending).
+  - OpenAPI/Pydantic models are the source of truth: `docs/openapi.json` is a committed snapshot
+    guarded by a contract test, and `frontend/src/lib/api.generated.ts` is generated from it
+    with openapi-typescript (`just openapi` regenerates both); CI fails on drift of either.
 
-  Tech stack (pinned, do not substitute without an ADR):
+  Tech stack in use today (do not substitute without an ADR; the source of each decision is in
+  parentheses):
   - Backend: Python 3.12, uv, FastAPI, SQLAlchemy 2.0 async + Alembic, pydantic-settings.
-  - Workflows: Temporal (temporalio SDK), two task queues (`platform`, `agents`,
-    max_concurrent_activities=2 on `agents`).
-  - Realtime: Server-Sent Events via sse-starlette + Postgres LISTEN/NOTIFY.
-  - Frontend: React 19 + Vite + TypeScript strict, Tailwind + shadcn/ui, TanStack Query +
-    Router, react-markdown + Monaco diff editor, pnpm.
-  - Review agents: Claude Agent SDK (Python) for Claude Code, `codex exec` for Codex, plus
-    a FakeAgent adapter used in tests/demo mode - all behind the same ReviewAgent port and
-    the same JSON review contract.
-  - Infra: Docker Compose (Postgres, Temporal, Temporal UI, API, worker `platform`) with
-    profiles; `just` as the task runner (just dev, just test, just gen-client).
-  - Quality gates: Ruff, mypy strict, Biome, pre-commit, gitleaks, import-linter,
-    Conventional Commits, GitHub Actions CI, Renovate.
-  - Observability/eval: OpenTelemetry + structlog, Langfuse for per-review traces and vote
-    scores, promptfoo for the offline benchmark (run manually or via a weekly Temporal
-    Schedule, never in CI, to avoid burning the agents' subscription usage).
+  - Workflows: Temporal (temporalio SDK), two task queues (`platform`, `agents`); the `agents`
+    worker caps concurrent CLIs with AGENT_MAX_CONCURRENCY (default 2).
+  - Frontend: React 19 + Vite + TypeScript strict, React Router, plain CSS with design tokens
+    (`styles/tokens.css`, one file per section) in the GitHub + Slack aesthetic
+    (docs/adr/0003, effects from libraries.dev per docs/adr/0004, agent logos per 0005, logo per
+    theme per 0006), a hand-written safe Markdown renderer (`lib/markdown.ts`) and diff table,
+    Vitest + Testing Library, Biome, pnpm, PWA via vite-plugin-pwa. No Tailwind, shadcn,
+    TanStack, react-markdown or Monaco: decided with ADR 0003 and the `round*-frontend-ui` changes.
+  - Review agents: the user's own `claude -p` and `codex exec` CLIs, read-only and confined, driven
+    by their logged-in session instead of API keys (README «Revisar con Claude Code y Codex»,
+    change `add-cli-agents` and `harden-cli-agents*`), plus a FakeAgent for tests and the default
+    `AGENT_NAMES`. The review criteria live in `Agents/code-guardian/` (AGENT.md with a `version`
+    plus skills/<name>/SKILL.md); the backend composes the prompt from them.
+  - Infra: Docker Compose (Postgres, Temporal, Temporal UI, API) with profiles; `just` as the task
+    runner (`dev`, `test`, `lint`, `format`, `typecheck`, `ci`, `openapi`, `gen-client`,
+    `backup`, `restore`).
+  - Quality gates: Ruff (curated strict set), mypy strict, Biome, tsc, import-linter, pre-commit,
+    gitleaks (repo scan), Conventional Commits, GitHub Actions CI, Renovate, mutation testing
+    (weekly), OpenAPI snapshot + schemathesis.
+  - Observability today: Temporal UI with readable workflow names and summaries, the SDK's
+    Prometheus metrics (TEMPORAL_METRICS_ADDRESS), JSON access log with X-Request-ID.
 
-  Repo layout is a monorepo: backend/ (hexagonal src/duelo/{domain,application,
-  adapters,workflows,entrypoints}), frontend/ (feature-organized src/features/*), e2e/
-  (Playwright with FakeAgent), benchmark/ (promptfoo), Agents/<agent>/ (AGENT.md with a
-  `version` plus skills/<name>/SKILL.md; the backend composes the review prompt from them),
-  docs/adr/ (one ADR per significant decision), scripts/install-hook.sh.
+  Planned but not implemented yet (do not describe as existing): SSE realtime (Fase 4), gitleaks
+  over the diff before any agent sees it (Fase 3), Langfuse traces and OpenTelemetry/structlog
+  (Fase 3), PR webhook with debounce and `@claude` replies (Fase 5), blind vote, promptfoo
+  benchmark and public demo mode (Fase 6).
+
+  Repo layout is a monorepo: backend/ (hexagonal src/duelo/{domain,application,adapters,
+  workflows,entrypoints}), frontend/ (feature-organized src/features/*, shared lib/ and
+  components/), Agents/<agent>/, docs/adr/ (one ADR per significant decision), docs/spec/,
+  docs/postmortems/, scripts/ (dump_openapi, load_ingest, mutation_gate), e2e/ and benchmark/
+  (placeholders for later phases). Git hooks are installed by the API itself
+  (`entrypoints/hook.py`, see «Proyectos desde carpetas locales» in the README); there is no
+  install-hook script.
 
   Hard constraints:
   - No multi-user/login, no auto-applying agent suggestions, no desktop app - web only,
-    single local user (demo mode is read-only and public, separate concern).
-  - Review agents run read-only (no Edit/Write/Bash tools for Claude; --sandbox read-only
-    for Codex) and are driven via the user's own CLI subscriptions, not API keys - the
-    `agents` worker must run outside Docker, on the developer's machine.
-  - Secrets must never reach an agent: gitleaks scans the diff in `prepare_context` before
-    any agent sees it; if it finds something, the review is blocked, not sent.
-  - Diffs passed to agent prompts must be fenced as data, never as instructions (prompt
-    injection mitigation).
+    single local user (demo mode is read-only and public, separate concern, planned).
+  - Review agents run read-only (Read/Grep/Glob only and `--restricted` for Claude Code;
+    `--sandbox read-only` plus a deny-list of features for Codex) and are driven via the user's
+    own CLI subscriptions, not API keys - the `agents` worker must run outside Docker, on the
+    developer's machine. INGEST_TOKEN, OPERATOR_TOKEN, DATABASE_URL and API keys never reach the
+    CLI process.
+  - Secrets must never reach an agent: scanning the diff with gitleaks before any agent sees it
+    is planned (Fase 3) and, once in place, a hit blocks the review instead of sending it.
+  - Diffs passed to agent prompts are fenced as untrusted data with a per-run random mark, never
+    as instructions (prompt injection mitigation; `adapters/agents/review_payload.py`).
 
 rules:
   tasks:
