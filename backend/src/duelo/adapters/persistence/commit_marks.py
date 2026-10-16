@@ -4,11 +4,11 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from duelo.adapters.persistence.models import ChangeModel, EventModel
-from duelo.adapters.persistence.sanitize import sanitize_json
+from duelo.adapters.persistence.events import append_event
+from duelo.adapters.persistence.models import ChangeModel
 from duelo.domain.change import ChangeKind
 from duelo.domain.commit_state import TrackedCommit
 from duelo.domain.events import CommitDiscarded, CommitRestored
@@ -101,12 +101,5 @@ class SqlAlchemyCommitMarks:
         )
         changed = list((await session.execute(stmt)).scalars())
         for change_id in changed:
-            built = event(change_id)
-            await session.execute(
-                insert(EventModel).values(
-                    project_id=project_id,
-                    type=built.type,
-                    payload=sanitize_json(built.to_payload()),
-                )
-            )
+            await append_event(session, event(change_id))
         return changed

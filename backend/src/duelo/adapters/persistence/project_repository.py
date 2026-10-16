@@ -12,6 +12,11 @@ from duelo.application.ports import ProjectAlreadyExists
 from duelo.domain.project import Project, effective_agents
 
 
+def _unqueryable(slug: str) -> bool:
+    # Ningún proyecto puede llamarse así y Postgres rechazaría la consulta con un 500.
+    return "\x00" in slug
+
+
 def _to_domain(row: ProjectModel, available: Sequence[str] = ()) -> Project:
     return Project(
         id=row.id,
@@ -38,7 +43,7 @@ class SqlAlchemyProjectRepository:
         self._available = tuple(available_agents)
 
     async def get_by_slug(self, slug: str) -> Project | None:
-        if "\x00" in slug:  # ningún proyecto puede llamarse así y Postgres rechazaría la consulta
+        if _unqueryable(slug):
             return None
         async with self._session_factory() as session:
             row = (
@@ -75,7 +80,7 @@ class SqlAlchemyProjectRepository:
 
     async def save_agents(self, slug: str, agents: Sequence[str]) -> Project | None:
         """Guarda la selección del proyecto y lo devuelve; `None` si no existe."""
-        if "\x00" in slug:
+        if _unqueryable(slug):
             return None
         async with self._session_factory() as session:
             row = (
@@ -125,7 +130,7 @@ class SqlAlchemyProjectRepository:
             return _to_domain(row, self._available)
 
     async def remove(self, slug: str) -> Project | None:
-        if "\x00" in slug:
+        if _unqueryable(slug):
             return None
         async with self._session_factory() as session:
             row = (

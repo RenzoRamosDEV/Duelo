@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from duelo.adapters.persistence.models import ChangeModel, EventModel, ReviewModel
+from duelo.adapters.persistence.events import append_event
+from duelo.adapters.persistence.models import ChangeModel, ReviewModel
 from duelo.adapters.persistence.sanitize import sanitize_json, sanitize_text
 from duelo.application.read_models import AgentStats
 from duelo.domain.events import ReviewCompleted, ReviewFailed, ReviewReused
@@ -62,13 +63,7 @@ async def insert_review(session: AsyncSession, review: Review, event: ReviewEven
         row = (await session.execute(existing_stmt)).scalar_one()
         return review_from_row(row)
 
-    await session.execute(
-        insert(EventModel).values(
-            project_id=event.project_id,
-            type=event.type,
-            payload=sanitize_json(event.to_payload()),
-        )
-    )
+    await append_event(session, event)
     return review
 
 

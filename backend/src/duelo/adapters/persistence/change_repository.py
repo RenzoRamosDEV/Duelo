@@ -5,12 +5,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, and_, func, insert, or_, select, true, tuple_, update
+from sqlalchemy import ColumnElement, and_, func, or_, select, true, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from duelo.adapters.persistence.models import ChangeModel, EventModel, ReviewModel
+from duelo.adapters.persistence.events import append_event
+from duelo.adapters.persistence.models import ChangeModel, ReviewModel
 from duelo.adapters.persistence.review_repository import insert_review, review_from_row
 from duelo.adapters.persistence.sanitize import sanitize_json, sanitize_text
 from duelo.application.ports import CommitWithReviews
@@ -74,13 +75,7 @@ class SqlAlchemyChangeRepository:
                 row = (await self._session.execute(existing_stmt)).scalar_one()
                 return _to_domain(row)
 
-            await self._session.execute(
-                insert(EventModel).values(
-                    project_id=event.project_id,
-                    type=event.type,
-                    payload=sanitize_json(event.to_payload()),
-                )
-            )
+            await append_event(self._session, event)
             # Las reviews copiadas van en la misma transacción: o nace la PR con todas, o no nace.
             for review, review_event in reused:
                 await insert_review(self._session, review, review_event)
@@ -105,17 +100,13 @@ class SqlAlchemyChangeRepository:
         ).scalar_one_or_none()
         if original_id is None:
             return
-        event = CommitReverted(
-            change_id=original_id,
-            project_id=change.project_id,
-            reverted_by_change_id=change.id,
-        )
-        await self._session.execute(
-            insert(EventModel).values(
+        await append_event(
+            self._session,
+            CommitReverted(
+                change_id=original_id,
                 project_id=change.project_id,
-                type=event.type,
-                payload=sanitize_json(event.to_payload()),
-            )
+                reverted_by_change_id=change.id,
+            ),
         )
 
     async def find_commit_with_reviews(
