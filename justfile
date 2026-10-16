@@ -99,7 +99,7 @@ test-integration:
     fi
     uv run pytest tests/integration -m integration --no-cov
 
-# Toda la suite con cobertura de ramas y umbrales, más el build del frontend
+# Toda la suite con cobertura de ramas y umbrales, más los tests (Vitest) y el build del frontend
 test:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -116,19 +116,25 @@ test:
         || { echo "FALLA: cobertura global por debajo de {{cov_min}}%" >&2; exit 1; }
     uv run coverage report --include="$core" --fail-under={{cov_core_min}} >/dev/null \
         || { echo "FALLA: cobertura de domain+application por debajo de {{cov_core_min}}%" >&2; exit 1; }
-    cd ../frontend && pnpm build
+    cd ../frontend && pnpm test && pnpm build
 
 # Lint + tipos en todo el repo (mismos checks que corre el CI)
 lint:
     cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy src/ && uv run lint-imports
     cd frontend && pnpm exec biome check .
 
-# Genera el cliente TypeScript a partir del OpenAPI (placeholder hasta que haya endpoints reales)
-gen-client:
-    @echo "gen-client: pendiente hasta que exista un contrato OpenAPI que exportar (fase 4)."
+# Formatea todo el repo (Ruff con arreglos seguros + Biome); `just lint` comprueba sin tocar nada
+format:
+    cd backend && uv run ruff check --fix . && uv run ruff format .
+    cd frontend && pnpm format
+
+# Comprueba los tipos de todo el repo (mypy strict + tsc)
+typecheck:
+    cd backend && uv run mypy src/
+    cd frontend && pnpm typecheck
 
 # Reproduce localmente lo que corre el CI (sin gitleaks/osv-scanner/hadolint, que necesitan sus binarios aparte)
-ci: lint test
+ci: lint typecheck test
     {{compose}} --profile infra config
     {{compose}} --profile app config
 
