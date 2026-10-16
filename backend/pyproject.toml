@@ -50,7 +50,47 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# Set curado, no `ALL`: familias que detectan errores o deuda real sobre mypy strict.
+select = [
+    "E", "F", "I", "UP", "B",
+    "SIM",  # simplificaciones
+    "RUF",  # reglas de Ruff, incluida RUF100 (noqa sin efecto)
+    "PTH",  # pathlib en vez de os.path
+    "PT",   # estilo de pytest
+    "ARG",  # argumentos sin uso
+    "C4",   # comprensiones
+    "RET",  # returns
+    "TRY",  # excepciones
+    "S",    # bandit
+    "A",    # sombra de builtins
+    "BLE",  # `except Exception` sin motivo
+    "SLF",  # acceso a miembros privados
+    "PERF", # patrones lentos
+    "PIE",  # misceláneas
+    "T20",  # print
+    "ISC",  # concatenación implícita de cadenas
+    "N",    # nombres
+]
+ignore = [
+    # Los mensajes de las excepciones del proyecto van en el `raise`: son texto para el usuario,
+    # no una clase por mensaje.
+    "TRY003",
+    # Las excepciones se llaman por lo que ocurre (`ProjectNotFound`, `RetryNotAllowed`); el
+    # sufijo `Error` no aporta y renombrarlas sería un diff enorme sin valor.
+    "N818",
+    # La documentación en español usa «», … y guiones tipográficos a propósito.
+    "RUF001", "RUF002", "RUF003",
+    # Las aserciones compuestas de los tests son legibles tal cual.
+    "PT018",
+    # Todas las llamadas a subprocesos son listas de argumentos sin shell y los binarios (`git`,
+    # `gh`, los CLI) se resuelven por `PATH` por diseño; ver `adapters/subprocess_runner.py`.
+    "S603", "S607",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: `assert`, tokens y rutas de prueba, estado privado de los fakes, y fakes que implementan
+# protocolos con parámetros que no usan. `PT011`: los tests comprueban el mensaje exacto justo después.
+"tests/**" = ["S101", "S105", "S106", "S107", "S108", "SLF001", "ARG", "PT011"]
 
 [tool.ruff.lint.isort]
 # El directorio de migraciones backend/alembic/ comparte nombre con el paquete
