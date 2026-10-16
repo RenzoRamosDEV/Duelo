@@ -1,0 +1,71 @@
+/* ---------- Loading ---------- */
+
+.busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-muted);
+}
+
+.busy-block {
+  display: flex;
+  padding: 16px 4px;
+}
+
+/* Fixed slot: showing or hiding the orb never moves the text around it. */
+.busy-orb {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+}
+
+.busy-orb canvas {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.thinking {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  color: var(--fg-muted);
+}
+
+.pending-agents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skeleton .sk {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton .sk-circle {
+  width: 16px;
+  height: 16px;
+}
+
+.skeleton .sk-short {
+  width: 30%;
+  margin-top: 8px;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

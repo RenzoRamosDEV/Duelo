@@ -1,0 +1,284 @@
+/* ---------- Detail ---------- */
+
+.detail-head {
+  margin-bottom: 16px;
+}
+
+.crumbs {
+  margin: 0 0 4px;
+  color: var(--fg-muted);
+}
+
+.status-line {
+  margin: 10px 0 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy output {
+  font-size: 12px;
+}
+
+.retry {
+  display: grid;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+}
+
+.retry .search {
+  background: var(--bg);
+}
+
+.findings {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.findings-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+}
+
+.findings > h2,
+.findings-head h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.findings-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.severity-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sev-filter {
+  --level: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--speed), border-color var(--speed);
+}
+
+.sev-filter[data-level="danger"] {
+  --level: var(--danger);
+}
+
+.sev-filter[data-level="warning"] {
+  --level: var(--warning);
+}
+
+.sev-filter[data-level="info"] {
+  --level: var(--accent);
+}
+
+.sev-filter:hover {
+  background: var(--bg-hover);
+}
+
+.sev-filter[aria-pressed="true"] {
+  border-color: var(--level);
+  background: color-mix(in srgb, var(--level) 16%, transparent);
+  font-weight: 600;
+}
+
+.finding-group {
+  margin-top: 14px;
+}
+
+.finding-group h3 {
+  margin: 0 0 8px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.agent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-chips li,
+.agent-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pending-agents li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-files {
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-files h3 {
+  margin: 0 0 6px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.diff-files ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diff-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-files li > svg {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.file-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.add-count {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.del-count {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.squares {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.squares span {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.squares span[data-kind="add"] {
+  background: var(--success);
+}
+
+.squares span[data-kind="del"] {
+  background: var(--danger);
+}
+
+.diff-scroll {
+  overflow-x: auto;
+}
+
+table.diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.diff td {
+  padding: 0 10px;
+  white-space: pre;
+}
+
+.diff .ln {
+  width: 1%;
+  min-width: 44px;
+  color: var(--fg-muted);
+  text-align: right;
+  user-select: none;
+  background: var(--bg-subtle);
+}
+
+.diff-row.add td {
+  background: var(--diff-add-bg);
+}
+
+.diff-row.add .ln {
+  background: color-mix(in srgb, var(--success) 22%, var(--bg));
+}
+
+.diff-row.del td {
+  background: var(--diff-del-bg);
+}
+
+.diff-row.del .ln {
+  background: color-mix(in srgb, var(--danger) 22%, var(--bg));
+}
+
+.diff-row.header.hunk td {
+  background: var(--diff-hunk-bg);
+  color: var(--fg-muted);
+}
+
+.diff-row.header.file td {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 32px;
+}
+
+.diff-row.meta td {
+  color: var(--fg-muted);
+  background: var(--bg-subtle);
+}

@@ -1,0 +1,174 @@
+/* ---------- Findings as cards ---------- */
+
+.finding-card {
+  --level: var(--fg-muted);
+  --level-bg: var(--bg-hover);
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--level);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  --fold-bg: var(--bg-subtle);
+}
+
+.finding-card[data-level="danger"] {
+  --level: var(--danger);
+  --level-bg: var(--danger-bg);
+}
+
+.finding-card[data-level="warning"] {
+  --level: var(--warning);
+  --level-bg: var(--warning-bg);
+}
+
+.finding-card[data-level="info"] {
+  --level: var(--accent);
+  --level-bg: var(--accent-bg);
+}
+
+.finding-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--level) 45%, transparent);
+  border-radius: 999px;
+  background: var(--level-bg);
+  color: var(--level);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.loc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  color: var(--fg);
+  font-size: 12px;
+}
+
+.loc-chip > svg {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.loc-chip .mono {
+  overflow-wrap: anywhere;
+}
+
+.loc-copy {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.loc-copy:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.finding-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.finding-text {
+  font-size: 14px;
+}
+
+.finding-reco {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--success);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--success-bg);
+}
+
+.reco-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--success);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-meta li {
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.review-error-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+}
+
+.review-error-box p {
+  margin: 0;
+}
+
+.review-error {
+  margin-top: 4px;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.previous-run {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.previous-run > summary {
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.previous-run[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.previous-run .reviews {
+  padding: 4px 12px;
+}

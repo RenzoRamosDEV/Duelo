@@ -1,0 +1,70 @@
+/* ---------- Small screens: links shrink to icons ---------- */
+
+@media (max-width: 760px) {
+  .topbar {
+    gap: 6px;
+    padding: 0 8px;
+  }
+
+  .brand span {
+    display: none;
+  }
+
+  .project-switcher {
+    min-width: 0;
+  }
+
+  .project-switcher select {
+    max-width: 100px;
+  }
+
+  .topbar-nav {
+    gap: 0;
+  }
+
+  .nav-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .main {
+    padding: 16px 12px 48px;
+  }
+
+  .change-row {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+
+  .change-main {
+    grid-column: 2 / -1;
+    flex-wrap: wrap;
+  }
+
+  .change-link {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .change-meta {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .change-row > .checks {
+    grid-column: 3;
+  }
+
+  .toolbar .segmented {
+    flex: 1 1 auto;
+  }
+
+  .segment {
+    flex: 1;
+    justify-content: center;
+  }
+}

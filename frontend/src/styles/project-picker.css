@@ -1,0 +1,57 @@
+/* ---------- Entry page: project picker ---------- */
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  background: var(--bg-subtle);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  transition: background var(--speed), border-color var(--speed);
+}
+
+.project-card:hover {
+  border-color: var(--accent-emphasis);
+  background: var(--bg-hover);
+  text-decoration: none;
+}
+
+.project-name {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.project-path {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.project-add {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
