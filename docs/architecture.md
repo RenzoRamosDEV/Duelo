@@ -34,7 +34,9 @@ que ya está en el spec o en `openspec/specs/`.
 - [`commit-ingestion`](../openspec/specs/commit-ingestion/spec.md):
   `POST /ingest/commit` autenticado con token de ingesta; persiste el commit y arranca su
   review sin duplicar trabajo; `GET /ready` comprueba Postgres y Temporal (Fase 2, cierre).
-  Contrato OpenAPI en [`openapi.json`](openapi.json).
+  Contrato OpenAPI en [`openapi.json`](openapi.json); de él se generan los tipos del cliente
+  (`frontend/src/lib/api.generated.ts`, `just gen-client`) y el CI falla si snapshot o tipos
+  derivan.
 - `change-queries` y `pr-ingestion` (change `round1-backend-api`): lecturas sin token
   (`GET /projects`, `GET /projects/{slug}/changes` con cursor, `GET /changes/{id}`,
   `GET /stats/agents`; ver la decisión sobre autenticación de lecturas en su `design.md`) y

@@ -115,7 +115,7 @@ en [`docs/flujo-duelo.html`](docs/flujo-duelo.html) (un solo archivo: ábrelo en
 
 | Capa | Tecnología | Por qué |
 | --- | --- | --- |
-| API | **FastAPI** + Pydantic | Contrato OpenAPI versionado en `docs/openapi.json`; CI falla si deriva |
+| API | **FastAPI** + Pydantic | Contrato OpenAPI versionado en `docs/openapi.json`, del que se generan los tipos TypeScript del frontend; CI falla si cualquiera de los dos deriva |
 | Persistencia | **PostgreSQL 16**, SQLAlchemy 2 async, Alembic | Transacciones con outbox e idempotencia por clave natural |
 | Orquestación | **Temporal** (`temporalio`) | Reintentos, latidos, compensación y reintento de reviews sin perder estado ([ADR 0001](docs/adr/0001-temporal-vs-alternativas.md)) |
 | Agentes | CLI de **Claude Code** y **Codex** | Con tu sesión, confinados a solo lectura; `FakeAgent` para tests y demo |
@@ -382,7 +382,8 @@ just dev
 | `just typecheck` | Tipos de todo el repo: mypy strict y `tsc` |
 | `just ci` | `lint` + `typecheck` + `test` + validación del compose: lo mismo que GitHub Actions, salvo gitleaks, osv-scanner, hadolint y commitlint |
 | `just mutation` | Mutation testing sobre `domain/` y `application/`; falla por debajo del 95 % |
-| `just openapi` | Regenera el snapshot `docs/openapi.json` tras un cambio deliberado de la API |
+| `just openapi` | Regenera el snapshot `docs/openapi.json` tras un cambio deliberado de la API, y con él los tipos del frontend |
+| `just gen-client` | Regenera solo `frontend/src/lib/api.generated.ts` (`openapi-typescript`) desde el snapshot |
 | `just load` | Carga ligera de `POST /ingest/commit` |
 | `just backup` / `just restore f` | Copia de todas las bases del Postgres local y su restauración |
 | `pnpm test` (en `frontend/`) | Solo los tests del frontend (Vitest); `just test` ya los incluye |
