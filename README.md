@@ -139,7 +139,7 @@ Requisitos:
   para los hooks de calidad
 
 ```bash
-pre-commit install                        # hooks de git: ruff, mypy, import-linter, biome, gitleaks
+pre-commit install                        # hooks de git: ruff, mypy, import-linter, biome, tsc, gitleaks
 export INGEST_TOKEN=dev-ingest-token      # solo desarrollo local
 just dev                                  # Postgres + Temporal + Temporal UI + API (localhost:8000)
 just migrate                              # esquema de la base de datos
@@ -376,14 +376,16 @@ just dev
 | `just worker` | Worker de desarrollo (`platform` + `agents`); `AGENT_NAMES=claude,codex` usa los CLI |
 | `just test-unit` | Tests unitarios: sin Docker, sin red, segundos |
 | `just test-integration` | Postgres real (testcontainers) y Temporal de test |
-| `just test` | Toda la suite con cobertura y umbrales (97 % global, 100 % en `domain` + `application`), más el build del frontend |
-| `just lint` | Ruff, mypy strict, import-linter y Biome |
-| `just ci` | `lint` + `test` + validación del compose: lo mismo que GitHub Actions, salvo gitleaks, osv-scanner, hadolint y commitlint |
+| `just test` | Toda la suite con cobertura y umbrales (97 % global, 100 % en `domain` + `application`), más los tests (Vitest) y el build del frontend |
+| `just lint` | Ruff, mypy strict, import-linter y Biome, sin tocar nada |
+| `just format` | Formatea todo el repo: Ruff (con arreglos seguros) y Biome |
+| `just typecheck` | Tipos de todo el repo: mypy strict y `tsc` |
+| `just ci` | `lint` + `typecheck` + `test` + validación del compose: lo mismo que GitHub Actions, salvo gitleaks, osv-scanner, hadolint y commitlint |
 | `just mutation` | Mutation testing sobre `domain/` y `application/`; falla por debajo del 95 % |
 | `just openapi` | Regenera el snapshot `docs/openapi.json` tras un cambio deliberado de la API |
 | `just load` | Carga ligera de `POST /ingest/commit` |
 | `just backup` / `just restore f` | Copia de todas las bases del Postgres local y su restauración |
-| `pnpm test` (en `frontend/`) | Tests del frontend (Vitest) |
+| `pnpm test` (en `frontend/`) | Solo los tests del frontend (Vitest); `just test` ya los incluye |
 
 ---
 
@@ -407,9 +409,9 @@ Proyecto personal; estas notas mantienen la disciplina del repo entre sesiones.
 - [`docs/temporal-buenas-practicas.md`](docs/temporal-buenas-practicas.md) recoge cómo se operan
   los workers, y [`docs/postmortems/`](docs/postmortems/) los incidentes y lo aprendido.
 
-Cada push y PR corre en GitHub Actions lint y tests del backend, build del frontend, gitleaks,
-validación del compose y del Dockerfile, build de la imagen, commitlint y osv-scanner; el mutation
-testing corre semanalmente. Ver [`SECURITY.md`](SECURITY.md).
+Cada push y PR corre en GitHub Actions lint y tests del backend, Biome, tests y build del
+frontend, gitleaks, validación del compose y del Dockerfile, build de la imagen, commitlint y
+osv-scanner; el mutation testing corre semanalmente. Ver [`SECURITY.md`](SECURITY.md).
 
 ---
 

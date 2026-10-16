@@ -35,9 +35,10 @@ automáticamente por ruta (`tests/conftest.py`).
 | --- | --- |
 | `just test-unit` | Capa unitaria, sin Docker, unos segundos. |
 | `just test-integration` | Capa de integración (Docker o Podman; detecta Podman solo). |
-| `just test` | Todo, con cobertura de ramas y umbrales (global 97 %, `domain`+`application` 100 %) y build del frontend. |
+| `just test` | Todo, con cobertura de ramas y umbrales (global 97 %, `domain`+`application` 100 %), los tests del frontend (Vitest) y su build. |
+| `pnpm test` (en `frontend/`) | Solo los tests del frontend; `just test` y el CI ya los ejecutan. |
 | `just mutation` | Mutation testing de `domain`+`application`; falla bajo 95 %. |
-| `just ci` | Lint + tipos + capas + `just test` + validación de Compose. |
+| `just ci` | `just lint` + `just typecheck` + `just test` + validación de Compose. |
 | `uv run pytest -m regression` | Solo los tests de regresión. |
 
 Para una ejecución parcial con `pytest` directamente usa `--no-cov`: los umbrales de cobertura

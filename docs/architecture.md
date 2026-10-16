@@ -290,4 +290,4 @@ composición (`duelo/composition.py` para la API y `duelo/worker.py` para el
 worker de desarrollo); queda fuera de las capas a propósito.
 
 Enforzada por `import-linter` (`backend/pyproject.toml`, sección
-`[tool.importlinter]`), validado localmente con `just lint` y en CI.
+`[tool.importlinter]`), validado localmente con `just lint` (y `just ci`) y en CI.
