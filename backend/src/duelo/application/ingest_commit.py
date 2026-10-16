@@ -32,9 +32,6 @@ class ChangeSubmission:
     body: str = ""
 
 
-CommitSubmission = ChangeSubmission
-
-
 @dataclass(frozen=True)
 class IngestResult:
     change: Change

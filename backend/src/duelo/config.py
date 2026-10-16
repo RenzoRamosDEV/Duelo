@@ -19,6 +19,12 @@ def _split_csv(value: object) -> object:
     return value
 
 
+def _blank_is_unset(value: object) -> object:
+    # `CLAUDE_BIN=` u `OPERATOR_TOKEN=` en un .env o un compose significan «no configurado», no la
+    # ruta o el token vacíos.
+    return None if isinstance(value, str) and not value.strip() else value
+
+
 class WorkerSettings(BaseSettings):
     """Lo que necesita cualquier proceso que habla con Postgres y Temporal (el worker)."""
 
@@ -78,9 +84,8 @@ class WorkerSettings(BaseSettings):
 
     @field_validator("claude_bin", "codex_bin", "claude_model", "codex_model", mode="before")
     @classmethod
-    def _blank_is_unset(cls, value: object) -> object:
-        # `CLAUDE_BIN=` en un .env significa «no configurado», no la ruta vacía.
-        return None if isinstance(value, str) and not value.strip() else value
+    def _blank_cli_settings_are_unset(cls, value: object) -> object:
+        return _blank_is_unset(value)
 
 
 class Settings(WorkerSettings):
@@ -154,16 +159,10 @@ class Settings(WorkerSettings):
             raise ValueError(f"INGEST_URL debe ser una URL http(s) con host: {value!r}")
         return value.rstrip("/")
 
-    @field_validator("hook_env_path", mode="before")
+    @field_validator("hook_env_path", "operator_token", mode="before")
     @classmethod
-    def _blank_hook_env_path_is_unset(cls, value: object) -> object:
-        return None if isinstance(value, str) and not value.strip() else value
-
-    @field_validator("operator_token", mode="before")
-    @classmethod
-    def _blank_operator_token_is_unset(cls, value: object) -> object:
-        # `OPERATOR_TOKEN=` en un compose o .env significa "sin configurar", no un token vacío.
-        return None if isinstance(value, str) and not value.strip() else value
+    def _blank_api_settings_are_unset(cls, value: object) -> object:
+        return _blank_is_unset(value)
 
     @model_validator(mode="after")
     def _operator_token_differs_from_ingest_token(self) -> Settings:

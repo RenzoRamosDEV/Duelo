@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from duelo.application.ingest_commit import CommitSubmission, ProjectNotFound, ingest_commit
+from duelo.application.ingest_commit import ChangeSubmission, ProjectNotFound, ingest_commit
 from duelo.application.ports import ReviewStartError
 from duelo.domain.project import Project
 from tests.fakes.change_repository import FakeChangeRepository
@@ -12,7 +12,7 @@ from tests.fakes.review_starter import FakeReviewStarter
 PROJECT = Project(id=uuid4(), slug="acme/widgets")
 
 
-def _submission(**overrides: object) -> CommitSubmission:
+def _submission(**overrides: object) -> ChangeSubmission:
     values: dict[str, object] = {
         "project": PROJECT.slug,
         "ref": "refs/heads/main",
@@ -23,7 +23,7 @@ def _submission(**overrides: object) -> CommitSubmission:
         "diff": "diff --git a/x b/x",
     }
     values.update(overrides)
-    return CommitSubmission(**values)  # type: ignore[arg-type]
+    return ChangeSubmission(**values)  # type: ignore[arg-type]
 
 
 def _deps(starter: FakeReviewStarter | None = None):
