@@ -14,5 +14,5 @@
 
 ## 3. Docs y cierre
 
-- [ ] 3.1 `docs/architecture.md`: el paquete de puertos; verificar `just ci` en verde y commits
+- [x] 3.1 `docs/architecture.md`: el paquete de puertos; verificar `just ci` en verde y commits
       atómicos.
