@@ -91,12 +91,13 @@ test-integration:
     #!/usr/bin/env bash
     set -euo pipefail
     cd backend
+    # Sin `docker`: apuntar testcontainers al socket de Podman. Y siempre que el daemon sea Podman
+    # (también con un CLI `docker` real y DOCKER_HOST al socket de Podman), desactivar Ryuk, su
+    # sidecar de limpieza, que no funciona en rootless.
     if ! command -v docker >/dev/null 2>&1; then
-        # Sin `docker` (p. ej. Podman-only): apuntar testcontainers al socket de Podman
-        # y desactivar Ryuk, su sidecar de limpieza, que no funciona bien en rootless.
         export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
-        export TESTCONTAINERS_RYUK_DISABLED=true
     fi
+    case "${DOCKER_HOST:-}" in *podman*) export TESTCONTAINERS_RYUK_DISABLED=true;; esac
     uv run pytest tests/integration -m integration --no-cov
 
 # Toda la suite con cobertura de ramas y umbrales, más los tests (Vitest) y el build del frontend
@@ -104,10 +105,11 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     cd backend
+    # Misma detección de Podman que en `test-integration`.
     if ! command -v docker >/dev/null 2>&1; then
         export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
-        export TESTCONTAINERS_RYUK_DISABLED=true
     fi
+    case "${DOCKER_HOST:-}" in *podman*) export TESTCONTAINERS_RYUK_DISABLED=true;; esac
     uv run pytest
     core="src/duelo/domain/*,src/duelo/application/*"
     echo "cobertura (líneas+ramas): global $(uv run coverage report --format=total)% (mín {{cov_min}}%)," \
