@@ -20,4 +20,4 @@
 
 - [x] 4.1 README (tabla de comandos, fila de la API en «Qué usa») y `docs/architecture.md`
       mencionan los tipos generados y el check de deriva.
-- [ ] 4.2 `just ci` en verde; commits atómicos.
+- [x] 4.2 `just ci` en verde; commits atómicos.
