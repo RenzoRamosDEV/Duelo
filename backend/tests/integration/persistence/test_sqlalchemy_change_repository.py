@@ -140,7 +140,7 @@ async def test_rolls_back_change_if_event_write_fails(
     )
 
     async with session_factory() as session:
-        with pytest.raises(Exception, match="(?i)foreign key"):
+        with pytest.raises(Exception, match=r"(?i)foreign key"):
             await SqlAlchemyChangeRepository(session).add(change, broken_event)
 
     async with session_factory() as session:

@@ -28,7 +28,7 @@ def decode_cursor(value: str) -> ChangeCursor:
         )
         parsed = datetime.fromisoformat(created_at)
         if parsed.tzinfo is None:
-            raise ValueError("sin zona horaria")
+            raise ValueError("sin zona horaria")  # noqa: TRY301 - lo recoge el except de abajo
         return ChangeCursor(created_at=parsed, id=UUID(change_id))
     except (ValueError, binascii.Error) as exc:  # incluye UnicodeDecodeError
         raise InvalidCursor("cursor inválido") from exc

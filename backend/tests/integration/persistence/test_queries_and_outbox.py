@@ -168,7 +168,7 @@ async def test_a_review_is_rolled_back_when_its_event_cannot_be_written(
     broken_event = ReviewCompleted(review.id, change.id, uuid4(), "agent_1")  # proyecto inexistente
 
     async with session_factory() as session:
-        with pytest.raises(Exception, match="(?i)foreign key"):
+        with pytest.raises(Exception, match=r"(?i)foreign key"):
             await SqlAlchemyReviewRepository(session).add(review, broken_event)
 
     async with session_factory() as session:

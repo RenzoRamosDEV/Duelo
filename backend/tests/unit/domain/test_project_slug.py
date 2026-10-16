@@ -51,7 +51,7 @@ def test_a_github_remote_with_dot_segments_falls_back_to_the_folder(owner: str) 
 
 @pytest.mark.parametrize("folder", ["", ".", "..", "con espacio", "a/b", "ñandú", "x\x00y", "a;b"])
 def test_an_invalid_folder_name_cannot_be_a_slug(folder: str) -> None:
-    with pytest.raises(InvalidSlug, match="No se puede usar .* como nombre de proyecto") as caught:
+    with pytest.raises(InvalidSlug, match=r"No se puede usar .* como nombre de proyecto") as caught:
         slug_for_repository(None, folder)
 
     assert repr(folder) in str(caught.value)

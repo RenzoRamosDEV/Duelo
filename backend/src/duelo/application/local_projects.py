@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
 from uuid import uuid4
 
 from duelo.application.ingest_commit import ChangeSubmission, IngestResult, ProjectNotFound
@@ -58,7 +58,7 @@ async def add_local_project(
     escribir nada) y se borra de nuevo si los hooks no se pueden instalar."""
     info = await git.inspect(path)
     try:
-        slug, github = slug_for_repository(info.remote_url, os.path.basename(info.root))
+        slug, github = slug_for_repository(info.remote_url, Path(info.root).name)
     except InvalidSlug as exc:
         raise InvalidRepository(str(exc)) from exc
     project = await catalog.add_local(

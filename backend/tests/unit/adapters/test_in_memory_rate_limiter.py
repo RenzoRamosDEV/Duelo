@@ -89,7 +89,7 @@ async def test_memory_is_bounded_by_dropping_idle_keys_first() -> None:
 
     await limiter.hit("d")
 
-    assert set(limiter._hits) == {"d"}  # noqa: SLF001 - se comprueba la cota de memoria
+    assert set(limiter._hits) == {"d"}  # se comprueba la cota de memoria
 
 
 async def test_memory_is_bounded_even_if_every_key_is_active() -> None:
@@ -98,7 +98,7 @@ async def test_memory_is_bounded_even_if_every_key_is_active() -> None:
     for key in ("a", "b", "c", "d", "e"):
         await limiter.hit(key)
 
-    assert list(limiter._hits) == ["c", "d", "e"]  # noqa: SLF001 - salen las más antiguas
+    assert list(limiter._hits) == ["c", "d", "e"]  # salen las más antiguas
 
 
 @pytest.mark.parametrize(

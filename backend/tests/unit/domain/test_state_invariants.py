@@ -88,7 +88,7 @@ def test_entities_are_immutable(entity) -> None:
 
 @pytest.mark.parametrize("enum", [ReviewStatus, ChangeStatus, ChangeKind])
 def test_enums_are_closed(enum) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="valor-que-no-existe"):
         enum("valor-que-no-existe")
 
 

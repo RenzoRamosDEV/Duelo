@@ -29,7 +29,7 @@ def create_app(
     mínimo); la composición real la hace `duelo.composition`."""
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks = (
             [asyncio.create_task(job()) for job in dependencies.background_jobs]
             if dependencies

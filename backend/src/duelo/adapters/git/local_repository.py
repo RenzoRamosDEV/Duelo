@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import stat
+from pathlib import Path
 
 from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout, run_command
 from duelo.application.ports import InvalidRepository, RepoInfo
@@ -33,9 +34,9 @@ def _check_path_shape(path: str) -> None:
         raise InvalidRepository("La ruta no es válida")
     if len(path) > MAX_PATH:
         raise InvalidRepository("La ruta es demasiado larga")
-    if not os.path.isabs(path):
+    if not Path(path).is_absolute():
         raise InvalidRepository("La ruta debe ser absoluta")
-    if ".." in path.split(os.sep):
+    if ".." in Path(path).parts:
         raise InvalidRepository("La ruta no puede contener '..'")
     try:
         mode = os.lstat(path).st_mode

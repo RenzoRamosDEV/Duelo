@@ -106,7 +106,7 @@ class FileHookInstaller:
             planned[name] = insert_block(
                 existing,
                 render_block(
-                    name, python=self._python, slug=slug, env_path=os.path.abspath(self._env_path)
+                    name, python=self._python, slug=slug, env_path=str(self._env_path.absolute())
                 ),
             )
         # Todo comprobado: a partir de aquí solo escritura (con vuelta atrás si falla).
@@ -123,7 +123,7 @@ class FileHookInstaller:
             raise HookInstallError("No se pudieron escribir los hooks") from exc
 
     async def uninstall(self, root: str) -> None:
-        if not os.path.isdir(root):
+        if not Path(root).is_dir():
             return
         try:
             hooks_dir = await _hooks_dir(root)
@@ -152,7 +152,7 @@ class FileHookInstaller:
         fd = os.open(self._env_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(content)
-        os.chmod(self._env_path, 0o600)  # por si el fichero ya existía con otro modo
+        self._env_path.chmod(0o600)  # por si el fichero ya existía con otro modo
 
 
 async def _hooks_dir(root: str) -> Path:
@@ -205,8 +205,8 @@ def _write_hook(path: Path, content: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(content)
-        os.chmod(tmp, mode | 0o111)
-        os.replace(tmp, path)
+        Path(tmp).chmod(mode | 0o111)
+        Path(tmp).replace(path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise

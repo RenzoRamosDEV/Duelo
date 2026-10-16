@@ -147,7 +147,7 @@ def resolve_binary(
     """Ruta del ejecutable: la fijada por configuración (debe existir y poder ejecutarse) o la que
     se encuentre en el `PATH`."""
     if configured:
-        if os.path.isfile(configured) and os.access(configured, os.X_OK):
+        if Path(configured).is_file() and os.access(configured, os.X_OK):
             return configured
         raise CliUnavailable(label, env_var)
     found = which(default_name)

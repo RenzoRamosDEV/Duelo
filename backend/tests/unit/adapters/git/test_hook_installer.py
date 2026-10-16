@@ -183,7 +183,7 @@ async def test_a_symlinked_hook_is_refused(tmp_path: Path) -> None:
     repo = init_repo(tmp_path / "r")
     shared = tmp_path / "compartido.sh"
     shared.write_text("#!/bin/sh\n")
-    os.symlink(shared, hooks_of(repo) / "post-commit")
+    (hooks_of(repo) / "post-commit").symlink_to(shared)
 
     with pytest.raises(HookInstallError, match="enlace simbólico"):
         await installer(tmp_path).install(str(repo), slug="a/b")
@@ -217,7 +217,7 @@ async def test_core_hookspath_outside_the_repo_is_refused(tmp_path: Path) -> Non
     shared.mkdir()
     git(repo, "config", "core.hooksPath", str(shared))
 
-    with pytest.raises(HookInstallError, match="core.hooksPath apunta fuera"):
+    with pytest.raises(HookInstallError, match=r"core\.hooksPath apunta fuera"):
         await installer(tmp_path).install(str(repo), slug="a/b")
 
     assert list(shared.iterdir()) == []

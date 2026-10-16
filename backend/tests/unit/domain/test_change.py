@@ -27,7 +27,7 @@ def test_new_change_is_valid() -> None:
 
 
 def test_change_requires_a_head_sha() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="head_sha no puede estar vacío"):
         Change.new(
             project_id=uuid4(),
             kind=ChangeKind.COMMIT,

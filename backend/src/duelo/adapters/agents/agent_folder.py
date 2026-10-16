@@ -104,14 +104,14 @@ def parse_frontmatter(text: str, path: Path) -> tuple[dict[str, str | list[str]]
 def _text(meta: Mapping[str, str | list[str]], key: str, path: Path, default: str) -> str:
     value = meta.get(key, default)
     if not isinstance(value, str):
-        raise ValueError(f"{path}: `{key}` debe ser texto")
+        raise ValueError(f"{path}: `{key}` debe ser texto")  # noqa: TRY004 - contrato: ValueError con la ruta
     return value
 
 
 def _list(meta: Mapping[str, str | list[str]], key: str, path: Path) -> tuple[str, ...]:
     value = meta.get(key, [])
     if not isinstance(value, list):
-        raise ValueError(f"{path}: `{key}` debe ser una lista")
+        raise ValueError(f"{path}: `{key}` debe ser una lista")  # noqa: TRY004 - contrato: ValueError con la ruta
     return tuple(value)
 
 

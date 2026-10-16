@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -69,7 +68,7 @@ async def test_a_missing_path_and_a_file_are_rejected(tmp_path: Path) -> None:
 async def test_a_symlink_to_a_repo_is_rejected(tmp_path: Path) -> None:
     repo = init_repo(tmp_path / "real")
     link = tmp_path / "enlace"
-    os.symlink(repo, link)
+    link.symlink_to(repo)
 
     with pytest.raises(InvalidRepository, match="enlace simbólico"):
         await LocalGitRepository().inspect(str(link))

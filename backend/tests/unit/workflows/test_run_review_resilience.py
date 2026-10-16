@@ -200,7 +200,7 @@ async def test_the_compensation_does_not_overwrite_a_review_that_was_already_sav
 
 async def test_the_compensation_of_a_missing_change_is_a_non_retryable_error() -> None:
     agent, beats = GatedAgent(), Beats()
-    activities, review_input, reviews = await _world(agent, beats)
+    activities, _review_input, reviews = await _world(agent, beats)
     ghost = RunReviewInput(change_id=str(uuid4()), agent_name=AGENT, run=1)
 
     with pytest.raises(ApplicationError) as error:

@@ -20,8 +20,7 @@ def _settings(**kw: object) -> WorkerSettings:
 
 def _agents_limit(env: WorkflowEnvironment, settings: WorkerSettings) -> int | None:
     _platform, agents = build_workers(env.client, settings)
-    limit = agents.config()["max_concurrent_activities"]
-    return limit
+    return agents.config()["max_concurrent_activities"]
 
 
 async def test_real_agents_limit_how_many_reviews_run_at_once(

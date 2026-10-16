@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import stat
 from datetime import UTC, datetime
+from pathlib import Path
 
 from duelo.adapters.subprocess_runner import (
     CommandNotFound,
@@ -111,7 +112,7 @@ async def _ensure_same_repository(path: str) -> None:
         raise HistoryUnavailable("La carpeta del proyecto ya no es la raíz de su repositorio")
     # Un `.git` que es un archivo `gitdir:` (o un enlace) puede apuntar a los objetos de otro
     # repositorio: solo vale el directorio `.git` propio de la carpeta.
-    if os.path.realpath(git_dir) != os.path.join(real, ".git"):
+    if os.path.realpath(git_dir) != str(Path(real) / ".git"):
         raise HistoryUnavailable("El repositorio de la carpeta del proyecto no está en su .git")
 
 

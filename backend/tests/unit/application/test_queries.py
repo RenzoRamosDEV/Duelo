@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 from uuid import UUID, uuid4
 
 import pytest
@@ -375,7 +376,7 @@ async def test_detail_of_a_change_without_reviews_is_pending_with_no_findings() 
 
 async def test_the_search_text_and_one_extra_row_are_requested_from_the_repository() -> None:
     class Spy(FakeChangeRepository):
-        calls: list[dict[str, object]] = []
+        calls: ClassVar[list[dict[str, object]]] = []
 
         async def list_for_project(self, project_id: UUID, **kwargs):  # type: ignore[no-untyped-def]
             self.calls.append(kwargs)

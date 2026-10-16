@@ -28,7 +28,11 @@ SHA_C = "c" * 40
 
 
 def _tracked(
-    sha: str, *, created_at: datetime = T0, discarded: bool = False, id: UUID | None = None
+    sha: str,
+    *,
+    created_at: datetime = T0,
+    discarded: bool = False,
+    id: UUID | None = None,  # noqa: A002
 ) -> TrackedCommit:
     return TrackedCommit(id=id or uuid4(), head_sha=sha, created_at=created_at, discarded=discarded)
 

@@ -116,7 +116,6 @@ class ReviewChangeWorkflow:
                 retry_policy=RETRY,
                 summary=summary,
             )
-            return reviewed
         except ActivityError as error:
             # Un error de configuración (agente desconocido, change inexistente) no es un fallo
             # del agente: se propaga sin registrar nada para no contaminar las estadísticas.
@@ -133,6 +132,8 @@ class ReviewChangeWorkflow:
                 summary=f"{summary} (registra el fallo)" if summary else None,
             )
             return compensated
+        else:
+            return reviewed
 
 
 def _activity_summary(agent: str, head_sha: str) -> str:

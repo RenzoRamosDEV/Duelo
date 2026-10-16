@@ -39,7 +39,7 @@ class FakeEventLog:
         )
         self._rows.append((project_id, stored))
 
-    def append_raw(self, *, project_id: UUID, type: str, payload: dict[str, object]) -> None:
+    def append_raw(self, *, project_id: UUID, type: str, payload: dict[str, object]) -> None:  # noqa: A002 - nombre de la columna
         """Un evento arbitrario (tipos desconocidos, campos de más) para probar la lista blanca."""
         stored = StoredEvent(
             id=len(self._rows) + 1, type=type, payload=payload, created_at=datetime.now(UTC)

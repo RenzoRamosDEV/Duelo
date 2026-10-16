@@ -55,11 +55,11 @@ async def sweep_project(
     if decision.confirm_individually and discard:
         # Con la ventana llena, un commit antiguo ingerido tarde (recuperado por `pre-push`) puede
         # ser alcanzable aunque no esté en ella: se comprueba uno a uno solo a los candidatos.
-        confirmed = []
-        for commit in discard:
-            if not await history.contains(project.path, commit.head_sha):
-                confirmed.append(commit)
-        discard = confirmed
+        discard = [
+            commit
+            for commit in discard
+            if not await history.contains(project.path, commit.head_sha)
+        ]
 
     if not discard and not decision.restore:
         return SweepResult(0, 0)

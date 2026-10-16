@@ -73,7 +73,7 @@ def test_status_is_final_only_once_every_expected_review_is_registered(
 
 
 def test_only_finished_executions_with_failures_are_retryable() -> None:
-    assert RETRYABLE_STATUSES == {F, X}
+    assert {F, X} == RETRYABLE_STATUSES
 
 
 def _review(*, run: int, agent: str, fail: bool) -> Review:

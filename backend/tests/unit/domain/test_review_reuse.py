@@ -190,7 +190,7 @@ def test_a_list_with_a_repeated_agent_never_reuses_even_if_every_name_has_a_revi
 def test_a_failed_review_cannot_be_copied() -> None:
     commit = _change(ChangeKind.COMMIT)
 
-    with pytest.raises(ValueError, match="^solo se reutilizan reviews completadas$"):
+    with pytest.raises(ValueError, match=r"^solo se reutilizan reviews completadas$"):
         Review.reused_from(_failed(commit, "claude"), change_id=uuid4(), created_at=LATER)
 
 
@@ -213,5 +213,5 @@ def test_the_reuse_event_names_the_review_the_agent_and_where_it_was_copied_from
 def test_the_reuse_event_cannot_be_built_for_a_review_the_agent_made_itself() -> None:
     commit = _change(ChangeKind.COMMIT)
 
-    with pytest.raises(ValueError, match="^la review no es una copia: no tiene change de origen$"):
+    with pytest.raises(ValueError, match=r"^la review no es una copia: no tiene change de origen$"):
         ReviewReused.of(_done(commit, "claude"), project_id=PROJECT)

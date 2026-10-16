@@ -69,8 +69,8 @@ def load_config(env_path: Path | None = None) -> tuple[str, str] | None:
 
 
 def _git(*args: str) -> str:
-    result = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
-        ["git", *args],  # noqa: S607
+    result = subprocess.run(  # lista de argumentos, sin shell
+        ["git", *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -215,7 +215,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 lambda timeout: _send_all(project, commits, timeout, env_path),
                 fallback_timeout=NO_FORK_TIMEOUT,
             )
-    except BaseException:  # noqa: BLE001 - un hook jamás debe fallar el commit ni el push
+    except BaseException:  # noqa: BLE001, S110 - un hook jamás debe fallar el commit ni el push
         pass
     return 0
 

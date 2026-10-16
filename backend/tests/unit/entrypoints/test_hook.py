@@ -247,7 +247,7 @@ class Spy:
                 self.send_header("Content-Length", "0")
                 self.end_headers()
 
-            do_GET = do_POST = do_PUT = _note
+            do_GET = do_POST = do_PUT = _note  # noqa: N815 - nombres que exige BaseHTTPRequestHandler
 
             def log_message(self, *args: object) -> None:
                 pass

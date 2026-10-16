@@ -99,7 +99,7 @@ def test_a_nul_inside_any_identifier_is_always_rejected(
     name: str, prefix: str, suffix: str
 ) -> None:
     with pytest.raises(ValueError, match=name):
-        _new(**{name: f"{prefix}\x00{suffix}" or "\x00"})
+        _new(**{name: f"{prefix}\x00{suffix}"})
 
 
 @given(agent=st.text(NO_NUL, min_size=1, max_size=MAX_AGENT), error=st.text(min_size=1))

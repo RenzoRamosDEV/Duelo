@@ -3,6 +3,8 @@ El workflow debe registrar la review fallida en vez de dejar el change sin rastr
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -33,7 +35,7 @@ def _flaky(*broken: str) -> type[SqlAlchemyReviewRepository]:
     deja guardar la compensación (la reconoce por su mensaje genérico)."""
 
     class Flaky(SqlAlchemyReviewRepository):
-        attempts: list[str] = []
+        attempts: ClassVar[list[str]] = []
 
         async def add(self, review, event):  # type: ignore[no-untyped-def]
             if review.agent in broken and review.error != INFRASTRUCTURE_FAILURE_MESSAGE:

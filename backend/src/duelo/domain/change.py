@@ -72,7 +72,7 @@ class Change:
         diff: str,
         diff_truncated: bool,
         created_at: datetime,
-        id: UUID | None = None,
+        id: UUID | None = None,  # noqa: A002 - es el nombre del campo
         reverts_sha: str | None = None,
     ) -> Change:
         if not head_sha:

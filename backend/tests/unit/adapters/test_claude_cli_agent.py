@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import stat
 from pathlib import Path
 from typing import Any
@@ -380,8 +379,8 @@ async def test_without_a_folder_an_empty_temporary_directory_is_used_and_removed
     def spy(call: Any) -> None:
         seen["cwd"] = call.cwd
         seen["existed"] = exists(call.cwd)
-        seen["empty"] = os.listdir(call.cwd) == []
-        seen["mode"] = stat.S_IMODE(os.stat(call.cwd).st_mode)
+        seen["empty"] = list(Path(call.cwd).iterdir()) == []
+        seen["mode"] = stat.S_IMODE(Path(call.cwd).stat().st_mode)
 
     runner = FakeRunner(stdout=_ok(), on_call=spy)
 

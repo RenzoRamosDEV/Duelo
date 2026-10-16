@@ -58,7 +58,7 @@ class ReviewChangeWorkflowBeforeNotes:
                 retry_policy=RETRY,
                 summary=summary,
             )
-            return reviewed
+            return reviewed  # noqa: TRY300 - copia congelada de un workflow anterior
         except ActivityError as error:
             cause = error.cause
             if (
