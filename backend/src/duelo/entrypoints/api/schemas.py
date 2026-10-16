@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -17,7 +17,7 @@ from duelo.application.read_models import (
     RevertRef,
     ReviewBrief,
 )
-from duelo.domain.change import MAX_HEAD_SHA, MAX_REF, MAX_URL, ChangeKind, ChangeStatus
+from duelo.domain.change import MAX_HEAD_SHA, MAX_REF, MAX_URL, Change, ChangeKind, ChangeStatus
 from duelo.domain.commit_state import CommitState
 from duelo.domain.diff import DiffSummary
 from duelo.domain.project import Project
@@ -158,6 +158,48 @@ class RevertedByResponse(BaseModel):
         return cls(id=ref.id, head_sha=ref.head_sha)
 
 
+def _change_fields(
+    change: Change | ChangeSummary,
+    *,
+    review_status: ChangeReviewStatus,
+    stale: bool,
+    commit_state: CommitState,
+    reverted_by: RevertRef | None,
+) -> dict[str, Any]:
+    """Los campos que comparten el resumen, el elemento del canal y el detalle de un change: el
+    contrato se escribe una sola vez. `Change` y `ChangeSummary` tienen los mismos campos base;
+    lo que el caso de uso calcula (estado de la review, `stale`, estado del commit) viene aparte."""
+    return {
+        "id": change.id,
+        "project_id": change.project_id,
+        "kind": change.kind,
+        "ref": change.ref,
+        "head_sha": change.head_sha,
+        "title": change.title,
+        "author": change.author,
+        "url": change.url,
+        "diff_truncated": change.diff_truncated,
+        "status": change.status,
+        "review_status": review_status,
+        "run": change.run,
+        "created_at": change.created_at,
+        "diff_summary": DiffSummaryResponse.from_domain(change.diff_summary),
+        "stale": stale,
+        "commit_state": commit_state,
+        "reverted_by": RevertedByResponse.from_domain(reverted_by) if reverted_by else None,
+    }
+
+
+def _summary_fields(change: ChangeSummary) -> dict[str, Any]:
+    return _change_fields(
+        change,
+        review_status=change.review_status,
+        stale=change.stale,
+        commit_state=change.commit_state,
+        reverted_by=change.reverted_by,
+    )
+
+
 class ChangeSummaryResponse(BaseModel):
     id: UUID
     project_id: UUID
@@ -184,27 +226,7 @@ class ChangeSummaryResponse(BaseModel):
 
     @classmethod
     def from_summary(cls, change: ChangeSummary) -> ChangeSummaryResponse:
-        return cls(
-            id=change.id,
-            project_id=change.project_id,
-            kind=change.kind,
-            ref=change.ref,
-            head_sha=change.head_sha,
-            title=change.title,
-            author=change.author,
-            url=change.url,
-            diff_truncated=change.diff_truncated,
-            status=change.status,
-            review_status=change.review_status,
-            run=change.run,
-            created_at=change.created_at,
-            diff_summary=DiffSummaryResponse.from_domain(change.diff_summary),
-            stale=change.stale,
-            commit_state=change.commit_state,
-            reverted_by=(
-                RevertedByResponse.from_domain(change.reverted_by) if change.reverted_by else None
-            ),
-        )
+        return cls(**_summary_fields(change))
 
 
 class ReviewBriefResponse(BaseModel):
@@ -238,9 +260,8 @@ class ChangeListItemResponse(ChangeSummaryResponse):
 
     @classmethod
     def from_summary(cls, change: ChangeSummary) -> ChangeListItemResponse:
-        base = ChangeSummaryResponse.from_summary(change)
         return cls(
-            **base.model_dump(),
+            **_summary_fields(change),
             reviews=[ReviewBriefResponse.from_domain(r) for r in change.reviews],
         )
 
@@ -343,24 +364,12 @@ class ChangeDetailResponse(ChangeSummaryResponse):
     def from_detail(cls, detail: ChangeDetail) -> ChangeDetailResponse:
         change = detail.change
         return cls(
-            id=change.id,
-            project_id=change.project_id,
-            kind=change.kind,
-            ref=change.ref,
-            head_sha=change.head_sha,
-            title=change.title,
-            author=change.author,
-            url=change.url,
-            diff_truncated=change.diff_truncated,
-            status=change.status,
-            review_status=detail.review_status,
-            run=change.run,
-            created_at=change.created_at,
-            diff_summary=DiffSummaryResponse.from_domain(change.diff_summary),
-            stale=detail.stale,
-            commit_state=detail.commit_state,
-            reverted_by=(
-                RevertedByResponse.from_domain(detail.reverted_by) if detail.reverted_by else None
+            **_change_fields(
+                change,
+                review_status=detail.review_status,
+                stale=detail.stale,
+                commit_state=detail.commit_state,
+                reverted_by=detail.reverted_by,
             ),
             diff=change.diff,
             reviews=[ReviewResponse.from_domain(r) for r in detail.reviews],
