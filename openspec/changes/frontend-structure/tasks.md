@@ -27,4 +27,4 @@
 
 ## 5. Cierre
 
-- [ ] 5.1 `just ci` en verde; commits atómicos por bloque.
+- [x] 5.1 `just ci` en verde; commits atómicos por bloque.
