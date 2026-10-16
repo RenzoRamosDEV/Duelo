@@ -13,6 +13,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc -b",
+    "gen:api": "openapi-typescript ../docs/openapi.json -o src/lib/api.generated.ts",
     "preview": "vite preview",
     "test": "vitest run"
   },
@@ -37,6 +38,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.1.2",
+    "openapi-typescript": "^7.13.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^2.0.0",

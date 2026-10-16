@@ -4,3 +4,6 @@
 *.jpg binary
 *.svg text eol=lf
 *.ico binary
+
+# Generado por `pnpm gen:api` desde docs/openapi.json; no se edita a mano.
+frontend/src/lib/api.generated.ts linguist-generated=true
