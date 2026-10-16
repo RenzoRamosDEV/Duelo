@@ -1,106 +1,21 @@
-import type {
-  AgentStat,
-  Change,
-  ChangeKind,
-  CommitState,
-  Finding,
-  Health,
-  Review,
-  ReviewAggregate,
-} from "../data/types";
+import type { AgentStat, Change, ChangeKind, Health, Review, ReviewAggregate } from "../data/types";
+import type { components } from "./api.generated";
 
-/** Wire format of `round1-backend-api` and `round2-backend-api` (read and retry endpoints). */
-interface ProjectDto {
-  id: string;
-  slug: string;
-  /** Local path, hook state and GitHub flag come with the local-projects API (all optional). */
-  path?: string | null;
-  hooks_installed?: boolean | null;
-  github?: boolean | string | null;
-  /** Agents that review the project (the effective selection). */
-  agents?: string[] | null;
-}
-
-interface SyncPrsDto {
-  synced: number;
-  created: number;
-}
-
-interface ChangeSummaryDto {
-  id: string;
-  kind: ChangeKind;
-  ref: string;
-  head_sha: string;
-  title: string;
-  author: string;
-  url: string;
-  created_at: string;
-  diff_truncated: boolean;
-  run?: number;
-  review_status?: ReviewAggregate;
-  /** `discarded`: no longer on any branch; `reverted`: undone by a later commit (`git revert`). */
-  commit_state?: CommitState;
-  /** The commit that reverts this one; only with `commit_state` = `reverted`. */
-  reverted_by?: { id: string; head_sha: string } | null;
-  /** Light reviews of the current run; only the channel listing sends them. */
+/** The wire format, generated from `docs/openapi.json` (`pnpm gen:api`); never written by hand. */
+type Schemas = components["schemas"];
+type ProjectDto = Schemas["ProjectResponse"];
+type SyncPrsDto = Schemas["SyncPrsResponse"];
+type ReviewBriefDto = Schemas["ReviewBriefResponse"];
+type ReviewDto = Schemas["ReviewResponse"];
+type AgentStatDto = Schemas["AgentStatsResponse"];
+type HealthDto = Schemas["DependenciesHealthResponse"];
+type RetryDto = Schemas["RetryReviewResponse"];
+type ChangePageDto = Schemas["ChangePageResponse"];
+type ChangeDetailDto = Schemas["ChangeDetailResponse"];
+/** What a channel item and the detail share; only the listing carries the light `reviews`. */
+type ChangeSummaryDto = Omit<Schemas["ChangeListItemResponse"], "reviews"> & {
   reviews?: ReviewBriefDto[];
-}
-
-interface ReviewBriefDto {
-  agent: string;
-  status: "completed" | "failed";
-  score: number | null;
-  duration_ms: number | null;
-  run: number;
-  /** Change the review was copied from (a PR reusing its identical commit's), `null` if its own. */
-  reused_from?: string | null;
-}
-
-interface ReviewDto {
-  id: string;
-  agent: string;
-  status: "completed" | "failed";
-  summary: string | null;
-  findings: Finding[];
-  run?: number;
-  score?: number | null;
-  duration_ms?: number | null;
-  error?: string | null;
-  reused_from?: string | null;
-}
-
-interface AgentStatDto {
-  agent: string;
-  total: number;
-  completed: number;
-  failed: number;
-  avg_duration_ms: number | null;
-  avg_score: number | null;
-}
-
-interface HealthDto {
-  status: "ok" | "degraded";
-  dependencies: Record<
-    string,
-    { status: "ok" | "unavailable"; latency_ms: number; reason?: "timeout" | "error" | null }
-  >;
-  agent_names?: string[];
-}
-
-interface RetryDto {
-  change_id: string;
-  run: number;
-}
-
-interface ChangeDetailDto extends Omit<ChangeSummaryDto, "reviews"> {
-  diff: string;
-  reviews: ReviewDto[];
-}
-
-interface ChangePageDto {
-  items: ChangeSummaryDto[];
-  next_cursor: string | null;
-}
+};
 
 export interface ProjectRef {
   slug: string;
@@ -210,7 +125,7 @@ function toChange(dto: ChangeSummaryDto): Change {
     truncated: dto.diff_truncated,
     run: dto.run,
     reviewStatus: dto.review_status,
-    // An old server sends neither field: the change is then a normal one.
+    // Kept lenient on purpose: a server older than this field means a normal change.
     commitState: dto.commit_state ?? "active",
     ...(dto.reverted_by
       ? { revertedBy: { id: dto.reverted_by.id, sha: dto.reverted_by.head_sha } }
@@ -287,7 +202,7 @@ export function createHttpSource(
       if (limit) params.set("limit", String(limit));
       const qs = params.size > 0 ? `?${params}` : "";
       const page = await get<ChangePageDto>(`/projects/${slugPath(slug)}/changes${qs}`);
-      return { items: page.items.map(toChange), nextCursor: page.next_cursor };
+      return { items: page.items.map(toChange), nextCursor: page.next_cursor ?? null };
     },
     async change(id) {
       const dto = await get<ChangeDetailDto>(`/changes/${encodeURIComponent(id)}`);
