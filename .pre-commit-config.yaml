@@ -1,8 +1,10 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.4
+    # Misma versión que resuelve backend/uv.lock: subir las dos a la vez, o el hook y el CI
+    # formatearán distinto.
+    rev: v0.16.10
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
         files: ^backend/
       - id: ruff-format
@@ -29,6 +31,13 @@ repos:
         entry: bash -c 'cd frontend && pnpm exec biome check .'
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx|json|css)$
+        pass_filenames: false
+
+      - id: tsc
+        name: tsc (frontend, strict)
+        entry: bash -c 'cd frontend && pnpm typecheck'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false
 
       - id: gitleaks

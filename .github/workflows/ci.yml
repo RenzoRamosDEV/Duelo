@@ -58,9 +58,9 @@ jobs:
           uv run coverage report --fail-under=97
           uv run coverage report --include="src/duelo/domain/*,src/duelo/application/*" --fail-under=100
 
-  frontend-build:
+  frontend:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -76,7 +76,10 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec biome check .
-      - run: pnpm build
+      - name: Tests del frontend (Vitest)
+        run: pnpm test
+      - name: Tipos y build (tsc -b + vite build)
+        run: pnpm build
 
   gitleaks:
     runs-on: ubuntu-latest
