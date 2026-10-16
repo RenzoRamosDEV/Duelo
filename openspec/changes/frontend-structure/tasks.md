@@ -21,8 +21,9 @@
 
 ## 4. Pool de Vitest
 
-- [ ] 4.1 Medir la suite con `pool: "vmThreads"`; adoptarlo solo si pasa en verde y baja el
-      tiempo, y anotar la medida aquí.
+- [x] 4.1 Medir la suite con `pool: "vmThreads"`; adoptarlo solo si pasa en verde y baja el
+      tiempo, y anotar la medida aquí. Medido: pool por defecto 26,4 s (environment 48 %);
+      `vmThreads` 11,6 a 12,9 s en cuatro ejecuciones, 668/668 en todas. Adoptado.
 
 ## 5. Cierre
 

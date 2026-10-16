@@ -48,5 +48,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     globals: false,
+    // One jsdom per worker instead of one per file (68 files): the suite takes half the time and
+    // each file keeps its own module isolation. `setup.ts` cleans the DOM after every test.
+    pool: "vmThreads",
   },
 });
