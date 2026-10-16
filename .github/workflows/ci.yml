@@ -75,6 +75,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Tipos del contrato al día (regenera desde docs/openapi.json y falla si hay deriva)
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- src/lib/api.generated.ts
       - run: pnpm exec biome check .
       - name: Tests del frontend (Vitest)
         run: pnpm test

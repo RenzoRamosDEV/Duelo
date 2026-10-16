@@ -70,9 +70,13 @@ restore file:
         | podman exec -i duelo_postgres_1 psql -h 127.0.0.1 -U duelo -d postgres -q -v ON_ERROR_STOP=1
     echo "restore: {{file}} cargada; reinicia la API y el worker (just down && just dev)"
 
-# Regenera el snapshot del contrato (docs/openapi.json) tras un cambio deliberado de la API
-openapi:
+# Regenera el snapshot del contrato (docs/openapi.json) tras un cambio deliberado de la API, y con él los tipos TS del frontend
+openapi: && gen-client
     cd backend && PYTHONPATH=. uv run python ../scripts/dump_openapi.py
+
+# Regenera los tipos TypeScript del contrato (frontend/src/lib/api.generated.ts) desde docs/openapi.json
+gen-client:
+    cd frontend && pnpm gen:api
 
 # Carga ligera de POST /ingest/commit (bajo demanda; requiere API + worker + infra arriba)
 load *args:
