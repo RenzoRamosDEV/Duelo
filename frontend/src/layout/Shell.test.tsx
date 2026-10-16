@@ -105,3 +105,24 @@ describe("project switcher", () => {
     expect(within(select).getByRole("option", { name: "nada/existe" })).toBeDisabled();
   });
 });
+
+describe("app frame", () => {
+  it("has a top bar with the brand, the project switcher, the links and the theme switch", async () => {
+    renderAt("/p/demo", { projects: async () => [{ slug: "demo", name: "demo" }] });
+    await screen.findByRole("heading", { name: "#demo" });
+    expect(screen.getByRole("link", { name: "Duelo" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("group", { name: "Tema (cabecera)" })).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Proyecto" })).toHaveValue("demo");
+    const nav = within(screen.getByRole("navigation", { name: "Principal" }));
+    expect(nav.getByRole("link", { name: "Estadísticas" })).toBeVisible();
+    expect(nav.getByRole("link", { name: "Ajustes" })).toBeVisible();
+  });
+
+  it("has no sidebar: no channel list, no collapsible «Proyectos» section", async () => {
+    renderAt("/p/demo", { projects: async () => [{ slug: "demo", name: "demo" }] });
+    await screen.findByRole("heading", { name: "#demo" });
+    expect(screen.queryByRole("button", { name: /Proyectos/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Menú" })).toBeNull();
+    expect(screen.getAllByRole("navigation")).toHaveLength(1);
+  });
+});

@@ -87,3 +87,16 @@ describe("project picker (entry page)", () => {
     expect(await screen.findByRole("link", { name: /duelo/ })).toBeInTheDocument();
   });
 });
+
+describe("entry page without projects", () => {
+  it("shows the empty state when the API has no projects", async () => {
+    renderHome({ projects: async () => [] });
+    expect(await screen.findByText("Aún no hay proyectos vigilados.")).toBeInTheDocument();
+  });
+
+  it("explains an empty installation and offers the primary action", async () => {
+    renderHome({ projects: async () => [] });
+    expect(await screen.findByText("Aún no hay proyectos vigilados.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Añadir proyecto" }).length).toBeGreaterThan(0);
+  });
+});

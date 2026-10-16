@@ -78,6 +78,12 @@ describe("not found", () => {
     expect(screen.getByRole("link", { name: "Volver al inicio" })).toHaveAttribute("href", "/");
   });
 
+  it("shows a not-found page with a heading and a way home", async () => {
+    renderWith({}, "/nada/por/aqui");
+    expect(await screen.findByRole("heading", { name: "No encontrado" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver al inicio" })).toHaveAttribute("href", "/");
+  });
+
   it("shows it for /p without a project", async () => {
     renderWith({}, "/p");
     expect(await screen.findByRole("heading", { name: "No encontrado" })).toBeInTheDocument();
