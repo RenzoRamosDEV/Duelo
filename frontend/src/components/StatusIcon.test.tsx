@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ReviewAggregate } from "../data/mock";
+import type { ReviewAggregate } from "../data/types";
 import { StatusIcon } from "./StatusIcon";
 
 describe("StatusIcon", () => {

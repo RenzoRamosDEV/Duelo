@@ -1,4 +1,4 @@
-import type { Review } from "../data/mock";
+import type { Review } from "../data/types";
 
 export interface PreviousRun {
   run: number;

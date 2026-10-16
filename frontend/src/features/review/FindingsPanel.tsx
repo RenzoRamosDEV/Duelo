@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FindingCard } from "../../components/FindingCard";
-import type { Review } from "../../data/mock";
+import type { Review } from "../../data/types";
 import { groupFindings, severityLabel, severityLevel, severityRank } from "../../lib/findings";
 
 /** How many findings there are of each severity, most serious first. */

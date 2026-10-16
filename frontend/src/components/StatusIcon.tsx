@@ -1,4 +1,4 @@
-import type { ReviewAggregate } from "../data/mock";
+import type { ReviewAggregate } from "../data/types";
 import { AGGREGATE_LABEL } from "../lib/reviewStatus";
 import { AlertIcon, CheckCircleIcon, ClockIcon, DotCircleIcon, XCircleIcon } from "./icons";
 

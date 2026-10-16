@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewAggregate } from "../data/mock";
+import type { ReviewAggregate } from "../data/types";
 import { makeReview } from "../test/fixtures";
 import { isWaiting, pendingAgents } from "./pending";
 

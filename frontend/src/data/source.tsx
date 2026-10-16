@@ -10,7 +10,8 @@ import { isAbsolutePath, slugFromPath } from "../lib/localPath";
 import { aggregateStatus, isRetryable } from "../lib/reviewStatus";
 import { matchesQuery } from "../lib/search";
 import { useAsync } from "../lib/useAsync";
-import { type Change, agentStats, findChange, findProject, health, projects } from "./mock";
+import { agentStats, findChange, findProject, health, projects } from "./mock";
+import type { Change } from "./types";
 
 const DEFAULT_PAGE_SIZE = 50;
 

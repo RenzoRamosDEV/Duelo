@@ -7,7 +7,7 @@ import type {
   Health,
   Review,
   ReviewAggregate,
-} from "../data/mock";
+} from "../data/types";
 
 /** Wire format of `round1-backend-api` and `round2-backend-api` (read and retry endpoints). */
 interface ProjectDto {

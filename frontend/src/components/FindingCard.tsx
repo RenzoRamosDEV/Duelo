@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Finding } from "../data/mock";
+import type { Finding } from "../data/types";
 import { copyText } from "../lib/clipboard";
 import {
   type SeverityLevel,

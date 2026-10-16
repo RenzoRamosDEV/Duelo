@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import type { Change, ChangeKind } from "../../data/mock";
 import { useDataSource } from "../../data/source";
+import type { Change, ChangeKind } from "../../data/types";
 import type { ChangePage } from "../../lib/api";
 import { type StateFilter, statusesFor } from "../../lib/channelQuery";
 import { sameValue } from "../../lib/equal";

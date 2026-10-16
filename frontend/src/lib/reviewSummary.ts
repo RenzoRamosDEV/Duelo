@@ -1,4 +1,4 @@
-import type { Review, ReviewStatus } from "../data/mock";
+import type { Review, ReviewStatus } from "../data/types";
 
 export interface SummaryItem {
   status: ReviewStatus;

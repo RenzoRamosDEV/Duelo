@@ -1,4 +1,4 @@
-import type { ReviewAggregate } from "../data/mock";
+import type { ReviewAggregate } from "../data/types";
 
 /** The channel's review-state filter as the user sees it. */
 export type StateFilter = "all" | "running" | "failed" | "completed";

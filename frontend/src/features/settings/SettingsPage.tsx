@@ -4,8 +4,8 @@ import { ThemeSwitch } from "../../components/ThemeSwitch";
 import { AgentAvatar, agentLabel } from "../../components/ui/AgentAvatar";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import type { DependencyHealth, Health } from "../../data/mock";
 import { useDataSource } from "../../data/source";
+import type { DependencyHealth, Health } from "../../data/types";
 import { useAsync } from "../../lib/useAsync";
 import { ProjectsSettings } from "./ProjectsSettings";
 

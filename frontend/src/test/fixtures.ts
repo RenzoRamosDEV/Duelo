@@ -1,4 +1,4 @@
-import type { Change, Finding, Review } from "../data/mock";
+import type { Change, Finding, Review } from "../data/types";
 import { ApiError, type DataSource } from "../lib/api";
 
 let counter = 0;

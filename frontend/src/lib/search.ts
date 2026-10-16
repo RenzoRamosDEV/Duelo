@@ -1,4 +1,4 @@
-import type { Change } from "../data/mock";
+import type { Change } from "../data/types";
 
 /** Case-insensitive substring match on title, author, SHA or ref (the same rule as the server's `q`); blank query matches all. */
 export function matchesQuery(change: Change, query: string): boolean {

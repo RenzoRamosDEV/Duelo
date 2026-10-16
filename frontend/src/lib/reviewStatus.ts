@@ -1,4 +1,4 @@
-import type { Review, ReviewAggregate } from "../data/mock";
+import type { Review, ReviewAggregate } from "../data/types";
 
 /**
  * Mirrors the backend's `review_status` for the sample data. `expected` is the number of

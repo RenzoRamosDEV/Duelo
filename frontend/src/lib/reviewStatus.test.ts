@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewStatus } from "../data/mock";
+import type { ReviewStatus } from "../data/types";
 import { makeReview } from "../test/fixtures";
 import { aggregateStatus, isRetryable } from "./reviewStatus";
 

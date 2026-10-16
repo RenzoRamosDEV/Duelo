@@ -1,4 +1,4 @@
-import type { Change, ReviewAggregate } from "../data/mock";
+import type { Change, ReviewAggregate } from "../data/types";
 import { splitRuns } from "./runs";
 
 /** A change in these states is still waiting for reviews. */

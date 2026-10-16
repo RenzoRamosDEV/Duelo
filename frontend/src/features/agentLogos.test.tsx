@@ -3,8 +3,8 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import App from "../App";
 import { agentLogo } from "../components/ui/AgentAvatar";
-import type { AgentStat } from "../data/mock";
 import { DataSourceProvider } from "../data/source";
+import type { AgentStat } from "../data/types";
 import type { DataSource } from "../lib/api";
 import { makeChange, makeFinding, makeReview, makeSource } from "../test/fixtures";
 

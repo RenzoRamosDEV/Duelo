@@ -1,4 +1,4 @@
-import type { AgentName, Finding, Review } from "../data/mock";
+import type { AgentName, Finding, Review } from "../data/types";
 
 export interface GroupedFinding extends Finding {
   agent: AgentName;

@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { Change } from "../data/mock";
+import type { Change } from "../data/types";
 import { type UndoneNotice, undoneNotice } from "../lib/commitState";
 import { changePath } from "../lib/projectPath";
 import { UndoIcon } from "./icons";

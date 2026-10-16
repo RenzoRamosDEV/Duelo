@@ -1,4 +1,4 @@
-import type { Review, ReviewStatus } from "../data/mock";
+import type { Review, ReviewStatus } from "../data/types";
 import { findingFile, findingLine, severityRank } from "../lib/findings";
 import { formatDuration, formatScore } from "../lib/format";
 import { sanitizeError } from "../lib/sanitize";

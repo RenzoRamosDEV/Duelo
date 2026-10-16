@@ -2,8 +2,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
-import type { Change } from "../data/mock";
 import { DataSourceProvider } from "../data/source";
+import type { Change } from "../data/types";
 import type { DataSource } from "../lib/api";
 import { makeChange, makeReview, makeSource } from "../test/fixtures";
 

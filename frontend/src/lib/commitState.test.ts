@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Change } from "../data/mock";
+import type { Change } from "../data/types";
 import { undoneCounts, undoneNotice } from "./commitState";
 
 type Probe = Pick<Change, "kind" | "commitState" | "revertedBy">;

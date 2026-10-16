@@ -1,6 +1,6 @@
 import { Busy } from "../../components/Busy";
 import { AgentAvatar, agentLabel } from "../../components/ui/AgentAvatar";
-import type { Change } from "../../data/mock";
+import type { Change } from "../../data/types";
 import { pendingAgents } from "../../lib/pending";
 
 /**

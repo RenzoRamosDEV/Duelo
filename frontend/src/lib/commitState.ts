@@ -1,4 +1,4 @@
-import type { Change, CommitState } from "../data/mock";
+import type { Change, CommitState } from "../data/types";
 import { shortSha } from "./url";
 
 /** What the UI says about a commit that is no longer "active". */
