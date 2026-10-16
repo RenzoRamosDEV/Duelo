@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Query, Request
 from fastapi.exceptions import RequestValidationError
 
-from duelo.application.ingest_commit import ProjectNotFound
 from duelo.domain.change import ChangeKind
 from duelo.domain.review_status import ChangeReviewStatus
 from duelo.entrypoints.api.cursor import InvalidCursor, decode_cursor, encode_cursor
@@ -57,11 +56,9 @@ async def list_changes(
         raise _invalid("cursor", str(exc), cursor) from exc
     text = q.strip() if q is not None else None
     statuses = frozenset(status_filter) if status_filter else None
-    try:
-        page = await request.app.state.dependencies.list_changes(
-            slug, kind, statuses, text or None, limit, after
-        )
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
+    # `ProjectNotFound` → 404 lo resuelve el handler común.
+    page = await request.app.state.dependencies.list_changes(
+        slug, kind, statuses, text or None, limit, after
+    )
     next_cursor = encode_cursor(page.next_cursor) if page.next_cursor is not None else None
     return ChangePageResponse.from_page(page, next_cursor)

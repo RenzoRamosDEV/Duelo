@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import RequestValidationError
 
-from duelo.application.ingest_commit import ProjectNotFound
 from duelo.application.project_agents import InvalidAgentSelection
 from duelo.entrypoints.api.auth import require_ingest_token
 from duelo.entrypoints.api.rate_limit import rate_limit
@@ -28,10 +27,9 @@ router = APIRouter(
     },
 )
 async def set_agents(slug: str, body: AgentsRequest, request: Request) -> ProjectResponse:
+    # `ProjectNotFound` → 404 lo resuelve el handler común.
     try:
         project = await request.app.state.dependencies.set_project_agents(slug, body.agents)
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
     except InvalidAgentSelection as exc:
         # Mismo formato que cualquier otro 422 de validación del cuerpo.
         raise RequestValidationError(

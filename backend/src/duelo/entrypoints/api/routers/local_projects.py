@@ -4,14 +4,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from duelo.application.ingest_commit import ProjectNotFound
 from duelo.application.local_projects import HookRemovalFailed, ProjectHasNoFolder
 from duelo.application.ports import (
     GithubUnavailable,
     HookInstallError,
     InvalidRepository,
     ProjectAlreadyExists,
-    ReviewStartError,
 )
 from duelo.entrypoints.api.auth import require_ingest_token
 from duelo.entrypoints.api.rate_limit import rate_limit
@@ -71,10 +69,9 @@ async def add_project(body: AddProjectRequest, request: Request) -> ProjectRespo
     responses={**_ERRORS, 409: {"model": ErrorResponse}},
 )
 async def remove_project(slug: str, request: Request) -> None:
+    # `ProjectNotFound` → 404 lo resuelve el handler común.
     try:
         await request.app.state.dependencies.remove_project(slug)
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
     except HookRemovalFailed as exc:
         # El proyecto y su historial se conservan para repetir la baja tras corregir los permisos.
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
@@ -86,16 +83,11 @@ async def remove_project(slug: str, request: Request) -> None:
     responses={**_ERRORS, 409: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
 )
 async def sync_prs(slug: str, request: Request) -> SyncPrsResponse:
+    # `ProjectNotFound` (404) y `ReviewStartError` (503) los resuelven los handlers comunes.
     try:
         result = await request.app.state.dependencies.sync_pull_requests(slug)
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
     except ProjectHasNoFolder as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except GithubUnavailable as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
-    except ReviewStartError as exc:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "No se pudo arrancar la review, reintenta"
-        ) from exc
     return SyncPrsResponse(synced=result.synced, created=result.created)

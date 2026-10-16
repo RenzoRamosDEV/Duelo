@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Query, Request
 
-from duelo.application.ingest_commit import ProjectNotFound
 from duelo.entrypoints.api.schemas import NO_NUL, AgentStatsResponse, ErrorResponse
 
 router = APIRouter(tags=["stats"])
@@ -22,8 +21,6 @@ async def agent_stats(
     project: Annotated[str | None, Query(max_length=MAX_PROJECT, pattern=NO_NUL)] = None,
 ) -> list[AgentStatsResponse]:
     """Métricas por agente: globales, o solo de un proyecto (`project=owner/repo`)."""
-    try:
-        stats = await request.app.state.dependencies.agent_stats(project)
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
+    # `ProjectNotFound` → 404 lo resuelve el handler común.
+    stats = await request.app.state.dependencies.agent_stats(project)
     return [AgentStatsResponse.from_domain(s) for s in stats]

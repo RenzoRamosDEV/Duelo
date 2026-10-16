@@ -5,8 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from duelo.application.ingest_commit import IngestResult, ProjectNotFound
-from duelo.application.ports import ReviewStartError
+from duelo.application.ingest_commit import IngestResult
 from duelo.entrypoints.api.auth import require_ingest_token
 from duelo.entrypoints.api.rate_limit import rate_limit
 from duelo.entrypoints.api.schemas import (
@@ -34,18 +33,12 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 
 
 async def _run(ingest: Callable[[], Awaitable[IngestResult]]) -> IngestResult:
+    """`ProjectNotFound` (404) y `ReviewStartError` (503) los resuelven los handlers comunes."""
     try:
         return await ingest()
-    except ProjectNotFound as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Proyecto desconocido: {exc.slug}") from exc
     except ValueError as exc:
         # Límites del dominio (NUL, longitudes): el mensaje no incluye datos internos.
         raise HTTPException(422, str(exc)) from exc
-    except ReviewStartError as exc:
-        # El Change ya quedó guardado: reenviar la misma petición es seguro.
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "No se pudo arrancar la review, reintenta"
-        ) from exc
 
 
 @router.post(

@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from duelo.config import Settings
 from duelo.entrypoints.api.body_limit import BodyLimitMiddleware
 from duelo.entrypoints.api.dependencies import ApiDependencies
+from duelo.entrypoints.api.errors import register_error_handlers
 from duelo.entrypoints.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from duelo.entrypoints.api.routers.changes import router as changes_router
 from duelo.entrypoints.api.routers.health import ready_router
@@ -68,6 +69,7 @@ def create_app(
     app.add_middleware(RequestContextMiddleware)
     app.include_router(health_router)
     if settings is not None and dependencies is not None:
+        register_error_handlers(app)
         app.include_router(ready_router)
         app.include_router(ingest_router)
         app.include_router(projects_router)

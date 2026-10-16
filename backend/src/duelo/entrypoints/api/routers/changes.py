@@ -4,7 +4,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from duelo.application.ports import ReviewStartError
 from duelo.application.retry_review import ChangeNotFound, RetryNotAllowed
 from duelo.entrypoints.api.auth import require_ingest_token
 from duelo.entrypoints.api.rate_limit import rate_limit
@@ -64,9 +63,5 @@ async def retry_review(change_id: UUID, request: Request) -> RetryReviewResponse
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Change inexistente") from exc
     except RetryNotAllowed as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
-    except ReviewStartError as exc:
-        # `run` no avanzó: reenviar la misma petición es seguro.
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "No se pudo arrancar la review, reintenta"
-        ) from exc
+    # `ReviewStartError` → 503 lo resuelve el handler común (`run` no avanzó: reenviar es seguro).
     return RetryReviewResponse(change_id=change.id, run=change.run)
