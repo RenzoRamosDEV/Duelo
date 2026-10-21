@@ -3,8 +3,9 @@
 Lo invocan los hooks `post-commit` y `pre-push` que instala la API (`python -m
 duelo.entrypoints.hook <evento> --project <slug>`). Solo usa la biblioteca estándar y NUNCA debe
 molestar a git: sale siempre con 0, hace el envío en un proceso hijo separado, con un plazo corto,
-y se calla ante cualquier error. Los datos del commit los lee con `git` (lista de argumentos, sin
-shell) y viajan como JSON: nada de lo que viene del repo llega a un shell.
+y de un envío fallido solo deja una línea en stderr (SHA corto y motivo, nunca token ni diff).
+Los datos del commit los lee con `git` (lista de argumentos, sin shell) y viajan como JSON: nada
+de lo que viene del repo llega a un shell.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -27,7 +29,8 @@ MAX_REF = 255
 # Cuerpo del mensaje (lo que sigue a la primera línea): la API solo lo lee para detectar
 # `This reverts commit <sha>` y lo admite hasta 20 000 caracteres.
 MAX_BODY = 4_000
-MAX_DIFF_CHARS = 1_000_000
+# El default de `MAX_DIFF_CHARS` de la API: con más, un diff no ASCII no cabría en el cuerpo.
+MAX_DIFF_CHARS = 200_000
 MAX_PUSH_COMMITS = 20
 SEND_TIMEOUT = 5.0
 NO_FORK_TIMEOUT = 2.0
@@ -121,7 +124,7 @@ _OPENER = urllib.request.build_opener(_NoRedirect)
 def post(base_url: str, token: str, payload: dict[str, str], timeout: float) -> None:
     request = urllib.request.Request(  # noqa: S310 - la URL es la de la API configurada
         f"{base_url}/ingest/commit",
-        data=json.dumps(payload).encode("utf-8"),
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json", "X-Ingest-Token": token},
         method="POST",
     )
@@ -165,8 +168,9 @@ def _send_all(
     for sha, ref in commits:
         try:
             post(url, token, build_payload(project, sha, ref), timeout)
-        except Exception:  # noqa: BLE001, S112 - un commit que falla no debe frenar los demás
-            continue
+        except Exception as exc:  # noqa: BLE001 - un commit que falla no debe frenar los demás
+            reason = exc.code if isinstance(exc, urllib.error.HTTPError) else type(exc).__name__
+            sys.stderr.write(f"duelo-hook: {sha[:7]} {reason}\n")
 
 
 def _detach_and_run(  # pragma: no cover - lo ejercitan los tests con procesos reales

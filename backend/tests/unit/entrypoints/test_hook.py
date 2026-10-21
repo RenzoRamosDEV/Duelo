@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import io
+import json
 import os
 import subprocess
 import sys
 import threading
 import time
 import urllib.error
-from collections.abc import Iterator
+import urllib.request
+from collections.abc import Callable, Iterator
+from email.message import Message
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
 
 from duelo.adapters.git.hook_installer import FileHookInstaller
+from duelo.config import Settings
 from duelo.entrypoints import hook
 from tests.unit.adapters.git.helpers import Recorder, commit_file, git, init_repo
 
@@ -187,6 +192,55 @@ def test_a_huge_diff_and_long_fields_are_cut_to_what_the_api_accepts(
 
     assert len(payload["diff"]) == 50
     assert len(payload["title"]) == hook.MAX_TITLE and len(payload["ref"]) == hook.MAX_REF
+
+
+class CapturingOpener:
+    """Hace de `_OPENER`: guarda la petición en vez de enviarla."""
+
+    def __init__(self) -> None:
+        self.requests: list[urllib.request.Request] = []
+
+    def open(self, request: urllib.request.Request, timeout: float) -> io.BytesIO:
+        self.requests.append(request)
+        return io.BytesIO()
+
+
+def _fake_git(diff: str) -> Callable[..., str]:
+    return lambda *args: "título\x00Ana\x00\n" if "-s" in args else diff
+
+
+def test_the_hook_cuts_the_diff_to_the_default_of_the_api() -> None:
+    assert hook.MAX_DIFF_CHARS == Settings.model_fields["max_diff_chars"].default == 200_000
+
+
+@pytest.mark.parametrize(
+    ("chars", "sent"), [(199_999, 199_999), (200_000, 200_000), (200_001, 200_000)]
+)
+def test_the_diff_is_cut_at_the_limit_and_not_before(
+    monkeypatch: pytest.MonkeyPatch, chars: int, sent: int
+) -> None:
+    monkeypatch.setattr(hook, "_git", _fake_git("a" * chars))
+
+    assert len(hook.build_payload("p", "abc", "main")["diff"]) == sent
+
+
+def test_a_huge_non_ascii_diff_fits_in_the_default_ingest_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(hook, "_git", _fake_git("ñ" * 300_000))
+    opener = CapturingOpener()
+    monkeypatch.setattr(hook, "_OPENER", opener)
+
+    payload = hook.build_payload("p", "abc", "main")
+    hook.post("http://api", "tok", payload, 5.0)
+
+    ((request,),) = [opener.requests]
+    body = request.data
+    assert isinstance(body, bytes)
+    assert len(payload["diff"]) == 200_000
+    assert len(body) < Settings.model_fields["max_ingest_body_bytes"].default
+    assert b"\\u" not in body  # UTF-8 tal cual, sin escapes `\\uXXXX`
+    assert json.loads(body)["diff"] == "ñ" * 200_000
 
 
 def test_the_current_branch_and_a_detached_head(repo: Path) -> None:
@@ -453,6 +507,70 @@ def test_a_failing_commit_does_not_stop_the_rest(
     hook.main(["pre-push", "--project", "a/b", "--env-file", creds, "--stdin-file", str(refs)])
 
     assert calls == [one, two] and [b["head_sha"] for b in api.wait_for(1)] == [two]
+
+
+def test_a_rejected_commit_is_reported_on_stderr_and_the_rest_still_go(
+    repo: Path,
+    api: Recorder,
+    inline: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    creds = env_file(tmp_path, api, token="tok-secreto")
+    base = commit_file(repo, "a.txt", "1\n", "uno")
+    one, two = commit_file(repo, "b.txt", "2\n", "dos"), commit_file(repo, "c.txt", "3\n", "tres")
+    real_post = hook.post
+
+    def too_large_first(url: str, token: str, payload: dict[str, str], timeout: float) -> None:
+        if payload["head_sha"] == one:
+            raise urllib.error.HTTPError(f"{url}/ingest/commit", 413, "Too Large", Message(), None)
+        real_post(url, token, payload, timeout)
+
+    monkeypatch.setattr(hook, "post", too_large_first)
+    refs = tmp_path / "refs"
+    refs.write_text(_push_line(two, base))
+
+    code = hook.main(
+        ["pre-push", "--project", "a/b", "--env-file", creds, "--stdin-file", str(refs)]
+    )
+
+    assert code == 0
+    assert [b["head_sha"] for b in api.wait_for(1)] == [two]
+    err = capsys.readouterr().err
+    assert err == f"duelo-hook: {one[:7]} 413\n"
+    assert "tok-secreto" not in err and api.url not in err
+
+
+@pytest.mark.parametrize(
+    ("error", "reason"),
+    [
+        (urllib.error.URLError("conexión rechazada"), "URLError"),
+        (TimeoutError("plazo agotado"), "TimeoutError"),
+        (OSError("red caída"), "OSError"),
+    ],
+)
+def test_an_unreachable_api_is_reported_with_the_type_of_the_error(
+    api: Recorder,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+    reason: str,
+) -> None:
+    creds = Path(env_file(tmp_path, api, token="tok-secreto"))
+    monkeypatch.setattr(hook, "build_payload", lambda project, sha, ref: {"head_sha": sha})
+
+    def unreachable(url: str, token: str, payload: dict[str, str], timeout: float) -> None:
+        raise error
+
+    monkeypatch.setattr(hook, "post", unreachable)
+
+    hook._send_all("a/b", [("abcdef0123456789", "main")], 5.0, creds)
+
+    err = capsys.readouterr().err
+    assert err == f"duelo-hook: abcdef0 {reason}\n"
+    assert "tok-secreto" not in err and api.url not in err
 
 
 def test_without_configuration_nothing_is_sent_and_it_still_succeeds(
