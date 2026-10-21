@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -10,15 +8,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 
-def get_database_url() -> str:
-    return os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://duelo:duelo@localhost:5432/duelo",
-    )
-
-
-def create_engine(database_url: str | None = None) -> AsyncEngine:
-    return create_async_engine(database_url or get_database_url())
+def create_engine(database_url: str) -> AsyncEngine:
+    """El motor de `database_url`, que llega de la configuración (`WorkerSettings`)."""
+    return create_async_engine(database_url)
 
 
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

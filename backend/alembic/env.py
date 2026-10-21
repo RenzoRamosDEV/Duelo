@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -10,6 +9,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from duelo.adapters.persistence.models import Base
+from duelo.config import WorkerSettings
 
 config = context.config
 
@@ -22,10 +22,9 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://duelo:duelo@localhost:5432/duelo",
-    )
+    # `WorkerSettings` y no `Settings`: una migración no necesita (ni tiene) el `INGEST_TOKEN`
+    # que exige la API, y la URL sigue las mismas reglas que en la API y el worker.
+    return WorkerSettings().database_url
 
 
 def run_migrations_offline() -> None:

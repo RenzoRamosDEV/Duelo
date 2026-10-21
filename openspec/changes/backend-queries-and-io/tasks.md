@@ -141,7 +141,7 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 8. URL de la base de datos
 
-- [ ] 8.1 Rojo: `tests/unit/adapters/test_db_config.py` — `create_engine()` sin URL es un
+- [x] 8.1 Rojo: `tests/unit/adapters/test_db_config.py` — `create_engine()` sin URL es un
       `TypeError` y con URL explícita la usa; se borran los tests de `get_database_url`. En
       `tests/unit`, un test de `alembic/env.py::get_url` con `DATABASE_URL` fijado devuelve ese
       valor sin `INGEST_TOKEN` en el entorno. Verde: borrar `get_database_url`, `database_url`

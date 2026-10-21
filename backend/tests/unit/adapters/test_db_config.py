@@ -1,33 +1,52 @@
-"""Resolución de la URL de base de datos (12-factor: DATABASE_URL manda)."""
+"""La URL de la base de datos: la exige `create_engine` y las migraciones la leen de la
+configuración del worker (12-factor: `DATABASE_URL` manda)."""
 
-from duelo.adapters.persistence.db import create_engine, get_database_url
+from __future__ import annotations
 
-DEFAULT_URL = "postgresql+asyncpg://duelo:duelo@localhost:5432/duelo"
+import contextlib
+import runpy
+from pathlib import Path
+from types import SimpleNamespace
 
+import alembic
+import pytest
 
-def test_database_url_defaults_to_the_local_docker_compose_postgres(monkeypatch) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+from duelo.adapters.persistence.db import create_engine
 
-    assert get_database_url() == DEFAULT_URL
-
-
-def test_database_url_environment_variable_takes_precedence(monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@otro-host:5433/otra")
-
-    assert get_database_url() == "postgresql+asyncpg://u:p@otro-host:5433/otra"
-
-
-def test_create_engine_uses_the_environment_when_no_url_is_given(monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@host-env:5433/db")
-
-    engine = create_engine()
-
-    assert engine.url.host == "host-env" and engine.url.port == 5433
+ENV_PY = Path(__file__).resolve().parents[3] / "alembic" / "env.py"
 
 
-def test_create_engine_prefers_an_explicit_url_over_the_environment(monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@host-env:5433/db")
+def test_create_engine_requires_the_url() -> None:
+    with pytest.raises(TypeError):
+        create_engine()  # type: ignore[call-arg]
 
+
+def test_create_engine_uses_the_given_url() -> None:
     engine = create_engine("postgresql+asyncpg://u:p@host-explicito:5434/db")
 
-    assert engine.url.host == "host-explicito"
+    assert (engine.url.host, engine.url.port) == ("host-explicito", 5434)
+
+
+@pytest.mark.parametrize("variable", ["DATABASE_URL", "database_url"])
+def test_the_migrations_read_the_url_of_the_worker_settings_without_an_ingest_token(
+    monkeypatch: pytest.MonkeyPatch, variable: str
+) -> None:
+    """`env.py` en modo offline con un `alembic.context` falso: la URL con la que se configura
+    sigue las reglas de `WorkerSettings` (como la API y el worker), también sin distinguir
+    mayúsculas en el nombre de la variable."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv(variable, "postgresql+asyncpg://u:p@host-migracion:5435/db")
+    monkeypatch.delenv("INGEST_TOKEN", raising=False)
+    configured: dict[str, object] = {}
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(config_file_name=None),
+        is_offline_mode=lambda: True,
+        configure=lambda **kwargs: configured.update(kwargs),
+        begin_transaction=contextlib.nullcontext,
+        run_migrations=lambda: None,
+    )
+    monkeypatch.setattr(alembic, "context", fake_context)
+
+    runpy.run_path(str(ENV_PY))
+
+    assert configured["url"] == "postgresql+asyncpg://u:p@host-migracion:5435/db"
