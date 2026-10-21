@@ -60,6 +60,7 @@ class FakeGithubPrSource:
         self.unavailable = unavailable
         self.queried: list[str] = []
         self.diffs_requested: list[int] = []
+        self.diff_roots: list[str] = []
 
     async def open_prs(self, root: str) -> list[PullRequestInfo]:
         self.queried.append(root)
@@ -69,6 +70,7 @@ class FakeGithubPrSource:
 
     async def pr_diff(self, root: str, number: int) -> str:
         self.diffs_requested.append(number)
+        self.diff_roots.append(root)
         return self.diffs.get(number, PR_DIFF)
 
 

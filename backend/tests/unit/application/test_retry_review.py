@@ -348,7 +348,8 @@ async def test_a_change_whose_project_is_gone_is_not_found() -> None:
     starter = FakeReviewStarter()
     change = await _failed_change(changes, reviews)
 
-    with pytest.raises(ChangeNotFound):
+    with pytest.raises(ChangeNotFound) as error:
         await _retry(changes, reviews, starter, change, FakeProjectRepository())
 
+    assert error.value.change_id == change.id
     assert starter.calls == 0

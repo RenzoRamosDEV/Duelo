@@ -152,7 +152,7 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 9. Mutation testing
 
-- [ ] 9.1 Mutation testing acotado al diff: `mutmut` solo sobre las funciones de `domain/` y
+- [x] 9.1 Mutation testing acotado al diff: `mutmut` solo sobre las funciones de `domain/` y
       `application/` modificadas (`application/reachability.py`, `application/local_projects.py`,
       `application/ingest_commit.py`, `application/retry_review.py`), sin tocar el `source_paths`
       del proyecto en el commit. Objetivo > 95 %; abortar si pasa de 3 minutos; anotar aquí y en
@@ -160,6 +160,14 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
       (`subprocess_runner`, `gh_cli`, persistencia, starter) quedan fuera de la configuración de
       `mutmut` del proyecto (necesitan Postgres, Temporal o procesos reales): se justifica y se
       cubre con los bordes de las tareas 1.2, 2.1, 3.1, 3.2, 5.1 y 5.2.
+      **Resultado (2026-10-21):** `mutmut run` con los patrones
+      `reachability.x_sweep_project*`, `local_projects.x_sync_pull_requests*`,
+      `ingest_commit.x__ingest*` y `retry_review.x_retry_review*` (11,5 s, sin tocar
+      `source_paths`): primera pasada 244/246 (99,2 %) con dos supervivientes —
+      `pr_diff(None, …)` (el fake no registraba la carpeta) y `ChangeNotFound(None)` al faltar el
+      proyecto (el test no miraba el id)—; ambos se matan reforzando esos tests. Pasada final:
+      **246/246 muertos = 100 %, 0 supervivientes**. Para poder ejecutarlo, la medición de 0.1 salió
+      de `tests/unit/application` (importa un adaptador que `mutmut` no copia).
 
 ## 10. Verificación final
 

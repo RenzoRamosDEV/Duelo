@@ -357,7 +357,7 @@ async def test_only_the_prs_with_an_unregistered_head_are_downloaded() -> None:
     result = await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     assert result == SyncResult(synced=3, created=1)
-    assert github.diffs_requested == [3]
+    assert (github.diffs_requested, github.diff_roots) == ([3], [ROOT])
     assert ingest.starter.calls - starts_before == 1
     assert ingest.changes.registered_heads_calls == 2  # una por sincronización
 
