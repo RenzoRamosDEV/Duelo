@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 
+from duelo.adapters.github.gh_cli import GhPrSource
 from duelo.application import local_projects
 from duelo.application.ingest_commit import (
     ChangeSubmission,
@@ -32,6 +34,7 @@ from duelo.domain.change import MAX_REF
 from duelo.domain.project import Project
 from tests.fakes.change_repository import FakeChangeRepository
 from tests.fakes.event_log import FakeEventLog
+from tests.fakes.gh import fake_gh
 from tests.fakes.local_projects import (
     FakeGithubPrSource,
     FakeGitRepository,
@@ -310,6 +313,47 @@ async def test_sync_skips_a_pr_that_breaks_the_domain_limits_and_keeps_the_rest(
     result = await sync_pull_requests(catalog, github, _Ingest(catalog), "acme/widgets")
 
     assert result == SyncResult(synced=1, created=1)
+
+
+def _gh_listing(count: int) -> list[dict[str, object]]:
+    return [
+        {
+            "number": n,
+            "title": f"feat: pr {n}",
+            "author": {"login": "ana"},
+            "headRefName": f"feature-{n}",
+            "headRefOid": f"{n:040x}",
+            "url": f"https://github.com/acme/widgets/pull/{n}",
+            "updatedAt": "2026-10-10T10:00:00Z",
+        }
+        for n in range(1, count + 1)
+    ]
+
+
+async def test_a_cycle_without_new_heads_costs_gh_diffs_and_starts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Medición: con 30 PRs ya registradas, cuántos `gh pr diff` y `starter.start` cuesta un
+    ciclo de sincronización con el adaptador real de `gh`."""
+    bin_dir = tmp_path / "bin"
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    fake_gh(bin_dir, _gh_listing(30))
+    catalog = FakeProjectRepository()
+    git = FakeGitRepository(
+        RepoInfo(root=str(tmp_path), remote_url="git@github.com:acme/widgets.git")
+    )
+    await add_local_project(git, FakeHookInstaller(), catalog, str(tmp_path))
+    ingest = _Ingest(catalog)
+    await sync_pull_requests(catalog, GhPrSource(), ingest, "acme/widgets")
+    (bin_dir / "calls").unlink()
+    starts_before = ingest.starter.calls
+
+    result = await sync_pull_requests(catalog, GhPrSource(), ingest, "acme/widgets")
+
+    calls = (bin_dir / "calls").read_text().splitlines()
+    diffs = [c for c in calls if c.startswith("pr diff")]
+    assert (len(diffs), ingest.starter.calls - starts_before) == (30, 30)
+    assert result == SyncResult(synced=30, created=0)
 
 
 async def test_sync_of_an_unknown_project_is_not_found() -> None:

@@ -5,12 +5,15 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 0. Medición antes
 
-- [ ] 0.1 Antes de tocar código, en `tests/unit/application/test_local_projects.py`, un test de
+- [x] 0.1 Antes de tocar código, en `tests/unit/application/test_local_projects.py`, un test de
       medición con el `GhPrSource` real y un `gh` falso en `PATH` (el mismo patrón `bin_dir` de
       `tests/unit/adapters/github/test_gh_cli.py`) que anota cada invocación en un fichero: 30 PRs
       abiertas, una primera sincronización las registra y en la segunda se cuentan las llamadas a
       `gh pr diff` y los `starter.start`. Anotar aquí el valor sobre el código actual (esperado:
       30 `gh pr diff` por ciclo). Ese mismo test pasa a afirmar 0 en la tarea 2.3.
+      **Medido (2026-10-21, `test_a_cycle_without_new_heads_costs_gh_diffs_and_starts`):** segunda
+      sincronización con 30 PRs ya registradas → 31 invocaciones de `gh` (1 `pr list` + 30
+      `pr diff`), 30 `starter.start` y `SyncResult(synced=30, created=0)`.
 
 ## 1. Barrido acotado
 
