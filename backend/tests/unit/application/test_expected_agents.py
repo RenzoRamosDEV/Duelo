@@ -270,3 +270,22 @@ async def test_a_change_without_saved_agents_follows_the_current_selection() -> 
 
     assert detail is not None and detail.review_status is ChangeReviewStatus.RUNNING
     assert [c.review_status for c in page.items] == [ChangeReviewStatus.RUNNING]
+
+
+async def test_retrying_a_change_without_saved_agents_judges_it_by_the_current_selection() -> None:
+    """Sin número guardado, el estado al decidir el reintento sale de la selección actual (1
+    agente: la review fallida lo deja `failed`), no de los configurados (2: seguiría `running`)."""
+    project, changes, reviews, change = await _reviewed_change(fail=True)
+    changes._store(replace(change, expected_agents=None))
+
+    retried = await retry_review(
+        changes,
+        reviews,
+        FakeReviewStarter(),
+        change.id,
+        expected_agents=2,
+        now=T0,
+        project_agents=FakeProjectRepository(replace(project, agents=("claude",))),
+    )
+
+    assert (retried.run, retried.expected_agents) == (2, 1)
