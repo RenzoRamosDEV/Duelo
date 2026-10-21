@@ -1,5 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type LivenessSnapshot, createLiveness } from "../lib/liveness";
 import { PollingProvider } from "../lib/polling";
 import { UpdatedAgo } from "./UpdatedAgo";
 
@@ -14,11 +15,17 @@ afterEach(() => {
 
 const at = (secondsAgo: number) => Date.now() - secondsAgo * 1000;
 
+function livenessWith(snapshot: Partial<LivenessSnapshot>) {
+  const liveness = createLiveness();
+  liveness.set(snapshot);
+  return liveness;
+}
+
 describe("UpdatedAgo", () => {
   it("shows how long ago the data was loaded and keeps counting", () => {
     render(
       <PollingProvider intervalMs={5000}>
-        <UpdatedAgo updatedAt={at(30)} failed={false} />
+        <UpdatedAgo liveness={livenessWith({ updatedAt: at(30) })} />
       </PollingProvider>,
     );
     expect(screen.getByText("Actualizado hace 30 s")).toBeInTheDocument();
@@ -31,7 +38,7 @@ describe("UpdatedAgo", () => {
   it("announces a failed refresh once, in a status region, and keeps the age out of it", () => {
     render(
       <PollingProvider intervalMs={5000}>
-        <UpdatedAgo updatedAt={at(10)} failed />
+        <UpdatedAgo liveness={livenessWith({ updatedAt: at(10), refreshFailed: true })} />
       </PollingProvider>,
     );
     expect(screen.getByRole("status")).toHaveTextContent("No se pudo actualizar");
@@ -41,11 +48,11 @@ describe("UpdatedAgo", () => {
   it("renders nothing before the first load or when polling is off", () => {
     const { container, rerender } = render(
       <PollingProvider intervalMs={5000}>
-        <UpdatedAgo updatedAt={null} failed={false} />
+        <UpdatedAgo liveness={createLiveness()} />
       </PollingProvider>,
     );
     expect(container).toBeEmptyDOMElement();
-    rerender(<UpdatedAgo updatedAt={at(30)} failed={false} />);
+    rerender(<UpdatedAgo liveness={livenessWith({ updatedAt: at(30) })} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -53,12 +60,30 @@ describe("UpdatedAgo", () => {
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
     render(
       <PollingProvider intervalMs={5000}>
-        <UpdatedAgo updatedAt={at(10)} failed={false} />
+        <UpdatedAgo liveness={livenessWith({ updatedAt: at(10) })} />
       </PollingProvider>,
     );
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
     expect(screen.getByText("Actualizado hace 10 s")).toBeInTheDocument();
+  });
+
+  it("follows the store on its own, without its parent re-rendering", () => {
+    const liveness = livenessWith({ updatedAt: at(30) });
+    let parentRenders = 0;
+    function Parent() {
+      parentRenders += 1;
+      return <UpdatedAgo liveness={liveness} />;
+    }
+    render(
+      <PollingProvider intervalMs={5000}>
+        <Parent />
+      </PollingProvider>,
+    );
+    act(() => liveness.set({ updatedAt: Date.now(), refreshFailed: true }));
+    expect(screen.getByText("Actualizado ahora")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No se pudo actualizar");
+    expect(parentRenders).toBe(1);
   });
 });

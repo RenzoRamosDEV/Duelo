@@ -116,9 +116,7 @@ export function ChangeDetailPage({ slug, id }: { slug: string; id: string }) {
                 </p>
               )}
               <PendingAgents change={change} agentNames={agentNames} />
-              {inProgress(change) && (
-                <UpdatedAgo updatedAt={state.updatedAt} failed={state.refreshFailed} />
-              )}
+              {inProgress(change) && <UpdatedAgo liveness={state.liveness} />}
               <div className="actions">
                 {url && (
                   <a className="btn" href={url} target="_blank" rel="noopener noreferrer">

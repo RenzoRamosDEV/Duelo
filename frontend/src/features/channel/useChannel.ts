@@ -62,8 +62,8 @@ export function useChannel(slug: string, { kind, state, q }: ChannelFilters) {
 
   // Right after a filter change the hook still holds the old query's page for one render.
   const base = tagged.status === "ready" && tagged.data.key === key ? tagged.data.page : null;
-  const { retry, refresh, updatedAt, refreshFailed } = tagged;
-  const meta = { retry, refresh, updatedAt, refreshFailed };
+  const { retry, refresh, liveness } = tagged;
+  const meta = { retry, refresh, liveness };
   const first: AsyncState<ChangePage> & AsyncResult =
     tagged.status !== "ready"
       ? { ...tagged }

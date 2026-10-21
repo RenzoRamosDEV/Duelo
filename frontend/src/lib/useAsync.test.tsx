@@ -127,10 +127,12 @@ describe("useAsync polling", () => {
     const { result } = renderHook(() => useAsync(load, { pollMs: 1000 }));
     await flush(0);
     await flush(1000);
-    expect(result.current).toMatchObject({ status: "ready", data: "ok", refreshFailed: true });
+    expect(result.current).toMatchObject({ status: "ready", data: "ok" });
+    expect(result.current.liveness.get().refreshFailed).toBe(true);
 
     await flush(1000);
-    expect(result.current).toMatchObject({ status: "ready", data: "again", refreshFailed: false });
+    expect(result.current).toMatchObject({ status: "ready", data: "again" });
+    expect(result.current.liveness.get().refreshFailed).toBe(false);
   });
 
   it("refresh() reloads silently even without polling", async () => {
@@ -214,10 +216,84 @@ describe("useAsync cancellation", () => {
     const { result } = renderHook(() => useAsync(load, { pollMs: 1000 }));
     await flush(0);
     await flush(1000);
-    expect(result.current).toMatchObject({ status: "ready", data: "ok", refreshFailed: true });
+    expect(result.current).toMatchObject({ status: "ready", data: "ok" });
+    expect(result.current.liveness.get().refreshFailed).toBe(true);
     expect(load).toHaveBeenCalledTimes(2);
     expect(load.mock.calls[1][0]).toBeInstanceOf(AbortSignal);
     await flush(1000);
     expect(load).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("useAsync liveness", () => {
+  const sameItems = (a: { items: number[] }, b: { items: number[] }) =>
+    a.items.join() === b.items.join();
+
+  function renderCounted<T>(load: () => Promise<T>, options: Parameters<typeof useAsync<T>>[1]) {
+    let renders = 0;
+    const hook = renderHook(() => {
+      renders += 1;
+      return useAsync(load, options);
+    });
+    return { ...hook, renders: () => renders };
+  }
+
+  it("advances the update time without re-rendering when the refresh is equal", async () => {
+    vi.setSystemTime(1_000);
+    const load = vi.fn(async () => ({ items: [1] }));
+    const { result, renders } = renderCounted(load, { pollMs: 1000, equals: sameItems });
+    await flush(0);
+    const shown = renders();
+    const firstUpdate = result.current.liveness.get().updatedAt;
+    expect(firstUpdate).toBe(1_000);
+
+    await flush(1000);
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(renders()).toBe(shown);
+    expect(result.current.liveness.get().updatedAt).toBe(2_000);
+  });
+
+  it("re-renders when the refresh brings different data", async () => {
+    let n = 0;
+    const load = vi.fn(async () => ({ items: [++n] }));
+    const { result, renders } = renderCounted(load, { pollMs: 1000, equals: sameItems });
+    await flush(0);
+    const shown = renders();
+    await flush(1000);
+    expect(renders()).toBeGreaterThan(shown);
+    expect(result.current).toMatchObject({ data: { items: [2] } });
+  });
+
+  it("flags and clears a failed refresh in the store without re-rendering equal data", async () => {
+    const load = vi
+      .fn(async () => ({ items: [1] }))
+      .mockResolvedValueOnce({ items: [1] })
+      .mockRejectedValueOnce(new Error("down"));
+    const { result, renders } = renderCounted(load, { pollMs: 1000, equals: sameItems });
+    await flush(0);
+    const shown = renders();
+    await flush(1000);
+    expect(result.current.liveness.get().refreshFailed).toBe(true);
+    await flush(1000);
+    expect(result.current.liveness.get().refreshFailed).toBe(false);
+    expect(renders()).toBe(shown);
+  });
+
+  it("keeps the same store across renders and resets it on retry", async () => {
+    const load = vi
+      .fn(async () => "ok")
+      .mockResolvedValueOnce("ok")
+      .mockRejectedValueOnce(new Error("down"));
+    const { result } = renderHook(() => useAsync(load, { pollMs: 1000 }));
+    await flush(0);
+    const liveness = result.current.liveness;
+    await flush(1000);
+    expect(result.current.liveness).toBe(liveness);
+    expect(liveness.get().refreshFailed).toBe(true);
+
+    act(() => result.current.retry());
+    expect(liveness.get()).toEqual({ updatedAt: null, refreshFailed: false });
+    await flush(0);
+    expect(liveness.get().updatedAt).not.toBeNull();
   });
 });

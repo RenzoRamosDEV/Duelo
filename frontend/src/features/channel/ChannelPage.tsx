@@ -225,7 +225,7 @@ export function ChannelPage({ slug }: { slug: string }) {
       <div className="channel-head">
         <h1>#{slug}</h1>
         <p className="channel-desc">Commits y PRs revisados por {agents}.</p>
-        <UpdatedAgo updatedAt={first.updatedAt} failed={first.refreshFailed} />
+        <UpdatedAgo liveness={first.liveness} />
       </div>
       <div className="toolbar">
         <div className="search-box">

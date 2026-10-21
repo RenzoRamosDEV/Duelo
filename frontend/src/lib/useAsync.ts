@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { type Liveness, createLiveness } from "./liveness";
 
 export type AsyncState<T> =
   | { status: "loading" }
@@ -18,10 +19,8 @@ export interface AsyncResult {
   retry: () => void;
   /** Reloads in the background right now: no loading state, previous data stays on failure. */
   refresh: () => void;
-  /** When the data shown was last loaded, as epoch ms; `null` until the first load. */
-  updatedAt: number | null;
-  /** The last background refresh failed; the previous data is still shown. */
-  refreshFailed: boolean;
+  /** When the data was last loaded and whether the last refresh failed; a stable reference. */
+  liveness: Liveness;
 }
 
 /**
@@ -37,8 +36,7 @@ export function useAsync<T>(
   const { pollMs = 0 } = options;
   const [state, setState] = useState<AsyncState<T>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [liveness] = useState(createLiveness);
 
   // Latest values for the long-lived polling callbacks, so they never read stale closures.
   const latest = useRef({ state, options });
@@ -50,13 +48,12 @@ export function useAsync<T>(
     const controller = new AbortController();
     const { signal } = controller;
     setState({ status: "loading" });
-    setUpdatedAt(null);
-    setRefreshFailed(false);
+    liveness.set({ updatedAt: null, refreshFailed: false });
     load(signal).then(
       (data) => {
         if (signal.aborted) return;
         setState({ status: "ready", data });
-        setUpdatedAt(Date.now());
+        liveness.set({ updatedAt: Date.now() });
       },
       (error) => !signal.aborted && setState({ status: "error", error }),
     );
@@ -79,14 +76,14 @@ export function useAsync<T>(
       try {
         const data = await load(signal);
         if (signal.aborted) return;
-        const equals = latest.current.options.equals;
-        setState((prev) =>
-          prev.status === "ready" && equals?.(prev.data, data) ? prev : { status: "ready", data },
-        );
-        setUpdatedAt(Date.now());
-        setRefreshFailed(false);
+        const { state: now, options: current } = latest.current;
+        // Skipping the update entirely (not just returning `prev`) spares the page even the
+        // render React would otherwise run before bailing out.
+        const same = now.status === "ready" && current.equals?.(now.data, data);
+        if (!same) setState({ status: "ready", data });
+        liveness.set({ updatedAt: Date.now(), refreshFailed: false });
       } catch {
-        if (!signal.aborted) setRefreshFailed(true);
+        if (!signal.aborted) liveness.set({ refreshFailed: true });
       } finally {
         inFlight = false;
       }
@@ -108,5 +105,5 @@ export function useAsync<T>(
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const refresh = useCallback(() => refreshNow.current(true), []);
-  return { ...state, retry, refresh, updatedAt, refreshFailed };
+  return { ...state, retry, refresh, liveness };
 }
