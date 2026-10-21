@@ -93,9 +93,11 @@ class Settings(WorkerSettings):
     ingest_token: str = Field(min_length=1)
     max_diff_chars: int = Field(default=200_000, gt=0)
     # Tamaño máximo del cuerpo HTTP de POST /ingest/commit y /ingest/pr (413 si lo supera). Protege
-    # la memoria y es independiente del truncado del diff: debe dejar holgura para `max_diff_chars`
-    # caracteres con escapes JSON y UTF-8, y para el 1 000 000 que ya recorta el hook.
+    # la memoria y es independiente del truncado del diff: debe dejar holgura para los
+    # `max_diff_chars` caracteres (los mismos que recorta el hook) en UTF-8 y con escapes JSON.
     max_ingest_body_bytes: int = Field(default=1_500_000, gt=0)
+    # El mismo límite para el resto de POST, PUT y PATCH, cuyos cuerpos son de cientos de bytes.
+    max_body_bytes: int = Field(default=65_536, gt=0)
     # Opcional: sin él, `GET /reviews/{id}/raw-output` queda deshabilitado (404). Es un secreto
     # distinto del de ingesta: ese lo llevan los hooks de los repos y no debe abrir lecturas.
     operator_token: str | None = Field(default=None, min_length=MIN_OPERATOR_TOKEN)

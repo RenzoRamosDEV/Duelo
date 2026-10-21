@@ -53,7 +53,11 @@ def create_app(
     if settings is not None:
         # El más interno de los tres: ve la petición ya con `X-Request-ID` y CORS, y responde 413
         # antes de que lleguen el limitador y el token (dependencias de la ruta).
-        app.add_middleware(BodyLimitMiddleware, max_bytes=settings.max_ingest_body_bytes)
+        app.add_middleware(
+            BodyLimitMiddleware,
+            max_bytes=settings.max_body_bytes,
+            ingest_max_bytes=settings.max_ingest_body_bytes,
+        )
     if settings is not None and settings.allowed_origins:
         # Orígenes explícitos y sin credenciales: la autenticación va en cabeceras, no en cookies.
         app.add_middleware(

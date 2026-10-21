@@ -297,6 +297,7 @@ conserva y los workflows anteriores siguen ahí.
 | `INGEST_TOKEN` | (obligatoria) | Token de ingesta, de alta y baja de proyectos y de reintento de reviews |
 | `OPERATOR_TOKEN` | sin configurar | Descarga de la salida cruda de una review (`X-Operator-Token`); distinto de `INGEST_TOKEN`, 16+ caracteres |
 | `MAX_INGEST_BODY_BYTES` | `1500000` | Tamaño máximo del cuerpo de `POST /ingest/*` (413 si lo supera); el diff además se trunca a `MAX_DIFF_CHARS` (`200000`) |
+| `MAX_BODY_BYTES` | `65536` | Tamaño máximo del cuerpo del resto de `POST`, `PUT` y `PATCH` (413 si lo supera) |
 | `ALLOWED_ORIGINS` | vacía (sin CORS) | Orígenes del navegador permitidos, separados por comas; no admite `*` |
 | `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | `300` / `60` | Límite por IP de `POST /ingest/*` y `/changes/{id}/retry` (429 con `Retry-After`); `0` lo desactiva. En memoria de un proceso |
 | `STALE_AFTER_SECONDS` | `1800` | Un change `pending`/`running` cuyo *run* actual empezó hace más se marca `stale` (solo diagnóstico) |

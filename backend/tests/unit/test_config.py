@@ -332,6 +332,28 @@ def test_the_ingest_body_limit_must_be_positive(
         Settings()  # type: ignore[call-arg]
 
 
+def test_the_general_body_limit_defaults_to_64_kib_and_is_configurable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("INGEST_TOKEN", "t")
+    monkeypatch.delenv("MAX_BODY_BYTES", raising=False)
+    assert Settings().max_body_bytes == 65_536  # type: ignore[call-arg]
+
+    monkeypatch.setenv("MAX_BODY_BYTES", "1")
+    assert Settings().max_body_bytes == 1  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_the_general_body_limit_must_be_positive(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("INGEST_TOKEN", "t")
+    monkeypatch.setenv("MAX_BODY_BYTES", value)
+
+    with pytest.raises(ValidationError):
+        Settings()  # type: ignore[call-arg]
+
+
 def test_rate_limit_can_be_disabled_with_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("INGEST_TOKEN", "t")
     monkeypatch.setenv("RATE_LIMIT_REQUESTS", "0")

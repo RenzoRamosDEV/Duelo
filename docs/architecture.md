@@ -266,6 +266,7 @@ que ya está en el spec o en `openspec/specs/`.
 | `CLAUDE_BIN`, `CODEX_BIN`, `CLAUDE_MODEL`, `CODEX_MODEL`, `CLAUDE_MAX_BUDGET_USD` | PATH / el del CLI / `2` | Worker: ruta de los ejecutables, modelo y tope de gasto de Claude Code |
 | `REVIEW_NOTES` / `REVIEW_NOTES_PUSH` | `true` / `true` | Worker: nota de git por commit con las reviews de cada run en el repositorio local del proyecto, y si se empuja `refs/notes/duelo` a `origin` |
 | `MAX_INGEST_BODY_BYTES` | `1500000` | Tamaño máximo del cuerpo de `POST /ingest/commit` y `/ingest/pr` (413 si lo supera); protege la memoria y es independiente de `MAX_DIFF_CHARS` |
+| `MAX_BODY_BYTES` | `65536` | Tamaño máximo del cuerpo del resto de `POST`, `PUT` y `PATCH` (413 si lo supera), con el mismo middleware |
 | `ALLOWED_ORIGINS` | vacía (sin CORS) | Orígenes `esquema://host[:puerto]` separados por comas, p. ej. `http://localhost:5173`; no admite `*` |
 | `RATE_LIMIT_REQUESTS` | `300` | Peticiones por IP y ventana en ingesta y reintento; `0` lo desactiva |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Ventana deslizante del límite |

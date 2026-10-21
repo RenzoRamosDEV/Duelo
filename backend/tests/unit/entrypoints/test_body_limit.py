@@ -133,13 +133,106 @@ async def test_the_body_limit_answers_before_the_token_and_carries_the_request_i
     assert response.headers["Connection"] == "close"
 
 
-async def test_other_routes_are_not_limited() -> None:
-    api = build_fake_api(max_ingest_body_bytes=100)
+async def test_other_routes_use_the_general_limit_not_the_ingest_one() -> None:
+    """«Otras rutas»: por encima de `MAX_BODY_BYTES` y por debajo del de la ingesta da 413, con el
+    límite general en el mensaje."""
+    api = build_fake_api(max_body_bytes=100, max_ingest_body_bytes=10_000)
 
     async with _client(api) as client:
         response = await client.post(f"/changes/{uuid4()}/retry", content=b"x" * 5000)
 
-    assert response.status_code != 413  # sin token da 401; el límite no interviene
+    assert response.status_code == 413  # sin token daría 401: el límite responde antes
+    assert "100 bytes" in response.json()["detail"]
+
+
+async def test_a_huge_declared_post_to_projects_never_reaches_the_route() -> None:
+    api = build_fake_api(local_projects=True)
+
+    async with _client(api) as client:
+        response = await client.post(
+            "/projects",
+            content=b"x" * 70_000,
+            headers={**HEADERS, "Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 413
+    assert "65536" in response.json()["detail"]
+    assert api.git.inspected == []
+
+
+def _agents_body(size: int) -> bytes:
+    """`{"agents": ["claude"]}` con espacios hasta ocupar exactamente `size` bytes."""
+    body = b'{"agents": ["claude"]}'
+    return body[:-1] + b" " * (size - len(body)) + b"}"
+
+
+@pytest.mark.parametrize(("size", "status"), [(65_535, 200), (65_536, 200), (65_537, 413)])
+async def test_a_put_up_to_the_general_limit_passes_and_one_byte_more_does_not(
+    size: int, status: int
+) -> None:
+    api = build_fake_api(agent_names=["claude", "codex"])
+    headers = {**HEADERS, "Content-Type": "application/json"}
+
+    async with _client(api) as client:
+        response = await client.put(
+            f"/projects/{api.project.slug}/agents", content=_agents_body(size), headers=headers
+        )
+        listed = (await client.get("/projects")).json()[0]["agents"]
+
+    assert response.status_code == status
+    assert listed == (["claude"] if status == 200 else ["claude", "codex"])
+
+
+async def test_a_chunked_put_over_the_general_limit_is_413() -> None:
+    api = build_fake_api(agent_names=["claude", "codex"])
+
+    async with _client(api) as client:
+        response = await client.put(
+            f"/projects/{api.project.slug}/agents",
+            content=_chunks(70_000),
+            headers={**HEADERS, "Content-Type": "application/json"},
+        )
+        listed = (await client.get("/projects")).json()[0]["agents"]
+
+    assert response.status_code == 413
+    assert listed == ["claude", "codex"]  # la selección no cambia
+
+
+async def test_the_ingest_is_not_bound_by_the_general_limit() -> None:
+    """«La ingesta no usa el límite general»: 100 000 bytes > 65 536 pero < 1 500 000."""
+    api = build_fake_api()
+    body = valid_body(diff="d" * 100_000)
+    assert _size(body) > 65_536
+
+    async with _client(api) as client:
+        response = await client.post("/ingest/commit", json=body, headers=HEADERS)
+
+    assert response.status_code == 202
+
+
+async def test_the_ingest_keeps_its_own_limit_even_when_it_is_the_smaller_one() -> None:
+    api = build_fake_api(max_body_bytes=10_000, max_ingest_body_bytes=500)
+
+    async with _client(api) as client:
+        response = await client.post(
+            "/ingest/pr", json=valid_body(diff="x" * 3000), headers=HEADERS
+        )
+
+    assert response.status_code == 413
+    assert "500 bytes" in response.json()["detail"]
+    _no_effects(api)
+
+
+@pytest.mark.parametrize("method", ["GET", "DELETE", "OPTIONS"])
+async def test_reads_deletes_and_options_are_never_limited(method: str) -> None:
+    api = build_fake_api(max_body_bytes=10, local_projects=True)
+
+    async with _client(api) as client:
+        response = await client.request(
+            method, f"/projects/{api.project.slug}", content=b"x" * 5000, headers=HEADERS
+        )
+
+    assert response.status_code != 413
 
 
 async def test_the_rejected_body_is_not_written_to_the_access_log(
@@ -223,7 +316,12 @@ class _Spy:
 
 
 async def _call(
-    middleware: BodyLimitMiddleware, headers: list[tuple[bytes, bytes]], chunks: list[bytes]
+    middleware: BodyLimitMiddleware,
+    headers: list[tuple[bytes, bytes]],
+    chunks: list[bytes],
+    *,
+    method: str = "POST",
+    path: str = "/ingest/commit",
 ) -> list[dict[str, object]]:
     queue = [
         {"type": "http.request", "body": c, "more_body": i < len(chunks) - 1}
@@ -237,16 +335,18 @@ async def _call(
     async def send(message: dict[str, object]) -> None:
         sent.append(message)
 
-    scope = {"type": "http", "method": "POST", "path": "/ingest/commit", "headers": headers}
+    scope = {"type": "http", "method": method, "path": path, "headers": headers}
     await middleware(scope, receive, send)  # type: ignore[arg-type]
     return sent
 
 
+def _limit(app: _Spy, ingest_max_bytes: int, max_bytes: int = 1000) -> BodyLimitMiddleware:
+    return BodyLimitMiddleware(app, max_bytes=max_bytes, ingest_max_bytes=ingest_max_bytes)
+
+
 async def test_a_declared_length_over_the_limit_never_reaches_the_app() -> None:
     spy = _Spy()
-    sent = await _call(
-        BodyLimitMiddleware(spy, max_bytes=10), [(b"content-length", b"11")], [b"x" * 11]
-    )
+    sent = await _call(_limit(spy, 10), [(b"content-length", b"11")], [b"x" * 11])
 
     assert not spy.called
     assert sent[0]["status"] == 413
@@ -254,9 +354,7 @@ async def test_a_declared_length_over_the_limit_never_reaches_the_app() -> None:
 
 async def test_a_malformed_content_length_does_not_disable_the_stream_count() -> None:
     spy = _Spy()
-    sent = await _call(
-        BodyLimitMiddleware(spy, max_bytes=10), [(b"content-length", b"abc")], [b"x" * 6, b"x" * 6]
-    )
+    sent = await _call(_limit(spy, 10), [(b"content-length", b"abc")], [b"x" * 6, b"x" * 6])
 
     assert spy.called  # no se puede decidir por la cabecera, pero el flujo se cuenta
     assert sent[0]["status"] == 413 and len(sent) == 2  # un solo 413, sin respuestas dobles
@@ -264,7 +362,44 @@ async def test_a_malformed_content_length_does_not_disable_the_stream_count() ->
 
 async def test_a_body_within_the_limit_passes_through_untouched() -> None:
     spy = _Spy()
-    sent = await _call(BodyLimitMiddleware(spy, max_bytes=10), [], [b"x" * 6, b"x" * 4])
+    sent = await _call(_limit(spy, 10), [], [b"x" * 6, b"x" * 4])
 
     assert spy.read == 10
     assert sent[0]["status"] == 200
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "declared", "status"),
+    [
+        ("PATCH", "/x", b"6", 413),  # escritura fuera de la ingesta: límite general (5)
+        ("PATCH", "/x", b"5", 200),  # justo en el límite general
+        ("POST", "/ingest/pr", b"6", 200),  # la ingesta usa el suyo (10)
+        ("GET", "/x", b"6", 200),  # una lectura no se limita
+        ("DELETE", "/x", b"6", 200),
+    ],
+)
+async def test_each_route_gets_its_own_limit_and_only_writes_are_limited(
+    method: str, path: str, declared: bytes, status: int
+) -> None:
+    spy = _Spy()
+    sent = await _call(
+        _limit(spy, 10, max_bytes=5),
+        [(b"content-length", declared)],
+        [b"x" * int(declared)],
+        method=method,
+        path=path,
+    )
+
+    assert sent[0]["status"] == status
+    assert spy.called is (status == 200)
+
+
+async def test_a_chunked_patch_over_the_general_limit_is_cut_while_it_is_read() -> None:
+    # Ninguna ruta usa PATCH (sin ruta, FastAPI da 405 sin leer el cuerpo): se prueba con una app
+    # que sí lo lee, como haría una ruta futura.
+    spy = _Spy()
+    sent = await _call(
+        _limit(spy, 100, max_bytes=5), [], [b"x" * 3, b"x" * 3], method="PATCH", path="/x"
+    )
+
+    assert sent[0]["status"] == 413 and len(sent) == 2
