@@ -131,6 +131,15 @@ traduce a `ApplicationError(non_retryable=True)`, la misma forma no reintentable
 Commits atómicos por bloque: `fix(api)` CORS, `fix(hook)`, `fix(persistence)` reviews esperadas
 (+ migración), `fix(stats)`, `fix(api)` límite de cuerpo, `fix(git)` blindaje y SHA.
 
+## Notas de implementación
+
+- **Reviews esperadas al crear.** `ingest_change` calcula `len(agent_names) or None` a partir de
+  los `agent_names` que ya recibe (`project.agents or agent_names` desde `_ingest`): mismo valor
+  que el diseño, sin un parámetro más.
+- **`PATCH` por trozos.** Ninguna ruta usa `PATCH`: FastAPI responde 405 sin leer el cuerpo, así
+  que no hay nada que cortar. El corte por bytes recibidos de un `PATCH` se prueba sobre el
+  middleware con una app que lee el cuerpo; el de `PUT`, contra la API.
+
 ## Open Questions
 
 Ninguna. Decisiones tomadas en modo autónomo (todas anotadas arriba): interpretación de «run más
