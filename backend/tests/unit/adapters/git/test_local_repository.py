@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from duelo.adapters.git import local_repository
+from duelo.adapters.git import command
 from duelo.adapters.git.local_repository import MAX_PATH, LocalGitRepository
 from duelo.adapters.subprocess_runner import CommandTimeout
 from duelo.application.ports import InvalidRepository
@@ -107,7 +107,7 @@ async def test_a_git_that_hangs_is_reported_as_invalid(
     async def hang(*_: object, **__: object) -> None:
         raise CommandTimeout("git")
 
-    monkeypatch.setattr(local_repository, "run_command", hang)
+    monkeypatch.setattr(command, "run_command", hang)
 
     with pytest.raises(InvalidRepository, match="no respondió a tiempo"):
         await LocalGitRepository().inspect(str(repo))
@@ -117,13 +117,13 @@ async def test_a_git_that_hangs_reading_origin_just_means_no_remote(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repo = init_repo(tmp_path / "widgets", origin="git@github.com:acme/widgets.git")
-    real = local_repository.run_command
+    real = command.run_command
 
     async def hang_on_config(argv: list[str], **kwargs: object):  # type: ignore[no-untyped-def]
         if "config" in argv:
             raise CommandTimeout("git")
         return await real(argv, **kwargs)
 
-    monkeypatch.setattr(local_repository, "run_command", hang_on_config)
+    monkeypatch.setattr(command, "run_command", hang_on_config)
 
     assert (await LocalGitRepository().inspect(str(repo))).remote_url is None

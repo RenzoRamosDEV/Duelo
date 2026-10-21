@@ -8,12 +8,8 @@ import os
 import tempfile
 from pathlib import Path
 
-from duelo.adapters.subprocess_runner import (
-    CommandNotFound,
-    CommandResult,
-    CommandTimeout,
-    run_command,
-)
+from duelo.adapters.git.command import run_git
+from duelo.adapters.subprocess_runner import CommandNotFound, CommandResult, CommandTimeout
 from duelo.application.ports import ArchiveOutcome
 from duelo.application.review_notes import NOTES_REF
 
@@ -68,7 +64,8 @@ class GitNotesArchive:
 
 
 async def _git(repo_path: str, *args: str, timeout: float = _GIT_TIMEOUT) -> CommandResult:
-    return await run_command(["git", "-C", repo_path, *args], timeout=timeout, env=_GIT_ENV)
+    # Con la configuración del usuario: la nota lleva su identidad y el push, su credencial.
+    return await run_git(repo_path, *args, timeout=timeout, env=_GIT_ENV, isolate_user_config=False)
 
 
 def _write_private(path: Path, content: str) -> None:

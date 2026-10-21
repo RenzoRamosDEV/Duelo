@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from duelo.adapters.git import history as history_module
+from duelo.adapters.git import command
 from duelo.adapters.git.history import LocalGitHistory
 from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout
 from duelo.application.ports import HistoryUnavailable
@@ -151,13 +151,13 @@ async def test_one_call_to_git_reads_the_whole_set_after_the_identity_check(
 ) -> None:
     commit_file(repo, "a.txt", "1\n", "uno")
     calls: list[list[str]] = []
-    real = history_module.run_command
+    real = command.run_command
 
     async def spy(argv, **kwargs):  # type: ignore[no-untyped-def]
         calls.append(list(argv))
         return await real(argv, **kwargs)
 
-    monkeypatch.setattr(history_module, "run_command", spy)
+    monkeypatch.setattr(command, "run_command", spy)
 
     await LocalGitHistory().reachable(str(repo), limit=WINDOW)
 
@@ -197,7 +197,7 @@ async def test_a_missing_git_binary_is_unavailable(
     async def boom(*_args: object, **_kwargs: object) -> None:
         raise CommandNotFound("git")
 
-    monkeypatch.setattr(history_module, "run_command", boom)
+    monkeypatch.setattr(command, "run_command", boom)
 
     with pytest.raises(HistoryUnavailable, match="no está instalado"):
         await LocalGitHistory().reachable(str(repo), limit=WINDOW)
@@ -209,7 +209,7 @@ async def test_a_git_that_times_out_is_unavailable(
     async def slow(*_args: object, **_kwargs: object) -> None:
         raise CommandTimeout("git")
 
-    monkeypatch.setattr(history_module, "run_command", slow)
+    monkeypatch.setattr(command, "run_command", slow)
 
     with pytest.raises(HistoryUnavailable, match="a tiempo"):
         await LocalGitHistory().reachable(str(repo), limit=WINDOW)
@@ -261,7 +261,7 @@ async def test_a_sha_that_is_not_hexadecimal_never_reaches_git(
     async def forbidden(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("no debe llamarse a git con un SHA que no es hexadecimal")
 
-    monkeypatch.setattr(history_module, "run_command", forbidden)
+    monkeypatch.setattr(command, "run_command", forbidden)
 
     assert await LocalGitHistory().contains(str(repo), sha) is False
 
@@ -355,13 +355,13 @@ async def test_git_is_run_without_system_or_user_configuration(
 ) -> None:
     commit_file(repo, "a.txt", "1\n", "uno")
     seen: list[dict[str, object]] = []
-    real = history_module.run_command
+    real = command.run_command
 
     async def spy(argv, **kwargs):  # type: ignore[no-untyped-def]
         seen.append({"argv": list(argv), **kwargs})
         return await real(argv, **kwargs)
 
-    monkeypatch.setattr(history_module, "run_command", spy)
+    monkeypatch.setattr(command, "run_command", spy)
 
     await LocalGitHistory().reachable(str(repo), limit=WINDOW)
 

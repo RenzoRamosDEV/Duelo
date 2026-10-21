@@ -5,12 +5,8 @@ import stat
 from datetime import UTC, datetime
 from pathlib import Path
 
-from duelo.adapters.subprocess_runner import (
-    CommandNotFound,
-    CommandResult,
-    CommandTimeout,
-    run_command,
-)
+from duelo.adapters.git.command import run_git
+from duelo.adapters.subprocess_runner import CommandNotFound, CommandResult, CommandTimeout
 from duelo.application.ports import HistoryUnavailable
 from duelo.domain.commit_state import Reachability, is_safe_sha_argument
 
@@ -81,14 +77,6 @@ class LocalGitHistory:
         return ancestor.returncode == 0
 
 
-# Un repositorio ajeno (o uno al que se sustituyó la carpeta) no debe poder ejecutar nada ni
-# cambiar la configuración con la que se lee: sin configuración de sistema ni de usuario, sin
-# `fsmonitor` ni ganchos, y sin variables que redirijan git a otro directorio.
-_GIT_ENV = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
-_GIT_EXCLUDED_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR")
-_GIT_HARDENING = ("-c", "core.fsmonitor=false", "-c", f"core.hooksPath={os.devnull}")
-
-
 async def _ensure_same_repository(path: str) -> None:
     """La ruta registrada debe seguir siendo, tal cual, la raíz de un repositorio: ni un enlace
     simbólico (se rechazan al dar de alta el proyecto) ni una subcarpeta ni otro repositorio."""
@@ -118,12 +106,7 @@ async def _ensure_same_repository(path: str) -> None:
 
 async def _git(path: str, *args: str, timeout: float = 10.0) -> CommandResult:
     try:
-        return await run_command(
-            ["git", *_GIT_HARDENING, "-C", path, *args],
-            timeout=timeout,
-            env=_GIT_ENV,
-            exclude_env=_GIT_EXCLUDED_ENV,
-        )
+        return await run_git(path, *args, timeout=timeout)
     except CommandNotFound as exc:
         raise HistoryUnavailable("git no está instalado") from exc
     except CommandTimeout as exc:

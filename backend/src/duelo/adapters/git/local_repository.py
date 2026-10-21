@@ -4,7 +4,8 @@ import os
 import stat
 from pathlib import Path
 
-from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout, run_command
+from duelo.adapters.git.command import run_git
+from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout
 from duelo.application.ports import InvalidRepository, RepoInfo
 
 MAX_PATH = 4096
@@ -16,7 +17,7 @@ class LocalGitRepository:
     async def inspect(self, path: str) -> RepoInfo:
         _check_path_shape(path)
         try:
-            top = await run_command(["git", "-C", path, "rev-parse", "--show-toplevel"])
+            top = await run_git(path, "rev-parse", "--show-toplevel")
         except CommandNotFound as exc:
             raise InvalidRepository("git no está instalado") from exc
         except CommandTimeout as exc:
@@ -50,7 +51,7 @@ def _check_path_shape(path: str) -> None:
 
 async def _origin_url(path: str) -> str | None:
     try:
-        result = await run_command(["git", "-C", path, "config", "--get", "remote.origin.url"])
+        result = await run_git(path, "config", "--get", "remote.origin.url")
     except (CommandNotFound, CommandTimeout):
         return None
     url = result.stdout.strip()

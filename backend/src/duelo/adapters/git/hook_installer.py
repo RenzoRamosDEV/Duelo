@@ -8,7 +8,8 @@ import stat
 import tempfile
 from pathlib import Path
 
-from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout, run_command
+from duelo.adapters.git.command import run_git
+from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout
 from duelo.application.ports import HookInstallError
 
 BEGIN = "# >>> duelo >>>"
@@ -159,17 +160,16 @@ async def _hooks_dir(root: str) -> Path:
     """Directorio de hooks efectivo (worktrees y `core.hooksPath` incluidos), que debe estar dentro
     del repo o de su directorio común: uno compartido entre repos ejecutaría el bloque en todos."""
     try:
-        result = await run_command(
-            [
-                "git",
-                "-C",
-                root,
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-path",
-                "hooks",
-                "--git-common-dir",
-            ]
+        # `core.hooksPath` tal cual, también el global: hay que verlo para rechazarlo si sale fuera.
+        result = await run_git(
+            root,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-path",
+            "hooks",
+            "--git-common-dir",
+            isolate_user_config=False,
+            disable_hooks=False,
         )
     except (CommandNotFound, CommandTimeout) as exc:
         raise HookInstallError("git no está disponible") from exc
