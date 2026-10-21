@@ -171,8 +171,13 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 10. Verificación final
 
-- [ ] 10.1 `just lint`, `just typecheck` y `just test-unit` en verde.
-- [ ] 10.2 `just test-integration` en verde si hay Podman/Docker; si no, dejarlo indicado.
-- [ ] 10.3 En `frontend/`: `pnpm test` y `pnpm build` en verde.
-- [ ] 10.4 `docs/openapi.json` sin cambios (contrato intacto), la medición 30 → 0 anotada en 2.4 y
+- [x] 10.1 `just lint`, `just typecheck` y `just test-unit` en verde.
+- [x] 10.2 `just test-integration` en verde si hay Podman/Docker; si no, dejarlo indicado.
+- [x] 10.3 En `frontend/`: `pnpm test` y `pnpm build` en verde.
+- [x] 10.4 `docs/openapi.json` sin cambios (contrato intacto), la medición 30 → 0 anotada en 2.4 y
       commits atómicos por bloque.
+      **Verificación (2026-10-21):** `just lint` y `just typecheck` sin errores; `just test-unit`
+      1384 passed; `just test-integration` (Podman) 206 passed, 4 skipped; `just test` 1607
+      passed, 4 skipped, cobertura global 99 % y domain+application 100 %; frontend `pnpm test`
+      668 passed (68 ficheros) y `pnpm build` correcto; `docs/openapi.json` y
+      `api.generated.ts` sin cambios.
