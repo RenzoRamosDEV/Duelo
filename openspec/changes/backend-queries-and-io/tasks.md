@@ -111,7 +111,7 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 6. Índice de eventos
 
-- [ ] 6.1 Rojo (integración, `test_migrations.py`): tras `upgrade head` existe
+- [x] 6.1 Rojo (integración, `test_migrations.py`): tras `upgrade head` existe
       `ix_events_project_id` sobre `events(project_id)` (consulta a `pg_indexes`); tras
       `downgrade -1` no existe y las filas siguen; el test de deriva modelo/migraciones falla hasta
       declarar el índice en el modelo. Verde: migración nueva sobre `j0b8c2e6f459` con

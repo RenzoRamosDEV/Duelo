@@ -98,6 +98,8 @@ class EventModel(Base):
     __table_args__ = (
         # `GET /changes/{id}/events` busca por el change dentro del payload.
         Index("ix_events_change_id", text("(payload ->> 'change_id')")),
+        # Borrar un proyecto borra sus eventos en cascada: sin él, barre la tabla entera.
+        Index("ix_events_project_id", "project_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger(), primary_key=True, autoincrement=True)

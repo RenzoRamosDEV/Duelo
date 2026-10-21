@@ -246,3 +246,46 @@ async def test_the_expected_agents_migration_backfills_the_agents_of_the_current
         assert (changes, reviews) == (2, 5)
     finally:
         await asyncio.to_thread(command.upgrade, _alembic(), "head")
+
+
+async def _index_definition(engine: AsyncEngine, name: str) -> str | None:
+    async with engine.connect() as conn:
+        return (
+            await conn.execute(
+                text("SELECT indexdef FROM pg_indexes WHERE indexname = :n"), {"n": name}
+            )
+        ).scalar_one_or_none()
+
+
+async def test_the_events_project_index_exists_and_its_downgrade_keeps_the_rows(
+    database_url: str, engine: AsyncEngine
+) -> None:
+    """Borrar un proyecto borra en cascada sus eventos: sin índice, barre `events` entera."""
+    os.environ["DATABASE_URL"] = database_url
+    definition = await _index_definition(engine, "ix_events_project_id")
+    assert definition is not None and definition.endswith(
+        "ON public.events USING btree (project_id)"
+    )
+    project_id = uuid4()
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO projects (id, slug) VALUES (:id, :slug)"),
+            {"id": project_id, "slug": f"ev-{project_id}"},
+        )
+        await conn.execute(
+            text("INSERT INTO events (project_id, type, payload) VALUES (:p, 't', '{}')"),
+            {"p": project_id},
+        )
+
+    await asyncio.to_thread(command.downgrade, _alembic(), "-1")
+    try:
+        assert await _index_definition(engine, "ix_events_project_id") is None
+        async with engine.connect() as conn:
+            survivors = (
+                await conn.execute(
+                    text("SELECT count(*) FROM events WHERE project_id = :p"), {"p": project_id}
+                )
+            ).scalar_one()
+        assert survivors == 1
+    finally:
+        await asyncio.to_thread(command.upgrade, _alembic(), "head")
