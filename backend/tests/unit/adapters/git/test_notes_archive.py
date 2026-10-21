@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import logging
 import subprocess
 from pathlib import Path
 
 import pytest
 
+from duelo.adapters.git import command
 from duelo.adapters.git.notes_archive import FAILED, PUSHED, SKIPPED, WRITTEN, GitNotesArchive
+from duelo.application.ports import UnsafeArchiveTarget
 from tests.unit.adapters.git.helpers import commit_file, git, init_repo
 
 NOTE = '{"schema": 1, "reviews": []}\n'
@@ -119,3 +122,45 @@ async def test_a_folder_that_is_not_a_repository_fails_without_raising(tmp_path:
     outcome = await GitNotesArchive(push=False).archive(str(tmp_path), "a" * 40, NOTE)
 
     assert outcome.status == SKIPPED  # `cat-file` falla: no hay repositorio ni commit
+
+
+# --- un SHA inseguro no llega a git -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sha",
+    ["--exec=evil", "a" * 6, "a" * 65, "", "abc123g", " " + "a" * 40],
+    ids=["opcion", "6-hex", "65-hex", "vacio", "no-hex", "espacio"],
+)
+async def test_an_unsafe_sha_never_reaches_git(
+    sha: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    calls: list[list[str]] = []
+
+    async def spy(argv, **_kwargs):  # type: ignore[no-untyped-def]
+        calls.append(list(argv))
+        raise AssertionError("git no debía ejecutarse")
+
+    monkeypatch.setattr(command, "run_command", spy)
+    caplog.set_level(logging.WARNING)
+
+    with pytest.raises(UnsafeArchiveTarget):
+        await GitNotesArchive(push=True).archive(str(tmp_path), sha, NOTE)
+
+    assert calls == []
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+@pytest.mark.parametrize("length", [7, 40])
+async def test_a_hexadecimal_sha_of_7_to_40_still_gets_its_note(
+    repo: tuple[Path, str, str], length: int
+) -> None:
+    repository, sha, _remote = repo
+
+    outcome = await GitNotesArchive(push=False).archive(str(repository), sha[:length], NOTE)
+
+    assert outcome.status == WRITTEN
+    assert _note(repository, sha) == NOTE

@@ -10,7 +10,7 @@ import pytest
 from temporalio.exceptions import ApplicationError
 
 from duelo.application.ingest_change import ingest_change
-from duelo.application.ports import ArchiveOutcome
+from duelo.application.ports import ArchiveOutcome, UnsafeArchiveTarget
 from duelo.application.record_review import record_review_failure, record_review_success
 from duelo.domain.change import Change, ChangeKind
 from duelo.domain.review import Finding, ReviewResult
@@ -32,6 +32,11 @@ class FakeArchive:
     async def archive(self, repo_path: str, sha: str, note: str) -> ArchiveOutcome:
         self.calls.append((repo_path, sha, note))
         return self._outcome
+
+
+class UnsafeArchive(FakeArchive):
+    async def archive(self, repo_path: str, sha: str, note: str) -> ArchiveOutcome:
+        raise UnsafeArchiveTarget(sha)
 
 
 class FakePaths:
@@ -159,3 +164,13 @@ async def test_an_unknown_change_is_a_non_retryable_error() -> None:
         await activities.archive_reviews(ArchiveReviewsInput(change_id=str(uuid4())))
 
     assert info.value.non_retryable
+
+
+async def test_an_unsafe_sha_is_a_non_retryable_error() -> None:
+    activities, change, _ = await _world(archive=UnsafeArchive())
+
+    with pytest.raises(ApplicationError) as info:
+        await activities.archive_reviews(ArchiveReviewsInput(change_id=str(change.id)))
+
+    assert info.value.non_retryable
+    assert isinstance(info.value.__cause__, UnsafeArchiveTarget)

@@ -4,14 +4,18 @@ usuario, con la credencial de git que el usuario ya tenga (nunca interactiva).""
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from pathlib import Path
 
 from duelo.adapters.git.command import run_git
 from duelo.adapters.subprocess_runner import CommandNotFound, CommandResult, CommandTimeout
-from duelo.application.ports import ArchiveOutcome
+from duelo.application.ports import ArchiveOutcome, UnsafeArchiveTarget
 from duelo.application.review_notes import NOTES_REF
+from duelo.domain.commit_state import is_safe_sha_argument
+
+logger = logging.getLogger(__name__)
 
 WRITTEN = "written"
 PUSHED = "pushed"
@@ -30,6 +34,10 @@ class GitNotesArchive:
         self._push = push
 
     async def archive(self, repo_path: str, sha: str, note: str) -> ArchiveOutcome:
+        # El SHA viene de la ingesta: algo como `--exec=...` no debe llegar a git como opción.
+        if not is_safe_sha_argument(sha):
+            logger.warning("Nota de git descartada: el SHA del change no es hexadecimal")
+            raise UnsafeArchiveTarget("El SHA del change no es un argumento seguro para git")
         try:
             return await self._archive(repo_path, sha, note)
         except CommandNotFound:

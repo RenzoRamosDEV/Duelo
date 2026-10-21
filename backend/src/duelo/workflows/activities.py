@@ -18,6 +18,7 @@ from duelo.application.ports import (
     ReviewAgent,
     ReviewArchive,
     ReviewRepository,
+    UnsafeArchiveTarget,
 )
 from duelo.application.record_review import record_review_failure, record_review_success
 from duelo.application.review_notes import render_review_note
@@ -169,7 +170,8 @@ class ReviewActivities:
     async def archive_reviews(self, archive_input: ArchiveReviewsInput) -> ArchiveReviewsResult:
         """Guarda las reviews de la run como nota de git del commit, en el repositorio local del
         proyecto, y la empuja al remoto. Nunca falla por git: devuelve `skipped`/`failed` con el
-        motivo y el workflow termina igual. Idempotente: la nota se sustituye."""
+        motivo y el workflow termina igual. Idempotente: la nota se sustituye. Solo un SHA
+        inseguro (ingesta maliciosa) la hace fallar, sin reintento."""
         async with self._session_factory() as session:
             change = await self._change_repository(session).get(UUID(archive_input.change_id))
         if change is None:
@@ -193,5 +195,8 @@ class ReviewActivities:
             run=archive_input.run,
             written_at=self._clock(),
         )
-        outcome = await self._archive.archive(repo_path, change.head_sha, note)
+        try:
+            outcome = await self._archive.archive(repo_path, change.head_sha, note)
+        except UnsafeArchiveTarget as exc:
+            raise ApplicationError(str(exc), non_retryable=True) from exc
         return ArchiveReviewsResult(outcome.status, outcome.detail)

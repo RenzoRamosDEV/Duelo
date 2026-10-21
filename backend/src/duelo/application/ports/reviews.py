@@ -33,11 +33,17 @@ class ArchiveOutcome:
     detail: str = ""
 
 
+class UnsafeArchiveTarget(Exception):
+    """El SHA del change no es un hexadecimal válido como argumento de git: la nota no se
+    escribe y no tiene sentido reintentarlo."""
+
+
 class ReviewArchive(Protocol):
     async def archive(self, repo_path: str, sha: str, note: str) -> ArchiveOutcome:
         """Guarda `note` como nota de git del commit `sha` en el repositorio `repo_path` y, si
         procede, la empuja al remoto. Nunca lanza por un fallo de git: lo devuelve como
-        `failed`/`skipped` con su motivo."""
+        `failed`/`skipped` con su motivo. Lanza `UnsafeArchiveTarget`, sin invocar git, si `sha`
+        no es un SHA seguro."""
         ...
 
 

@@ -47,6 +47,7 @@ from duelo.application.ports.reviews import (
     ReviewAgent,
     ReviewArchive,
     ReviewRepository,
+    UnsafeArchiveTarget,
 )
 
 __all__ = [
@@ -78,4 +79,5 @@ __all__ = [
     "ReviewRepository",
     "ReviewStartError",
     "ReviewStarter",
+    "UnsafeArchiveTarget",
 ]
