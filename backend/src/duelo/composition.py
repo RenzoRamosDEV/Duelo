@@ -65,7 +65,7 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
     temporal = LazyTemporalClient(settings.temporal_address, settings.temporal_namespace)
 
     projects = SqlAlchemyProjectRepository(session_factory, settings.agent_names)
-    starter = TemporalReviewStarter(temporal, settings.agent_names, projects, projects)
+    starter = TemporalReviewStarter(temporal)
 
     async def ingest(submission: ChangeSubmission) -> IngestResult:
         async with session_factory() as session:
@@ -139,11 +139,11 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
             return await retry_review(
                 SqlAlchemyChangeRepository(session),
                 SqlAlchemyReviewRepository(session),
+                projects,
                 starter,
                 change_id,
-                expected_agents=expected_agents,
+                agent_names=settings.agent_names,
                 now=datetime.now(UTC),
-                project_agents=projects,
             )
 
     async def agent_stats(project: str | None) -> list[AgentStats]:

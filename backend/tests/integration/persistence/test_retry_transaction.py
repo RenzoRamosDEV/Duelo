@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from duelo.adapters.persistence.change_repository import SqlAlchemyChangeRepository
 from duelo.adapters.persistence.models import ChangeModel
+from duelo.adapters.persistence.project_repository import SqlAlchemyProjectRepository
 from duelo.adapters.persistence.review_repository import SqlAlchemyReviewRepository
 from duelo.application.ingest_change import ingest_change
 from duelo.application.ports import ReviewStartError
@@ -31,7 +33,7 @@ class _SessionWatchingStarter:
         self._fail = fail
         self.in_transaction: list[bool] = []
 
-    async def start(self, change: Change) -> None:
+    async def start(self, change: Change, *, project_slug: str, agent_names: Sequence[str]) -> None:
         self.in_transaction.append(self._session.in_transaction())
         if self._fail:
             raise ReviewStartError("Temporal caído (simulado)")
@@ -68,13 +70,19 @@ async def _run_of(session_factory: async_sessionmaker, change_id: UUID) -> int:
         ).scalar_one()
 
 
-async def _retry(session: AsyncSession, starter: _SessionWatchingStarter, change: Change) -> Change:
+async def _retry(
+    session_factory: async_sessionmaker,
+    session: AsyncSession,
+    starter: _SessionWatchingStarter,
+    change: Change,
+) -> Change:
     return await retry_review(
         SqlAlchemyChangeRepository(session),
         SqlAlchemyReviewRepository(session),
+        SqlAlchemyProjectRepository(session_factory),
         starter,
         change.id,
-        expected_agents=len(AGENTS),
+        agent_names=AGENTS,
         now=NOW,
     )
 
@@ -86,7 +94,7 @@ async def test_no_transaction_is_open_while_the_execution_starts(
 
     async with session_factory() as session:
         starter = _SessionWatchingStarter(session)
-        retried = await _retry(session, starter, change)
+        retried = await _retry(session_factory, session, starter, change)
 
     assert starter.in_transaction == [False]
     assert retried.run == 2
@@ -101,7 +109,7 @@ async def test_a_failed_start_leaves_run_untouched_and_no_transaction_open(
     async with session_factory() as session:
         starter = _SessionWatchingStarter(session, fail=True)
         with pytest.raises(ReviewStartError):
-            await _retry(session, starter, change)
+            await _retry(session_factory, session, starter, change)
         assert session.in_transaction() is False
 
     assert starter.in_transaction == [False]

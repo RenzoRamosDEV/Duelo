@@ -206,11 +206,11 @@ async def test_a_reviewed_change_stays_completed_when_the_selection_grows() -> N
         await retry_review(
             changes,
             reviews,
+            projects,
             FakeReviewStarter(),
             change.id,
-            expected_agents=2,
+            agent_names=CONFIGURED,
             now=T0,
-            project_agents=projects,
         )
 
     assert detail is not None and detail.review_status is ChangeReviewStatus.COMPLETED
@@ -226,11 +226,11 @@ async def test_retrying_saves_the_selection_of_the_new_run() -> None:
     retried = await retry_review(
         changes,
         reviews,
+        FakeProjectRepository(project),
         FakeReviewStarter(),
         change.id,
-        expected_agents=3,
+        agent_names=("claude", "codex", "otro"),
         now=T0,
-        project_agents=FakeProjectRepository(project),
     )
 
     assert (retried.run, retried.expected_agents) == (2, 2)
@@ -238,10 +238,16 @@ async def test_retrying_saves_the_selection_of_the_new_run() -> None:
 
 
 async def test_retrying_without_a_known_selection_saves_the_configured_agents() -> None:
-    _, changes, reviews, change = await _reviewed_change(fail=True)
+    project, changes, reviews, change = await _reviewed_change(fail=True)
 
     retried = await retry_review(
-        changes, reviews, FakeReviewStarter(), change.id, expected_agents=3, now=T0
+        changes,
+        reviews,
+        FakeProjectRepository(replace(project, agents=())),
+        FakeReviewStarter(),
+        change.id,
+        agent_names=("claude", "codex", "otro"),
+        now=T0,
     )
 
     assert (retried.run, retried.expected_agents) == (2, 3)
@@ -281,11 +287,11 @@ async def test_retrying_a_change_without_saved_agents_judges_it_by_the_current_s
     retried = await retry_review(
         changes,
         reviews,
+        FakeProjectRepository(replace(project, agents=("claude",))),
         FakeReviewStarter(),
         change.id,
-        expected_agents=2,
+        agent_names=CONFIGURED,
         now=T0,
-        project_agents=FakeProjectRepository(replace(project, agents=("claude",))),
     )
 
     assert (retried.run, retried.expected_agents) == (2, 1)

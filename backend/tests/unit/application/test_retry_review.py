@@ -8,20 +8,23 @@ from duelo.application.ports import ReviewStartError
 from duelo.application.retry_review import ChangeNotFound, RetryNotAllowed, retry_review
 from duelo.domain.change import Change, ChangeKind
 from duelo.domain.events import ChangeCreated, ReviewCompleted, ReviewFailed
+from duelo.domain.project import Project
 from duelo.domain.review import Review, ReviewResult
 from duelo.domain.review_status import ChangeReviewStatus
 from tests.fakes.change_repository import FakeChangeRepository
+from tests.fakes.project_repository import FakeProjectRepository
 from tests.fakes.review_repository import FakeReviewRepository
 from tests.fakes.review_starter import FakeReviewStarter
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 RETRIED_AT = datetime(2026, 1, 8, tzinfo=UTC)
 AGENTS = ("a", "b")
+PROJECT = Project(id=uuid4(), slug="acme/widgets", agents=AGENTS)
 
 
-async def _change(repo: FakeChangeRepository) -> Change:
+async def _change(repo: FakeChangeRepository, *, expected_agents: int | None = None) -> Change:
     change = Change.new(
-        project_id=uuid4(),
+        project_id=PROJECT.id,
         kind=ChangeKind.PR,
         ref="refs/pull/1/head",
         head_sha="c" * 40,
@@ -31,6 +34,7 @@ async def _change(repo: FakeChangeRepository) -> Change:
         diff="d",
         diff_truncated=False,
         created_at=NOW,
+        expected_agents=expected_agents,
     )
     event = ChangeCreated(
         change_id=change.id, project_id=change.project_id, kind="pr", head_sha=change.head_sha
@@ -71,9 +75,16 @@ async def _retry(
     reviews: FakeReviewRepository,
     starter: FakeReviewStarter,
     change: Change,
+    projects: FakeProjectRepository | None = None,
 ) -> Change:
     return await retry_review(
-        changes, reviews, starter, change.id, expected_agents=len(AGENTS), now=RETRIED_AT
+        changes,
+        reviews,
+        projects or FakeProjectRepository(PROJECT),
+        starter,
+        change.id,
+        agent_names=("configurado",),
+        now=RETRIED_AT,
     )
 
 
@@ -143,7 +154,13 @@ async def test_unknown_change() -> None:
 
     with pytest.raises(ChangeNotFound) as error:
         await retry_review(
-            changes, reviews, FakeReviewStarter(), missing, expected_agents=2, now=RETRIED_AT
+            changes,
+            reviews,
+            FakeProjectRepository(PROJECT),
+            FakeReviewStarter(),
+            missing,
+            agent_names=AGENTS,
+            now=RETRIED_AT,
         )
 
     assert error.value.change_id == missing
@@ -221,7 +238,12 @@ async def test_not_found_carries_the_id_in_its_message() -> None:
 
     with pytest.raises(ChangeNotFound, match=str(missing)):
         await retry_review(
-            *_world(), FakeReviewStarter(), missing, expected_agents=2, now=RETRIED_AT
+            *_world(),
+            FakeProjectRepository(PROJECT),
+            FakeReviewStarter(),
+            missing,
+            agent_names=AGENTS,
+            now=RETRIED_AT,
         )
 
 
@@ -258,3 +280,75 @@ async def test_failures_of_a_previous_run_do_not_make_the_current_one_retryable(
 
     assert error.value.status is ChangeReviewStatus.COMPLETED
     assert reviews.status_counts_calls[-1] == (change.id, 2)
+
+
+# --- el proyecto, leído una vez --------------------------------------------------------------
+
+
+async def _failed_change(
+    changes: FakeChangeRepository, reviews: FakeReviewRepository, **kwargs: int | None
+) -> Change:
+    change = await _change(changes, **kwargs)
+    for agent in AGENTS:
+        await _review(reviews, change, agent, fail=True)
+    return change
+
+
+async def test_the_project_is_read_once_and_its_agents_go_to_the_starter() -> None:
+    changes, reviews = _world()
+    projects, starter = FakeProjectRepository(PROJECT), FakeReviewStarter()
+    change = await _failed_change(changes, reviews)
+
+    retried = await _retry(changes, reviews, starter, change, projects)
+
+    assert projects.get_calls == [PROJECT.id]
+    assert projects.agents_of_calls == 0
+    assert starter.received == [(change.id, "acme/widgets", AGENTS)]
+    assert retried.expected_agents == len(AGENTS)
+
+
+async def test_without_a_selection_the_configured_agents_are_used() -> None:
+    changes, reviews = _world()
+    plain = Project(id=PROJECT.id, slug="acme/widgets")
+    starter = FakeReviewStarter()
+    change = await _failed_change(changes, reviews, expected_agents=2)
+
+    retried = await _retry(changes, reviews, starter, change, FakeProjectRepository(plain))
+
+    assert starter.received == [(change.id, "acme/widgets", ("configurado",))]
+    assert retried.expected_agents == 1
+
+
+async def test_a_change_without_saved_agents_is_judged_by_the_project_agents() -> None:
+    """Sin número guardado: con tres agentes en el proyecto, dos fallos dejan el run `running`
+    (con el único agente configurado estaría `failed`)."""
+    changes, reviews = _world()
+    three = Project(id=PROJECT.id, slug="acme/widgets", agents=("a", "b", "c"))
+    change = await _failed_change(changes, reviews, expected_agents=None)
+
+    with pytest.raises(RetryNotAllowed) as error:
+        await _retry(changes, reviews, FakeReviewStarter(), change, FakeProjectRepository(three))
+
+    assert error.value.status is ChangeReviewStatus.RUNNING
+
+
+async def test_the_saved_agents_of_the_run_rule_over_a_larger_selection() -> None:
+    changes, reviews = _world()
+    change = await _change(changes, expected_agents=1)
+    await _review(reviews, change, "a", fail=False)
+
+    with pytest.raises(RetryNotAllowed) as error:
+        await _retry(changes, reviews, FakeReviewStarter(), change)
+
+    assert error.value.status is ChangeReviewStatus.COMPLETED
+
+
+async def test_a_change_whose_project_is_gone_is_not_found() -> None:
+    changes, reviews = _world()
+    starter = FakeReviewStarter()
+    change = await _failed_change(changes, reviews)
+
+    with pytest.raises(ChangeNotFound):
+        await _retry(changes, reviews, starter, change, FakeProjectRepository())
+
+    assert starter.calls == 0

@@ -120,11 +120,11 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 7. Starter sin consultas repetidas
 
-- [ ] 7.1 Rojo (unit, `test_ingest_pr.py` y los de `ingest_commit`): `FakeReviewStarter` registra
+- [x] 7.1 Rojo (unit, `test_ingest_pr.py` y los de `ingest_commit`): `FakeReviewStarter` registra
       `project_slug` y `agent_names`; ingerir un commit y una PR pasa `project.slug` y
       `project.agents` (y los configurados si el proyecto no tiene selección); la PR que reutiliza
       reviews sigue sin arrancar. Verde: nueva firma de `ReviewStarter.start` y `_ingest`.
-- [ ] 7.2 Rojo (unit, `test_retry_review.py`): con un `FakeProjectRepository` espía, `retry_review`
+- [x] 7.2 Rojo (unit, `test_retry_review.py`): con un `FakeProjectRepository` espía, `retry_review`
       llama a `projects.get` una vez y nunca a `agents_of`; pasa al starter el slug y los agentes
       del proyecto; `advance_run` recibe `expected_agents = len(agents)`; un change con
       `expected_agents = None` se juzga con `len(agents)`; con `expected_agents=1` y selección de 2
@@ -132,7 +132,7 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
       Verde: `ProjectRepository.get(project_id)` (puerto, `SqlAlchemyProjectRepository` con
       sesión propia, fake) y la nueva firma de `retry_review`; `composition.py` pasa
       `settings.agent_names`.
-- [ ] 7.3 Rojo (integración, `tests/integration/orchestration/test_temporal_review_starter.py` y
+- [x] 7.3 Rojo (integración, `tests/integration/orchestration/test_temporal_review_starter.py` y
       `test_readable_names.py`): `TemporalReviewStarter(client).start(change, project_slug=...,
       agent_names=...)` arranca el workflow con ese slug en el id y esos agentes en la entrada; el
       constructor ya no acepta repositorios (no hay acceso a la base de datos que espiar). Verde:

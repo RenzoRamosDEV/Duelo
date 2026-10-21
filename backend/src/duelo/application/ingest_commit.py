@@ -66,6 +66,7 @@ async def _ingest(
         raise ProjectNotFound(submission.project)
 
     candidate_id = uuid4()
+    agents = project.agents or agent_names
     change = await ingest_change(
         changes,
         project_id=project.id,
@@ -78,7 +79,7 @@ async def _ingest(
         diff=submission.diff[:max_diff_chars],
         diff_truncated=len(submission.diff) > max_diff_chars,
         change_id=candidate_id,
-        agent_names=project.agents or agent_names,
+        agent_names=agents,
         reverts_sha=_reverted_sha(kind, submission),
     )
     # Con las reviews ya copiadas no hay nada que revisar: arrancar el workflow gastaría la
@@ -87,7 +88,7 @@ async def _ingest(
         kind is ChangeKind.PR and change.run == 1 and await changes.has_reused_reviews(change.id)
     )
     if not reused:
-        await starter.start(change)
+        await starter.start(change, project_slug=project.slug, agent_names=agents)
     return IngestResult(change=change, created=change.id == candidate_id, reused=reused)
 
 

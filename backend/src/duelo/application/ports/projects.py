@@ -27,6 +27,11 @@ class ProjectSlugs(Protocol):
 
 
 class ProjectRepository(Protocol):
+    async def get(self, project_id: UUID) -> Project | None:
+        """Devuelve el proyecto con ese id (con su selección efectiva de agentes), o `None` si no
+        existe."""
+        ...
+
     async def get_by_slug(self, slug: str) -> Project | None:
         """Devuelve el proyecto con ese slug, o `None` si no existe."""
         ...

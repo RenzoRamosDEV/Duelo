@@ -17,14 +17,12 @@ from temporalio.worker import Worker
 from duelo.adapters.agents.fake import FakeAgent
 from duelo.adapters.orchestration.temporal_client import LazyTemporalClient
 from duelo.adapters.orchestration.temporal_review_starter import TemporalReviewStarter, workflow_id
-from duelo.application.ports import ReviewStartError
 from duelo.application.review_requests import ReviewCommitInput
 from duelo.application.task_queues import AGENTS_TASK_QUEUE, PLATFORM_TASK_QUEUE
 from duelo.application.workflow_naming import legacy_parent_workflow_id
 from duelo.domain.change import Change, ChangeKind
 from duelo.workflows.review_change import ReviewChangeWorkflow
 from duelo.workflows.review_commit import ReviewCommitWorkflow
-from tests.fakes.project_slugs import FakeProjectSlugs
 from tests.integration.helpers import make_activities, persist_change
 
 SLUG = "acme/widgets"
@@ -51,11 +49,9 @@ def _change(
     )
 
 
-def _starter(env: WorkflowEnvironment, slugs: FakeProjectSlugs | None = None):
+def _starter(env: WorkflowEnvironment) -> TemporalReviewStarter:
     address = env.client.service_client.config.target_host
-    return TemporalReviewStarter(
-        LazyTemporalClient(address), AGENTS, slugs or FakeProjectSlugs(default=SLUG)
-    )
+    return TemporalReviewStarter(LazyTemporalClient(address))
 
 
 async def _exists(env: WorkflowEnvironment, workflow: str) -> bool:
@@ -95,7 +91,7 @@ async def test_a_commit_is_named_after_its_kind_the_repo_and_the_sha(
 ) -> None:
     change = _change(project_id=UUID("ab12cd34-0000-4000-8000-000000000001"))
 
-    await _starter(temporal_env).start(change)
+    await _starter(temporal_env).start(change, project_slug=SLUG, agent_names=AGENTS)
 
     expected = "commit-acme-widgets-aaaaaaaaaaaa-ab12cd"
     assert workflow_id(change, SLUG) == expected
@@ -109,7 +105,7 @@ async def test_a_commit_is_named_after_its_kind_the_repo_and_the_sha(
 async def test_a_pr_is_named_with_its_own_prefix(temporal_env: WorkflowEnvironment) -> None:
     pr = _change(kind=ChangeKind.PR, project_id=UUID("ab12cd34-0000-4000-8000-000000000001"))
 
-    await _starter(temporal_env).start(pr)
+    await _starter(temporal_env).start(pr, project_slug=SLUG, agent_names=AGENTS)
 
     assert await _exists(temporal_env, "pr-acme-widgets-aaaaaaaaaaaa-ab12cd")
     assert not await _exists(temporal_env, "commit-acme-widgets-aaaaaaaaaaaa-ab12cd")
@@ -124,8 +120,8 @@ async def test_a_readded_project_with_the_same_name_still_starts_its_review(
     after = _change(project_id=UUID("bbbbbbbb-0000-4000-8000-000000000002"))
     starter = _starter(temporal_env)
 
-    await starter.start(before)
-    await starter.start(after)
+    await starter.start(before, project_slug=SLUG, agent_names=AGENTS)
+    await starter.start(after, project_slug=SLUG, agent_names=AGENTS)
 
     assert workflow_id(before, SLUG) != workflow_id(after, SLUG)
     assert await _exists(temporal_env, workflow_id(before, SLUG))
@@ -137,20 +133,9 @@ async def test_an_unknown_project_still_gets_a_valid_name(
 ) -> None:
     change = _change(project_id=UUID("ab12cd34-0000-4000-8000-000000000001"))
 
-    await _starter(temporal_env, FakeProjectSlugs()).start(change)
+    await _starter(temporal_env).start(change, project_slug="", agent_names=AGENTS)
 
     assert await _exists(temporal_env, "commit-proyecto-aaaaaaaaaaaa-ab12cd")
-
-
-async def test_a_failing_name_lookup_becomes_review_start_error(
-    temporal_env: WorkflowEnvironment,
-) -> None:
-    class Broken:
-        async def slug_of(self, project_id: UUID) -> str | None:
-            raise OSError("base de datos caída")
-
-    with pytest.raises(ReviewStartError):
-        await _starter(temporal_env, Broken()).start(_change())  # type: ignore[arg-type]
 
 
 # --- Guarda frente al id antiguo -------------------------------------------------------------
@@ -177,7 +162,7 @@ async def test_a_commit_still_running_under_the_old_id_is_not_started_again(
     change = _change()
     await _start_legacy(temporal_env, change)
 
-    await _starter(temporal_env).start(change)
+    await _starter(temporal_env).start(change, project_slug=SLUG, agent_names=AGENTS)
 
     assert not await _exists(temporal_env, workflow_id(change, SLUG))
 
@@ -192,7 +177,7 @@ async def test_a_commit_already_reviewed_under_the_old_id_does_not_wake_the_agen
         legacy_id = await _start_legacy(temporal_env, change)
         await temporal_env.client.get_workflow_handle(legacy_id).result()
 
-        await _starter(temporal_env).start(change)
+        await _starter(temporal_env).start(change, project_slug=SLUG, agent_names=AGENTS)
 
     assert not await _exists(temporal_env, workflow_id(change, SLUG))
 
@@ -206,7 +191,7 @@ async def test_a_commit_that_failed_under_the_old_id_can_be_started_under_the_ne
         with pytest.raises(WorkflowFailureError):
             await temporal_env.client.get_workflow_handle(legacy_id).result()
 
-        await _starter(temporal_env).start(ghost)
+        await _starter(temporal_env).start(ghost, project_slug=SLUG, agent_names=AGENTS)
 
     assert await _exists(temporal_env, workflow_id(ghost, SLUG))
 
@@ -219,8 +204,8 @@ async def test_the_second_run_is_guarded_by_its_own_old_id(
     await _start_legacy(temporal_env, second)  # solo el run 2 arrancó con el id antiguo
 
     starter = _starter(temporal_env)
-    await starter.start(second)
-    await starter.start(first)
+    await starter.start(second, project_slug=SLUG, agent_names=AGENTS)
+    await starter.start(first, project_slug=SLUG, agent_names=AGENTS)
 
     assert not await _exists(temporal_env, workflow_id(second, SLUG))
     assert await _exists(temporal_env, workflow_id(first, SLUG))

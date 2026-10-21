@@ -152,11 +152,11 @@ def build_fake_api(
         return await retry_review(
             changes,
             reviews,
+            projects,
             starter,
             change_id,
-            expected_agents=EXPECTED_AGENTS,
+            agent_names=settings.agent_names,
             now=clock(),
-            project_agents=projects,
         )
 
     async def set_agents(slug: str, agents: list[str]) -> Project:

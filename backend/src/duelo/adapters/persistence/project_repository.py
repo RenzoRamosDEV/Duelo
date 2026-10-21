@@ -42,6 +42,18 @@ class SqlAlchemyProjectRepository:
         # Los agentes configurados (`AGENT_NAMES`): la selección de cada proyecto es un subconjunto.
         self._available = tuple(available_agents)
 
+    async def get(self, project_id: UUID) -> Project | None:
+        async with self._session_factory() as session:
+            row = (
+                await session.execute(select(ProjectModel).where(ProjectModel.id == project_id))
+            ).scalar_one_or_none()
+        return _to_domain(row, self._available) if row is not None else None
+
+    async def agents_of(self, project_id: UUID) -> tuple[str, ...]:
+        """Implementa `ProjectAgents`: la selección efectiva del proyecto (vacía si no existe)."""
+        project = await self.get(project_id)
+        return project.agents if project is not None else ()
+
     async def get_by_slug(self, slug: str) -> Project | None:
         if _unqueryable(slug):
             return None
@@ -69,14 +81,6 @@ class SqlAlchemyProjectRepository:
                     select(ProjectModel.slug).where(ProjectModel.id == project_id)
                 )
             ).scalar_one_or_none()
-
-    async def agents_of(self, project_id: UUID) -> tuple[str, ...]:
-        """Implementa `ProjectAgents`: la selección efectiva del proyecto (vacía si no existe)."""
-        async with self._session_factory() as session:
-            row = (
-                await session.execute(select(ProjectModel).where(ProjectModel.id == project_id))
-            ).scalar_one_or_none()
-        return _to_domain(row, self._available).agents if row is not None else ()
 
     async def save_agents(self, slug: str, agents: Sequence[str]) -> Project | None:
         """Guarda la selección del proyecto y lo devuelve; `None` si no existe."""

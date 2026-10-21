@@ -151,3 +151,30 @@ async def test_a_retry_after_a_starter_failure_is_reported_as_not_created() -> N
     )
 
     assert retry.created is False
+
+
+@pytest.mark.parametrize(
+    ("chosen", "expected"),
+    [
+        pytest.param(("codex",), ("codex",), id="seleccion-del-proyecto"),
+        pytest.param((), ("claude", "codex"), id="sin-seleccion-los-configurados"),
+    ],
+)
+async def test_the_starter_receives_the_project_slug_and_its_agents(
+    chosen: tuple[str, ...], expected: tuple[str, ...]
+) -> None:
+    project = Project(id=uuid4(), slug="acme/widgets", agents=chosen)
+    starter = FakeReviewStarter()
+
+    change = (
+        await ingest_commit(
+            FakeProjectRepository(project),
+            FakeChangeRepository(),
+            starter,
+            _submission(),
+            max_diff_chars=100,
+            agent_names=("claude", "codex"),
+        )
+    ).change
+
+    assert starter.received == [(change.id, "acme/widgets", expected)]

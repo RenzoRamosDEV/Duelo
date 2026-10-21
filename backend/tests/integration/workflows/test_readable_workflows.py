@@ -25,7 +25,6 @@ from duelo.adapters.orchestration.temporal_client import LazyTemporalClient
 from duelo.adapters.orchestration.temporal_review_starter import TemporalReviewStarter, workflow_id
 from duelo.adapters.persistence.change_repository import SqlAlchemyChangeRepository
 from duelo.adapters.persistence.models import ProjectModel
-from duelo.adapters.persistence.project_repository import SqlAlchemyProjectRepository
 from duelo.application.ingest_change import ingest_change
 from duelo.application.review_requests import ReviewCommitInput
 from duelo.application.task_queues import AGENTS_TASK_QUEUE, PLATFORM_TASK_QUEUE
@@ -75,11 +74,15 @@ async def _persist(
         )
 
 
-def _starter(env: WorkflowEnvironment, session_factory: async_sessionmaker):
-    address = env.client.service_client.config.target_host
-    return TemporalReviewStarter(
-        LazyTemporalClient(address), AGENTS, SqlAlchemyProjectRepository(session_factory)
-    )
+class _Starter:
+    """El starter real con el slug y los agentes que le pasaría el caso de uso."""
+
+    def __init__(self, env: WorkflowEnvironment) -> None:
+        address = env.client.service_client.config.target_host
+        self._starter = TemporalReviewStarter(LazyTemporalClient(address))
+
+    async def start(self, change: Change) -> None:
+        await self._starter.start(change, project_slug=SLUG, agent_names=AGENTS)
 
 
 def _workers(
@@ -143,7 +146,7 @@ async def test_the_activity_result_in_the_history_carries_what_each_reviewer_ans
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         parent = temporal_env.client.get_workflow_handle(workflow_id(change, SLUG))
         await parent.result()
         child = temporal_env.client.get_workflow_handle(_child_id(change))
@@ -175,7 +178,7 @@ async def test_the_result_of_the_child_and_the_parent_lists_the_answers_too(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         parent = temporal_env.client.get_workflow_handle(workflow_id(change, SLUG))
         await parent.result()
         history = await parent.fetch_history()
@@ -196,7 +199,7 @@ async def test_every_activity_has_a_one_line_summary(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         await temporal_env.client.get_workflow_handle(workflow_id(change, SLUG)).result()
         history = await temporal_env.client.get_workflow_handle(_child_id(change)).fetch_history()
 
@@ -219,7 +222,7 @@ async def test_the_workflows_carry_a_summary_and_a_card_in_the_list(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         parent = temporal_env.client.get_workflow_handle(workflow_id(change, SLUG))
         await parent.result()
         parent_description = await parent.describe()
@@ -243,7 +246,7 @@ async def test_the_child_publishes_one_line_per_agent_in_its_current_details(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         await temporal_env.client.get_workflow_handle(workflow_id(change, SLUG)).result()
         details = await _current_details(temporal_env.client.get_workflow_handle(_child_id(change)))
 
@@ -267,7 +270,7 @@ async def test_a_failed_agent_shows_its_reason_next_to_the_one_that_worked(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         await temporal_env.client.get_workflow_handle(workflow_id(change, SLUG)).result()
         child = temporal_env.client.get_workflow_handle(_child_id(change))
         details = await _current_details(child)
@@ -352,7 +355,7 @@ async def test_a_new_execution_replays_with_the_new_workflows(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         parent = temporal_env.client.get_workflow_handle(workflow_id(change, SLUG))
         await parent.result()
         parent_history = await parent.fetch_history()
@@ -377,7 +380,7 @@ async def test_a_commit_and_a_pr_with_the_same_sha_are_both_reviewed(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        starter = _starter(temporal_env, session_factory)
+        starter = _Starter(temporal_env)
         await starter.start(commit)
         await starter.start(pr)
         for change in (commit, pr):
@@ -423,7 +426,7 @@ async def test_no_credential_reaches_the_immutable_temporal_history(
     platform, agents_worker = _workers(temporal_env, session_factory, agents)
 
     async with platform, agents_worker:
-        await _starter(temporal_env, session_factory).start(change)
+        await _Starter(temporal_env).start(change)
         parent = temporal_env.client.get_workflow_handle(workflow_id(change, SLUG))
         await parent.result()
         child = temporal_env.client.get_workflow_handle(_child_id(change))

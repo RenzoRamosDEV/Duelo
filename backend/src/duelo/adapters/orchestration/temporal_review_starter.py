@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
 from duelo.adapters.orchestration.temporal_client import LazyTemporalClient
-from duelo.application.ports import ProjectAgents, ProjectSlugs, ReviewStartError
+from duelo.application.ports import ReviewStartError
 from duelo.application.review_requests import ReviewCommitInput
 from duelo.application.task_queues import PLATFORM_TASK_QUEUE
 from duelo.application.workflow_naming import (
@@ -38,30 +40,15 @@ class TemporalReviewStarter:
     pisa con un commit del mismo sha. Antes de arrancar con el id nuevo consulta también el id
     antiguo (`{kind}-{proyecto}-{sha}`): si esa ejecución existe y no falló, no arranca otra, así
     que reenviar un commit que ya se revisó antes de los nombres legibles no vuelve a gastar a los
-    agentes."""
+    agentes. El slug y los agentes llegan del caso de uso, que ya cargó el proyecto: no consulta la
+    base de datos."""
 
-    def __init__(
-        self,
-        client: LazyTemporalClient,
-        agent_names: list[str],
-        slugs: ProjectSlugs | None = None,
-        project_agents: ProjectAgents | None = None,
-    ) -> None:
+    def __init__(self, client: LazyTemporalClient) -> None:
         self._client = client
-        self._agent_names = agent_names
-        self._slugs = slugs
-        self._project_agents = project_agents
 
-    async def _agents_of(self, change: Change) -> list[str]:
-        """Los agentes elegidos del proyecto del change; los configurados si no se conocen."""
-        chosen = (
-            await self._project_agents.agents_of(change.project_id) if self._project_agents else ()
-        )
-        return list(chosen) or self._agent_names
-
-    async def start(self, change: Change) -> None:
+    async def start(self, change: Change, *, project_slug: str, agent_names: Sequence[str]) -> None:
+        slug = project_slug or FALLBACK_REPO
         try:
-            slug = await self._slug_of(change)
             client = await self._client.get()
             if await _legacy_execution_is_taken(client, change):
                 return
@@ -70,7 +57,7 @@ class TemporalReviewStarter:
                 "ReviewCommitWorkflow",
                 ReviewCommitInput(
                     change_id=str(change.id),
-                    agent_names=await self._agents_of(change),
+                    agent_names=list(agent_names),
                     run=change.run,
                     kind=kind,
                     project_slug=slug,
@@ -98,10 +85,6 @@ class TemporalReviewStarter:
             return
         except Exception as exc:
             raise ReviewStartError("No se pudo arrancar la review") from exc
-
-    async def _slug_of(self, change: Change) -> str:
-        found = await self._slugs.slug_of(change.project_id) if self._slugs is not None else None
-        return found or FALLBACK_REPO
 
 
 async def _legacy_execution_is_taken(client: Client, change: Change) -> bool:

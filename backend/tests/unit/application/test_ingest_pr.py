@@ -111,3 +111,21 @@ async def test_the_result_reports_creation_and_a_commit_with_the_same_sha_is_new
     commit = await ingest_commit(projects, changes, starter, _submission(), max_diff_chars=100)
 
     assert (first.created, second.created, commit.created) == (True, False, True)
+
+
+async def test_the_starter_receives_the_project_slug_and_its_agents() -> None:
+    project = Project(id=uuid4(), slug="acme/widgets", agents=("claude",))
+    starter = FakeReviewStarter()
+
+    change = (
+        await ingest_pr(
+            FakeProjectRepository(project),
+            FakeChangeRepository(),
+            starter,
+            _submission(),
+            max_diff_chars=100,
+            agent_names=("claude", "codex"),
+        )
+    ).change
+
+    assert starter.received == [(change.id, "acme/widgets", ("claude",))]

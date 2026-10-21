@@ -14,8 +14,15 @@ class FakeProjectRepository:
     def __init__(self, *projects: Project, available_agents: Sequence[str] = ()) -> None:
         self._by_slug = {p.slug: p for p in projects}
         self._available = tuple(available_agents)
+        self.get_calls: list[UUID] = []
+        self.agents_of_calls = 0
+
+    async def get(self, project_id: UUID) -> Project | None:
+        self.get_calls.append(project_id)
+        return next((p for p in self._by_slug.values() if p.id == project_id), None)
 
     async def agents_of(self, project_id: UUID) -> tuple[str, ...]:
+        self.agents_of_calls += 1
         return next((p.agents for p in self._by_slug.values() if p.id == project_id), ())
 
     async def save_agents(self, slug: str, agents: Sequence[str]) -> Project | None:

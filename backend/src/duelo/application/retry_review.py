@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
 from uuid import UUID
 
-from duelo.application.ports import ChangeRepository, ProjectAgents, ReviewRepository, ReviewStarter
-from duelo.application.project_agents import expected_agents_for, expected_agents_of
+from duelo.application.ports import (
+    ChangeRepository,
+    ProjectRepository,
+    ReviewRepository,
+    ReviewStarter,
+)
 from duelo.domain.change import Change
 from duelo.domain.review import ReviewStatus
 from duelo.domain.review_status import (
@@ -32,38 +37,47 @@ class RetryNotAllowed(Exception):
 async def retry_review(
     changes: ChangeRepository,
     reviews: ReviewRepository,
+    projects: ProjectRepository,
     starter: ReviewStarter,
     change_id: UUID,
     *,
-    expected_agents: int,
+    agent_names: Sequence[str],
     now: datetime,
-    project_agents: ProjectAgents | None = None,
 ) -> Change:
     """Lanza una nueva ejecución (`run + 1`) para un change cuya review actual terminó con fallos.
 
     `now` es el inicio del nuevo `run` (reinicia el reloj de `stale`). Se arranca primero y se
     avanza `run` después: el id del workflow es determinista por run, así que dos reintentos
     simultáneos arrancan una sola ejecución, y si el arranque falla `run` no cambia y se puede
-    volver a intentar (al revés, el change quedaría en un run sin reviews)."""
+    volver a intentar (al revés, el change quedaría en un run sin reviews).
+
+    Los agentes son la selección del proyecto, o `agent_names` (los configurados) si no tiene.
+    El run actual se juzga con los que guardó al arrancar (o, si no los guardó, con esos) y el
+    nuevo espera a todos ellos."""
     change = await changes.get(change_id)
     if change is None:
         raise ChangeNotFound(change_id)
+    project = await projects.get(change.project_id)
+    if project is None:
+        raise ChangeNotFound(change_id)  # el proyecto se borró: sus changes caen en cascada
+    agents = project.agents or tuple(agent_names)
 
     counts = await reviews.status_counts(change_id, change.run)
+    current_expected = change.expected_agents if change.expected_agents is not None else len(agents)
     status = review_status_from_counts(
         completed=counts.get(ReviewStatus.COMPLETED, 0),
         failed=counts.get(ReviewStatus.FAILED, 0),
-        expected_agents=await expected_agents_of(change, project_agents, expected_agents),
+        expected_agents=current_expected,
     )
     if status not in RETRYABLE_STATUSES:
         raise RetryNotAllowed(status)
 
-    # El run nuevo espera a los agentes que elige el starter: la selección actual.
-    next_expected = await expected_agents_for(project_agents, change.project_id, expected_agents)
-    await starter.start(replace(change, run=change.run + 1))
+    await starter.start(
+        replace(change, run=change.run + 1), project_slug=project.slug, agent_names=agents
+    )
 
     advanced = await changes.advance_run(
-        change_id, from_run=change.run, started_at=now, expected_agents=next_expected
+        change_id, from_run=change.run, started_at=now, expected_agents=len(agents)
     )
     if advanced is not None:
         return advanced

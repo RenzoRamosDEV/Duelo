@@ -18,10 +18,10 @@ from duelo.application.task_queues import AGENTS_TASK_QUEUE, PLATFORM_TASK_QUEUE
 from duelo.domain.change import Change, ChangeKind
 from duelo.workflows.review_change import ReviewChangeWorkflow
 from duelo.workflows.review_commit import ReviewCommitWorkflow
-from tests.fakes.project_slugs import FakeProjectSlugs
 from tests.integration.helpers import make_activities, persist_change, reviews_for
 
 SLUG = "acme/widgets"
+AGENTS = ("agent_1", "agent_2")
 
 
 def _change(
@@ -43,9 +43,7 @@ def _change(
 
 def _starter(env: WorkflowEnvironment) -> TemporalReviewStarter:
     address = env.client.service_client.config.target_host
-    return TemporalReviewStarter(
-        LazyTemporalClient(address), ["agent_1", "agent_2"], FakeProjectSlugs(default=SLUG)
-    )
+    return TemporalReviewStarter(LazyTemporalClient(address))
 
 
 def _wid(change: Change) -> str:
@@ -59,9 +57,10 @@ async def test_starting_the_same_commit_twice_keeps_a_single_execution(
     change = _change()
     handle = temporal_env.client.get_workflow_handle(_wid(change))
 
-    await starter.start(change)
+    await starter.start(change, project_slug=SLUG, agent_names=AGENTS)
     first = await handle.describe()
-    await starter.start(change)  # no lanza: WorkflowAlreadyStarted cuenta como éxito
+    # No lanza: WorkflowAlreadyStarted cuenta como éxito.
+    await starter.start(change, project_slug=SLUG, agent_names=AGENTS)
     second = await handle.describe()
 
     assert first.run_id == second.run_id
@@ -73,8 +72,8 @@ async def test_different_commits_start_different_workflows(
     starter = _starter(temporal_env)
     one, two = _change("a" * 40), _change("b" * 40)
 
-    await starter.start(one)
-    await starter.start(two)
+    await starter.start(one, project_slug=SLUG, agent_names=AGENTS)
+    await starter.start(two, project_slug=SLUG, agent_names=AGENTS)
 
     ids = {
         (await temporal_env.client.get_workflow_handle(_wid(c)).describe()).run_id
@@ -91,8 +90,8 @@ async def test_a_pr_and_a_commit_with_the_same_sha_do_not_clash(
     commit = _change(project_id=project_id)
     pr = _change(kind=ChangeKind.PR, project_id=project_id)
 
-    await starter.start(commit)
-    await starter.start(pr)
+    await starter.start(commit, project_slug=SLUG, agent_names=AGENTS)
+    await starter.start(pr, project_slug=SLUG, agent_names=AGENTS)
 
     # Cada tipo lleva su propio prefijo en el id.
     runs = {
@@ -106,10 +105,10 @@ async def test_a_pr_and_a_commit_with_the_same_sha_do_not_clash(
 
 
 async def test_an_unreachable_temporal_becomes_review_start_error() -> None:
-    starter = TemporalReviewStarter(LazyTemporalClient("127.0.0.1:1"), ["agent_1"])
+    starter = TemporalReviewStarter(LazyTemporalClient("127.0.0.1:1"))
 
     with pytest.raises(ReviewStartError):
-        await starter.start(_change())
+        await starter.start(_change(), project_slug=SLUG, agent_names=AGENTS)
 
 
 @asynccontextmanager
@@ -143,11 +142,12 @@ async def test_a_completed_review_is_not_started_again(
     handle = temporal_env.client.get_workflow_handle(_wid(change))
 
     async with _workers(temporal_env, session_factory):
-        await starter.start(change)
+        await starter.start(change, project_slug=SLUG, agent_names=AGENTS)
         await handle.result()
         first = (await handle.describe()).run_id
 
-        await starter.start(change)  # reenvío con la review ya completada
+        # Reenvío con la review ya completada.
+        await starter.start(change, project_slug=SLUG, agent_names=AGENTS)
 
     assert (await handle.describe()).run_id == first
 
@@ -160,12 +160,12 @@ async def test_a_failed_review_can_be_started_again(
     handle = temporal_env.client.get_workflow_handle(_wid(ghost))
 
     async with _workers(temporal_env, session_factory):
-        await starter.start(ghost)
+        await starter.start(ghost, project_slug=SLUG, agent_names=AGENTS)
         with pytest.raises(WorkflowFailureError):
             await handle.result()
         first = (await handle.describe()).run_id
 
-        await starter.start(ghost)
+        await starter.start(ghost, project_slug=SLUG, agent_names=AGENTS)
 
     assert (await handle.describe()).run_id != first
 
@@ -178,38 +178,41 @@ async def test_the_second_run_gets_its_own_workflow_id_and_its_reviews_carry_the
     base_id = _wid(change)
 
     async with _workers(temporal_env, session_factory):
-        await starter.start(change)
+        await starter.start(change, project_slug=SLUG, agent_names=AGENTS)
         first = temporal_env.client.get_workflow_handle(base_id)
         await first.result()
 
         # Reintento: el id del run 1 (completado) no se reutiliza, el run 2 arranca otra ejecución.
-        await starter.start(replace(change, run=2))
+        await starter.start(replace(change, run=2), project_slug=SLUG, agent_names=AGENTS)
         second = temporal_env.client.get_workflow_handle(_wid(replace(change, run=2)))
         assert _wid(replace(change, run=2)) == f"{base_id}-r2"
         await second.result()
-        await starter.start(replace(change, run=2))  # idempotente: misma ejecución
+        # Idempotente: misma ejecución.
+        await starter.start(replace(change, run=2), project_slug=SLUG, agent_names=AGENTS)
 
     assert (await first.describe()).run_id != (await second.describe()).run_id
     runs = sorted((r.agent, r.run) for r in await reviews_for(session_factory, change))
     assert runs == [("agent_1", 1), ("agent_1", 2), ("agent_2", 1), ("agent_2", 2)]
 
 
-async def test_only_the_agents_chosen_for_the_project_review_the_change(
+async def test_only_the_agents_it_receives_review_the_change(
     temporal_env: WorkflowEnvironment, session_factory: async_sessionmaker
 ) -> None:
-    projects = SqlAlchemyProjectRepository(session_factory, ["agent_1", "agent_2"])
-    address = temporal_env.client.service_client.config.target_host
-    starter = TemporalReviewStarter(
-        LazyTemporalClient(address), ["agent_1", "agent_2"], projects, projects
-    )
+    starter = _starter(temporal_env)
     change = await persist_change(session_factory, "d" * 40)
-    slug = await projects.slug_of(change.project_id)
-    assert slug is not None
-    await projects.save_agents(slug, ["agent_2"])
-    handle = temporal_env.client.get_workflow_handle(workflow_id(change, slug))
+    handle = temporal_env.client.get_workflow_handle(workflow_id(change, "otro/repo"))
 
     async with _workers(temporal_env, session_factory):
-        await starter.start(change)
+        await starter.start(change, project_slug="otro/repo", agent_names=["agent_2"])
         await handle.result()
 
     assert [r.agent for r in await reviews_for(session_factory, change)] == ["agent_2"]
+
+
+def test_the_starter_needs_nothing_but_the_temporal_client() -> None:
+    """Todo lo que necesita lo recibe en `start`: no hay base de datos que consultar."""
+    projects = SqlAlchemyProjectRepository(async_sessionmaker())
+    client = LazyTemporalClient("127.0.0.1:1")
+
+    with pytest.raises(TypeError):
+        TemporalReviewStarter(client, ["agent_1"], projects, projects)  # type: ignore[call-arg]
