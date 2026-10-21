@@ -4,6 +4,7 @@ configuración del worker (12-factor: `DATABASE_URL` manda)."""
 from __future__ import annotations
 
 import contextlib
+import logging.config
 import runpy
 from pathlib import Path
 from types import SimpleNamespace
@@ -50,3 +51,26 @@ def test_the_migrations_read_the_url_of_the_worker_settings_without_an_ingest_to
     runpy.run_path(str(ENV_PY))
 
     assert configured["url"] == "postgresql+asyncpg://u:p@host-migracion:5435/db"
+
+
+def test_the_migration_logging_config_does_not_silence_the_existing_loggers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regresión: `fileConfig` desactiva por defecto los loggers ya creados, y una migración
+    lanzada desde los tests dejaba mudos los de la aplicación para el resto de la sesión."""
+    calls: list[tuple[object, dict[str, object]]] = []
+    monkeypatch.setattr(
+        logging.config, "fileConfig", lambda *args, **kwargs: calls.append((args[0], kwargs))
+    )
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(config_file_name="alembic.ini"),
+        is_offline_mode=lambda: True,
+        configure=lambda **kwargs: None,
+        begin_transaction=contextlib.nullcontext,
+        run_migrations=lambda: None,
+    )
+    monkeypatch.setattr(alembic, "context", fake_context)
+
+    runpy.run_path(str(ENV_PY))
+
+    assert calls == [("alembic.ini", {"disable_existing_loggers": False})]

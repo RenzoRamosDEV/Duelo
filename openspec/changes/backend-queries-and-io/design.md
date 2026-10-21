@@ -183,3 +183,11 @@ Commits atómicos por bloque: `perf(persistence)` barrido, `perf(github)` sincro
   que el proceso termina o vence el plazo, marca `truncated` y devuelve el `returncode` real.
   `gh_cli` conserva su comportamiento (no mira `truncated`). Corrección posterior a la propuesta
   para no romper las reviews de Codex con stdout recortado.
+- Durante la verificación, `just test` (suite completa) fallaba en
+  `test_an_unsafe_sha_never_reaches_git` también sobre el commit base: `alembic/env.py` llamaba a
+  `fileConfig` con `disable_existing_loggers=True` (el valor por defecto) y los tests de migración
+  dejaban mudos los loggers de la aplicación para los tests posteriores. Como el change ya toca
+  `env.py`, se corrige con `disable_existing_loggers=False` y un test de regresión.
+- La medición de la tarea 0.1 vive en `tests/unit/adapters/github/test_pr_sync_measurement.py` y
+  no en `test_local_projects.py`: importa un adaptador y `mutmut` solo copia `domain/` y
+  `application/`.

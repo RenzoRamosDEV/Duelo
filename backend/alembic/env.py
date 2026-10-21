@@ -14,7 +14,9 @@ from duelo.config import WorkerSettings
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Sin `disable_existing_loggers=False`, una migración lanzada dentro de un proceso (los tests,
+    # `command.upgrade`) silencia los loggers de la aplicación que ya existían.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Las migraciones se escriben a mano (no se usa `alembic revision --autogenerate`);
 # target_metadata solo habilita `alembic check` como red de seguridad extra.
