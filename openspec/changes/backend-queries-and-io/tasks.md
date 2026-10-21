@@ -11,6 +11,8 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
       abiertas, una primera sincronización las registra y en la segunda se cuentan las llamadas a
       `gh pr diff` y los `starter.start`. Anotar aquí el valor sobre el código actual (esperado:
       30 `gh pr diff` por ciclo). Ese mismo test pasa a afirmar 0 en la tarea 2.3.
+      El test vive en `tests/unit/adapters/github/test_pr_sync_measurement.py` (movido en la
+      tarea 9.1: usa un adaptador y `mutmut` solo copia `domain/` y `application/`).
       **Medido (2026-10-21, `test_a_cycle_without_new_heads_costs_gh_diffs_and_starts`):** segunda
       sincronización con 30 PRs ya registradas → 31 invocaciones de `gh` (1 `pr list` + 30
       `pr diff`), 30 `starter.start` y `SyncResult(synced=30, created=0)`.
