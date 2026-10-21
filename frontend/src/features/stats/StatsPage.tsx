@@ -132,7 +132,9 @@ function SummaryCards({ stats }: { stats: AgentStat[] }) {
 
 export function StatsPage() {
   const source = useDataSource();
-  const state = useAsync(useCallback(() => source.agentStats(), [source]));
+  const state = useAsync(
+    useCallback((signal: AbortSignal) => source.agentStats({ signal }), [source]),
+  );
   return (
     <div className="page">
       <div className="page-header">

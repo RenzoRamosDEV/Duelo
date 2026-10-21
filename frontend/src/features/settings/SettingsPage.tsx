@@ -59,7 +59,9 @@ function Diagnostics({ health }: { health: Health }) {
 
 export function SettingsPage() {
   const source = useDataSource();
-  const health = useAsync(useCallback(() => source.health(), [source]));
+  const health = useAsync(
+    useCallback((signal: AbortSignal) => source.health({ signal }), [source]),
+  );
   return (
     <div className="page">
       <div className="page-header">

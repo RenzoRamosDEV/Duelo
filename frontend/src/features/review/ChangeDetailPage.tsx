@@ -55,7 +55,7 @@ export function ChangeDetailPage({ slug, id }: { slug: string; id: string }) {
   const source = useDataSource();
   const agentNames = useAgentNames();
   const state = useAsync(
-    useCallback(() => source.change(id), [source, id]),
+    useCallback((signal: AbortSignal) => source.change(id, { signal }), [source, id]),
     {
       pollMs: usePollMs(),
       pollWhile: inProgress,

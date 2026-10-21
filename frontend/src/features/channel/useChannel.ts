@@ -43,9 +43,13 @@ export function useChannel(slug: string, { kind, state, q }: ChannelFilters) {
   const key = JSON.stringify([slug, kind, state, q]);
   const tagged = useAsync(
     useCallback(
-      async () => ({
+      async (signal: AbortSignal) => ({
         key,
-        page: await source.changes(slug, { kind, status: statusesFor(state), q: q || undefined }),
+        page: await source.changes(
+          slug,
+          { kind, status: statusesFor(state), q: q || undefined },
+          { signal },
+        ),
       }),
       [source, slug, kind, state, q, key],
     ),

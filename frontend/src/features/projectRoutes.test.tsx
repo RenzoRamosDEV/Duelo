@@ -44,14 +44,14 @@ describe("project routes with an owner/repo slug (regression)", () => {
     await userEvent.click(card);
     expect(await screen.findByText("hola")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: `#${SLUG}` })).toBeInTheDocument();
-    expect(changes).toHaveBeenCalledWith(SLUG, expect.anything());
+    expect(changes).toHaveBeenCalledWith(SLUG, expect.anything(), expect.anything());
   });
 
   it("opens the change detail and links back to the channel", async () => {
     const change = vi.fn(async (id: string) => makeChange({ id, title: "detalle" }));
     renderWith({ change }, `/p/${SLUG}/changes/c1`);
     expect(await screen.findByRole("heading", { name: "detalle" })).toBeInTheDocument();
-    expect(change).toHaveBeenCalledWith("c1");
+    expect(change).toHaveBeenCalledWith("c1", expect.anything());
     expect(screen.getByRole("link", { name: `#${SLUG}` })).toHaveAttribute("href", `/p/${SLUG}`);
   });
 

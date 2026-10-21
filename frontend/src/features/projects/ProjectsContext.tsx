@@ -23,7 +23,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const source = useDataSource();
   const navigate = useNavigate();
   const projects = useAsync(
-    useCallback(() => source.projects(), [source]),
+    useCallback((signal: AbortSignal) => source.projects({ signal }), [source]),
     {
       pollMs: usePollMs(),
       equals: (a: ProjectRef[], b: ProjectRef[]) => sameValue(a, b),

@@ -4,7 +4,7 @@ import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 import { DataSourceProvider } from "../../data/source";
-import { ApiError, type DataSource, type ProjectRef } from "../../lib/api";
+import { ApiError, type DataSource, type ProjectRef, createHttpSource } from "../../lib/api";
 import { makeSource } from "../../test/fixtures";
 
 const PROJECTS: ProjectRef[] = [
@@ -85,6 +85,26 @@ describe("project picker (entry page)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar.");
     await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
     expect(await screen.findByRole("link", { name: /duelo/ })).toBeInTheDocument();
+  });
+
+  it("shows a proxy's HTML answer as an invalid response that can be retried", async () => {
+    const html = createHttpSource("http://api.test", async () => new Response("<html>"));
+    render(
+      <DataSourceProvider source={{ ...makeSource(), projects: html.projects }}>
+        <MemoryRouter initialEntries={["/"]}>
+          <App />
+        </MemoryRouter>
+      </DataSourceProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Respuesta no válida del servidor.");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+  });
+
+  it("gives the projects request a signal it can be cancelled with", async () => {
+    const projects = vi.fn<DataSource["projects"]>(async () => PROJECTS);
+    renderHome({ projects });
+    await screen.findByRole("link", { name: /duelo/ });
+    expect(projects.mock.calls[0][0]?.signal).toBeInstanceOf(AbortSignal);
   });
 });
 

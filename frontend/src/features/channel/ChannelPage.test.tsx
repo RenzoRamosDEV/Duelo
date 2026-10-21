@@ -90,10 +90,11 @@ describe("load more", () => {
     await userEvent.click(screen.getByRole("button", { name: "Con fallos" }));
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar cambios" }), " sha ");
     await waitFor(() =>
-      expect(changes).toHaveBeenLastCalledWith("demo", {
-        status: ["failed", "partial_failed"],
-        q: "sha",
-      }),
+      expect(changes).toHaveBeenLastCalledWith(
+        "demo",
+        { status: ["failed", "partial_failed"], q: "sha" },
+        expect.anything(),
+      ),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Cargar más" }));
     await screen.findByText("change c");
@@ -132,7 +133,7 @@ describe("load more", () => {
     await screen.findByText("change p1");
     expect(screen.queryByText("change a")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cargar más" })).toBeNull();
-    expect(changes).toHaveBeenLastCalledWith("demo", { kind: "pr" });
+    expect(changes).toHaveBeenLastCalledWith("demo", { kind: "pr" }, expect.anything());
   });
 });
 
@@ -184,11 +185,11 @@ describe("server-side filters", () => {
     await userEvent.click(screen.getByRole("button", { name: "PRs" }));
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar cambios" }), "fix");
     await waitFor(() =>
-      expect(changes).toHaveBeenLastCalledWith("demo", {
-        kind: "pr",
-        status: ["completed"],
-        q: "fix",
-      }),
+      expect(changes).toHaveBeenLastCalledWith(
+        "demo",
+        { kind: "pr", status: ["completed"], q: "fix" },
+        expect.anything(),
+      ),
     );
     expect(changes.mock.calls.at(-1)?.[1]?.cursor).toBeUndefined();
   });
@@ -225,6 +226,24 @@ describe("server-side filters", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByText("obsoleto")).toBeNull();
     expect(screen.getByText("vigente")).toBeInTheDocument();
+  });
+
+  it("cancels the request in progress when the filter changes, without showing an error", async () => {
+    const signals: AbortSignal[] = [];
+    const changes = vi.fn<DataSource["changes"]>((_s, q, options) => {
+      if (q?.status) return Promise.resolve({ items: items("completado"), nextCursor: null });
+      const signal = options?.signal as AbortSignal;
+      signals.push(signal);
+      return new Promise((_resolve, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason)),
+      );
+    });
+    renderWith({ changes }, "/p/demo");
+    await waitFor(() => expect(signals).toHaveLength(1));
+    await userEvent.click(screen.getByRole("button", { name: "Completados" }));
+    expect(await screen.findByText("completado")).toBeInTheDocument();
+    expect(signals[0].aborted).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 
