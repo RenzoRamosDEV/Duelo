@@ -59,7 +59,7 @@ def create_app(
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.allowed_origins,
-            allow_methods=["GET", "POST", "DELETE"],
+            allow_methods=["GET", "POST", "PUT", "DELETE"],
             allow_headers=["Content-Type", "X-Ingest-Token", REQUEST_ID_HEADER],
             expose_headers=[REQUEST_ID_HEADER, "Retry-After"],
             allow_credentials=False,
