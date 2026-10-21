@@ -103,6 +103,8 @@ class SqlAlchemyReviewRepository:
                 func.avg(ReviewModel.duration_ms).label("avg_duration_ms"),
                 func.avg(ReviewModel.score).label("avg_score"),
             )
+            # Una review copiada de otro change (PR idéntica a su commit) ya contó en el original.
+            .where(ReviewModel.reused_from_change_id.is_(None))
             .group_by(ReviewModel.agent)
             .order_by(ReviewModel.agent)
         )

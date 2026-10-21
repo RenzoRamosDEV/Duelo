@@ -144,3 +144,49 @@ async def test_failed_review_persists_with_failed_event(
     matching = [e for e in events if e.payload.get("change_id") == str(change.id)]
     assert len(matching) == 1
     assert matching[0].payload.get("error") == "timeout simulado"
+
+
+async def test_reviews_a_pr_reuses_from_its_commit_count_once_in_the_stats(
+    session_factory: async_sessionmaker,
+) -> None:
+    """«PR que reutiliza reviews»: la copia de la PR no suma otra review al agente, ni en el
+    agregado global ni en el del proyecto."""
+    project_id = await create_project(session_factory)
+    sha = "e" * 40
+
+    async def ingest(kind: ChangeKind) -> Change:
+        async with session_factory() as session:
+            return await ingest_change(
+                SqlAlchemyChangeRepository(session),
+                project_id=project_id,
+                kind=kind,
+                ref="main",
+                head_sha=sha,
+                title="feat: algo",
+                author="renzo",
+                url="",
+                diff="diff --git a/x b/x",
+                diff_truncated=False,
+                agent_names=("claude",),
+            )
+
+    commit = await ingest(ChangeKind.COMMIT)
+    async with session_factory() as session:
+        await record_review_success(
+            SqlAlchemyReviewRepository(session),
+            change=commit,
+            agent="claude",
+            run=1,
+            result=ReviewResult(summary="ok", score=8),
+            raw_output=None,
+            duration_ms=100,
+        )
+    pr = await ingest(ChangeKind.PR)
+    async with session_factory() as session:
+        assert await SqlAlchemyChangeRepository(session).has_reused_reviews(pr.id)
+
+    for scope in (None, project_id):
+        async with session_factory() as session:
+            stats = await SqlAlchemyReviewRepository(session).agent_stats(project_id=scope)
+        claude = next(s for s in stats if s.agent == "claude")
+        assert (claude.total, claude.completed, claude.avg_score) == (1, 1, 8.0), scope
