@@ -525,3 +525,109 @@ describe("setAgents", () => {
     );
   });
 });
+
+/** A server that accepts the connection and answers only after `delayMs` (never, by default). */
+function slowFetch(delayMs = Number.POSITIVE_INFINITY): typeof fetch {
+  return (_url, init) =>
+    new Promise<Response>((resolve, reject) => {
+      const signal = init?.signal;
+      const timer = Number.isFinite(delayMs)
+        ? setTimeout(() => resolve(jsonResponse([])), delayMs)
+        : undefined;
+      signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    });
+}
+
+describe("request deadline and cancellation", () => {
+  it("gives up after the deadline with a timeout ApiError without status", async () => {
+    const source = createHttpSource("http://api.test", slowFetch(), { timeoutMs: 20 });
+    const error = (await source.projects().catch((e: unknown) => e)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe("El servidor no respondió a tiempo.");
+    expect(error.status).toBeNull();
+  });
+
+  it("returns the data when the server answers before the deadline", async () => {
+    const source = createHttpSource("http://api.test", slowFetch(10), { timeoutMs: 200 });
+    expect(await source.projects()).toEqual([]);
+  });
+
+  it("defaults the deadline to 10 s", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    try {
+      await createHttpSource("http://api.test", async () => jsonResponse([])).projects();
+      expect(timeout).toHaveBeenCalledWith(10_000);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
+  it("rethrows the caller's abort instead of turning it into an ApiError", async () => {
+    const controller = new AbortController();
+    const source = createHttpSource("http://api.test", slowFetch(), { timeoutMs: 1000 });
+    const pending = source.projects({ signal: controller.signal }).catch((e: unknown) => e);
+    controller.abort();
+    const error = (await pending) as Error;
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error.name).toBe("AbortError");
+  });
+
+  it("passes the signal to every read", async () => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({}),
+    );
+    const source = createHttpSource("http://api.test", fetchMock);
+    const { signal } = new AbortController();
+    await Promise.allSettled([
+      source.projects({ signal }),
+      source.changes("s", {}, { signal }),
+      source.change("c", { signal }),
+      source.agentStats({ signal }),
+      source.health({ signal }),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init?.signal?.aborted).toBe(false);
+      expect(init?.signal).not.toBeUndefined();
+    }
+  });
+
+  it("keeps the connection message for a network failure that is not an abort", async () => {
+    const source = createHttpSource("http://api.test", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const error = (await source.projects().catch((e: unknown) => e)) as ApiError;
+    expect(error.message).toBe("No se pudo conectar con el servidor.");
+    expect(error.status).toBeNull();
+  });
+});
+
+describe("response that is not JSON", () => {
+  it("turns a 200 with an HTML body into an invalid-response ApiError with its status", async () => {
+    const source = createHttpSource("http://api.test", async () => new Response("<html>"));
+    const error = (await source.projects().catch((e: unknown) => e)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe("Respuesta no válida del servidor.");
+    expect(error.status).toBe(200);
+  });
+
+  it("still resolves an empty 204", async () => {
+    const source = createHttpSource(
+      "http://api.test",
+      async () => new Response(null, { status: 204 }),
+    );
+    await expect(source.removeProject("s", "t")).resolves.toBeUndefined();
+  });
+
+  it("keeps the status message for a 4xx with an HTML body", async () => {
+    const source = createHttpSource(
+      "http://api.test",
+      async () => new Response("<html>", { status: 404 }),
+    );
+    const error = (await source.projects().catch((e: unknown) => e)) as ApiError;
+    expect(error.message).toBe("El servidor respondió 404.");
+  });
+});

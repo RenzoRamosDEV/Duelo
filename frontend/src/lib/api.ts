@@ -54,12 +54,17 @@ export interface RetryResult {
   run: number;
 }
 
+/** Lets the caller cancel a read (leaving the page, changing its query). */
+export interface ReadOptions {
+  signal?: AbortSignal;
+}
+
 export interface DataSource {
-  projects(): Promise<ProjectRef[]>;
-  changes(slug: string, query?: ChangeQuery): Promise<ChangePage>;
-  change(id: string): Promise<Change>;
-  agentStats(): Promise<AgentStat[]>;
-  health(): Promise<Health>;
+  projects(options?: ReadOptions): Promise<ProjectRef[]>;
+  changes(slug: string, query?: ChangeQuery, options?: ReadOptions): Promise<ChangePage>;
+  change(id: string, options?: ReadOptions): Promise<Change>;
+  agentStats(options?: ReadOptions): Promise<AgentStat[]>;
+  health(options?: ReadOptions): Promise<Health>;
   /** Starts a new review run for a failed change. Rejects with `ApiError` (401/404/409/503…). */
   retry(id: string, token: string): Promise<RetryResult>;
   /** Registers a local git repository and installs its hooks. Rejects with `ApiError`. */
@@ -163,37 +168,59 @@ function toReview(dto: ReviewDto): Review {
   };
 }
 
+/** How long a request may take before it is aborted (ms). */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
+export interface HttpSourceOptions {
+  timeoutMs?: number;
+}
+
 export function createHttpSource(
   baseUrl: string,
   fetchImpl: typeof fetch = (...args) => fetch(...args),
+  { timeoutMs = REQUEST_TIMEOUT_MS }: HttpSourceOptions = {},
 ): DataSource {
   const root = baseUrl.replace(/\/+$/, "");
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const deadline = AbortSignal.timeout(timeoutMs);
+    const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+    /** The caller's own abort is rethrown as is, so it can tell a cancellation from a failure. */
+    function abortError(error: unknown): unknown {
+      if (init.signal?.aborted) return error;
+      if (deadline.aborted) return new ApiError("El servidor no respondió a tiempo.", null);
+      return null;
+    }
+
     let response: Response;
     try {
       response = await fetchImpl(`${root}${path}`, {
         ...init,
+        signal,
         headers: { Accept: "application/json", ...init.headers },
       });
-    } catch {
-      throw new ApiError("No se pudo conectar con el servidor.", null);
+    } catch (error) {
+      throw abortError(error) ?? new ApiError("No se pudo conectar con el servidor.", null);
     }
     if (!response.ok) {
       const detail = await errorDetail(response);
       throw new ApiError(detail ?? `El servidor respondió ${response.status}.`, response.status);
     }
     if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    try {
+      return (await response.json()) as T;
+    } catch (error) {
+      throw abortError(error) ?? new ApiError("Respuesta no válida del servidor.", response.status);
+    }
   }
-  const get = <T>(path: string) => request<T>(path);
+  const get = <T>(path: string, { signal }: ReadOptions = {}) => request<T>(path, { signal });
 
   return {
-    async projects() {
-      const projects = await get<ProjectDto[]>("/projects");
+    async projects(options) {
+      const projects = await get<ProjectDto[]>("/projects", options);
       return projects.map(toProject);
     },
-    async changes(slug, { kind, status, q, cursor, limit } = {}) {
+    async changes(slug, { kind, status, q, cursor, limit } = {}, options = {}) {
       const params = new URLSearchParams();
       if (kind) params.set("kind", kind);
       for (const value of status ?? []) params.append("status", value);
@@ -201,19 +228,19 @@ export function createHttpSource(
       if (cursor) params.set("cursor", cursor);
       if (limit) params.set("limit", String(limit));
       const qs = params.size > 0 ? `?${params}` : "";
-      const page = await get<ChangePageDto>(`/projects/${slugPath(slug)}/changes${qs}`);
+      const page = await get<ChangePageDto>(`/projects/${slugPath(slug)}/changes${qs}`, options);
       return { items: page.items.map(toChange), nextCursor: page.next_cursor ?? null };
     },
-    async change(id) {
-      const dto = await get<ChangeDetailDto>(`/changes/${encodeURIComponent(id)}`);
+    async change(id, options) {
+      const dto = await get<ChangeDetailDto>(`/changes/${encodeURIComponent(id)}`, options);
       return {
         ...toChange({ ...dto, reviews: undefined }),
         diff: dto.diff,
         reviews: dto.reviews.map(toReview),
       };
     },
-    async agentStats() {
-      const rows = await get<AgentStatDto[]>("/stats/agents");
+    async agentStats(options) {
+      const rows = await get<AgentStatDto[]>("/stats/agents", options);
       return rows.map((r) => ({
         agent: r.agent,
         total: r.total,
@@ -223,8 +250,8 @@ export function createHttpSource(
         avgScore: r.avg_score,
       }));
     },
-    async health() {
-      const dto = await get<HealthDto>("/health/dependencies");
+    async health(options) {
+      const dto = await get<HealthDto>("/health/dependencies", options);
       return {
         status: dto.status,
         dependencies: Object.entries(dto.dependencies)
