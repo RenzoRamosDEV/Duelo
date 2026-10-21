@@ -82,12 +82,12 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 4. Transacción del reintento
 
-- [ ] 4.1 Rojo (integración, `tests/integration/persistence`): sobre una sesión real,
+- [x] 4.1 Rojo (integración, `tests/integration/persistence`): sobre una sesión real,
       `short_read` ejecutado fuera de transacción deja `session.in_transaction()` en `False` al
       terminar; dentro de un `session.begin()` abierto no lo cierra. Verde: helper
       `short_read` en `adapters/persistence/` usado por `SqlAlchemyChangeRepository.get`,
       `registered_heads` y `SqlAlchemyReviewRepository.status_counts`.
-- [ ] 4.2 Rojo (integración, `tests/integration/application` o `persistence`): `retry_review` con
+- [x] 4.2 Rojo (integración, `tests/integration/application` o `persistence`): `retry_review` con
       repositorios SQLAlchemy sobre una sesión y un starter espía que registra
       `session.in_transaction()` al ser llamado → `False`, y después `run` avanza; con el starter
       fallando (`ReviewStartError`) el `run` no cambia y la sesión sigue sin transacción. Verde: lo

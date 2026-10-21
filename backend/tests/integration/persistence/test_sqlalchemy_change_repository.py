@@ -208,3 +208,15 @@ async def test_registered_heads_of_no_shas_is_empty_without_a_query(
 
     assert heads == frozenset()
     assert executed == []
+
+
+async def test_registered_heads_leaves_no_transaction_open(
+    session_factory: async_sessionmaker,
+) -> None:
+    project = await create_project(session_factory)
+    async with session_factory() as session:
+        await SqlAlchemyChangeRepository(session).registered_heads(
+            project, ChangeKind.PR, ["a" * 40]
+        )
+
+        assert session.in_transaction() is False

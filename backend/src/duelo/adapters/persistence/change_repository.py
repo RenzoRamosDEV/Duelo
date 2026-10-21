@@ -14,6 +14,7 @@ from duelo.adapters.persistence.events import append_event
 from duelo.adapters.persistence.models import ChangeModel, ReviewModel
 from duelo.adapters.persistence.review_repository import insert_review, review_from_row
 from duelo.adapters.persistence.sanitize import sanitize_json, sanitize_text
+from duelo.adapters.persistence.transactions import short_read
 from duelo.application.ports import CommitWithReviews
 from duelo.application.read_models import ChangeCursor, ChangeSummary, RevertRef, ReviewBrief
 from duelo.domain.change import Change, ChangeKind, ChangeStatus
@@ -152,7 +153,7 @@ class SqlAlchemyChangeRepository:
 
     async def get(self, change_id: UUID) -> Change | None:
         row = (
-            await self._session.execute(select(ChangeModel).where(ChangeModel.id == change_id))
+            await short_read(self._session, select(ChangeModel).where(ChangeModel.id == change_id))
         ).scalar_one_or_none()
         return _to_domain(row) if row is not None else None
 
@@ -161,12 +162,13 @@ class SqlAlchemyChangeRepository:
     ) -> frozenset[str]:
         if not head_shas:
             return frozenset()
-        rows = await self._session.execute(
+        rows = await short_read(
+            self._session,
             select(ChangeModel.head_sha).where(
                 ChangeModel.project_id == project_id,
                 ChangeModel.kind == kind.value,
                 ChangeModel.head_sha.in_(head_shas),
-            )
+            ),
         )
         return frozenset(rows.scalars())
 

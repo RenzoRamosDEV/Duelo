@@ -10,6 +10,7 @@ from sqlalchemy.orm import defer
 from duelo.adapters.persistence.events import append_event
 from duelo.adapters.persistence.models import ChangeModel, ReviewModel
 from duelo.adapters.persistence.sanitize import sanitize_json, sanitize_text
+from duelo.adapters.persistence.transactions import short_read
 from duelo.application.read_models import AgentStats
 from duelo.domain.events import ReviewCompleted, ReviewFailed, ReviewReused
 from duelo.domain.review import Finding, Review, ReviewStatus
@@ -89,10 +90,11 @@ class SqlAlchemyReviewRepository:
         return [review_from_row(row, with_raw_output=False) for row in rows.scalars()]
 
     async def status_counts(self, change_id: UUID, run: int) -> dict[ReviewStatus, int]:
-        rows = await self._session.execute(
+        rows = await short_read(
+            self._session,
             select(ReviewModel.status, func.count())
             .where(ReviewModel.change_id == change_id, ReviewModel.run == run)
-            .group_by(ReviewModel.status)
+            .group_by(ReviewModel.status),
         )
         return {ReviewStatus(status): count for status, count in rows}
 
