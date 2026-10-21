@@ -41,11 +41,13 @@ async def sweep_project(
     """Barre un proyecto con carpeta local. Lanza `HistoryUnavailable` (sin marcar nada) si git no
     se puede consultar.
 
-    Los changes se leen ANTES de preguntar a git: un commit ingerido entre ambos pasos no está en
-    la lista y no se evalúa, en lugar de parecer «deshecho» por no estar en una foto anterior."""
+    Se leen como mucho `window` changes, los más recientes: la misma ventana que se pide a git.
+    Los que quedan fuera no cambian de marca. Los changes se leen ANTES de preguntar a git: un
+    commit ingerido entre ambos pasos no está en la lista y no se evalúa, en lugar de parecer
+    «deshecho» por no estar en una foto anterior."""
     if project.path is None:
         return SweepResult(0, 0)
-    tracked = await marks.tracked_commits(project.id)
+    tracked = await marks.tracked_commits(project.id, limit=window)
     if not tracked:
         return SweepResult(0, 0)
     reachability = await history.reachable(project.path, limit=window)

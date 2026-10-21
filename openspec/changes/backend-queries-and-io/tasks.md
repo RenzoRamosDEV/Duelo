@@ -17,13 +17,13 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 1. Barrido acotado
 
-- [ ] 1.1 Rojo (unit, `tests/unit/application/test_reachability.py`): `sweep_project` con
+- [x] 1.1 Rojo (unit, `tests/unit/application/test_reachability.py`): `sweep_project` con
       `window=3` llama a `marks.tracked_commits(project.id, limit=3)` y a
       `history.reachable(..., limit=3)` (el mismo valor); el fake de `tests/fakes/commit_history.py`
       devuelve solo los `limit` más recientes por `(created_at, id)` descendente; un commit fuera de
       la lectura y ya no alcanzable no se marca ni emite evento. Verde: `limit` keyword obligatorio
       en el puerto `CommitMarks.tracked_commits`, en el fake y en `sweep_project`.
-- [ ] 1.2 Rojo (integración, `tests/integration/persistence/test_commit_state.py`): con 4 commits
+- [x] 1.2 Rojo (integración, `tests/integration/persistence/test_commit_state.py`): con 4 commits
       del proyecto y `limit=3` devuelve los 3 más recientes; bordes `limit` = 2, 3 (= filas) y 5
       (> filas: todos); empate de `created_at` desempatado por `id` descendente; con
       `SET LOCAL enable_seqscan = off`, el `EXPLAIN` de la consulta nombra

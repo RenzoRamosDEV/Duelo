@@ -176,9 +176,9 @@ async def test_the_changes_are_read_before_asking_git() -> None:
     order: list[str] = []
     real_tracked, real_reachable = f.marks.tracked_commits, f.history.reachable
 
-    async def tracked(project_id: UUID):  # type: ignore[no-untyped-def]
+    async def tracked(project_id: UUID, *, limit: int):  # type: ignore[no-untyped-def]
         order.append("changes")
-        return await real_tracked(project_id)
+        return await real_tracked(project_id, limit=limit)
 
     async def reachable(path: str, *, limit: int):  # type: ignore[no-untyped-def]
         order.append("git")
@@ -190,6 +190,30 @@ async def test_the_changes_are_read_before_asking_git() -> None:
     await f.sweep()
 
     assert order == ["changes", "git"]
+
+
+async def test_the_read_of_changes_and_git_share_the_window() -> None:
+    f = Fixture()
+    await f.add(SHA_A)
+
+    await f.sweep(window=3)
+
+    assert f.marks.tracked_calls == [(f.project.id, 3)]
+    assert f.history.reachable_calls == [(PATH, 3)]
+
+
+async def test_a_commit_outside_the_most_recent_window_is_not_marked() -> None:
+    f = Fixture()
+    oldest = await f.add("0" * 40, created_at=T0)
+    recent = [await f.add(f"{i}" * 40, created_at=T0 + timedelta(minutes=i)) for i in (1, 2, 3)]
+    f.history.set_reachable(PATH, [])
+
+    result = await f.sweep(window=3)
+
+    assert result == SweepResult(discarded=3, restored=0)
+    assert [await f.state_of(c) for c in recent] == [True, True, True]
+    assert await f.state_of(oldest) is False
+    assert await f.event_types(oldest) == ["change.created"]
 
 
 # --- ventana llena --------------------------------------------------------------------------

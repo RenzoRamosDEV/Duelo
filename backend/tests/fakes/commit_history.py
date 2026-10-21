@@ -64,8 +64,19 @@ class FakeCommitMarks:
         self._changes = changes
         self._events = events
         self.apply_calls = 0
+        self.tracked_calls: list[tuple[UUID, int]] = []
 
-    async def tracked_commits(self, project_id: UUID) -> list[TrackedCommit]:
+    async def tracked_commits(self, project_id: UUID, *, limit: int) -> list[TrackedCommit]:
+        self.tracked_calls.append((project_id, limit))
+        commits = sorted(
+            (
+                c
+                for c in self._changes._by_id.values()
+                if c.project_id == project_id and c.kind is ChangeKind.COMMIT
+            ),
+            key=lambda c: (c.created_at, c.id),
+            reverse=True,
+        )
         return [
             TrackedCommit(
                 id=c.id,
@@ -73,8 +84,7 @@ class FakeCommitMarks:
                 created_at=c.created_at,
                 discarded=c.discarded_at is not None,
             )
-            for c in self._changes._by_id.values()
-            if c.project_id == project_id and c.kind is ChangeKind.COMMIT
+            for c in commits[:limit]
         ]
 
     async def apply(

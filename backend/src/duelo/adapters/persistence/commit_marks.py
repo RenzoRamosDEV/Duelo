@@ -23,7 +23,7 @@ class SqlAlchemyCommitMarks:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
 
-    async def tracked_commits(self, project_id: UUID) -> list[TrackedCommit]:
+    async def tracked_commits(self, project_id: UUID, *, limit: int) -> list[TrackedCommit]:
         async with self._session_factory() as session:
             rows = await session.execute(
                 select(
@@ -31,10 +31,13 @@ class SqlAlchemyCommitMarks:
                     ChangeModel.head_sha,
                     ChangeModel.created_at,
                     ChangeModel.discarded_at,
-                ).where(
+                )
+                .where(
                     ChangeModel.project_id == project_id,
                     ChangeModel.kind == ChangeKind.COMMIT.value,
                 )
+                .order_by(ChangeModel.created_at.desc(), ChangeModel.id.desc())
+                .limit(limit)
             )
             return [
                 TrackedCommit(

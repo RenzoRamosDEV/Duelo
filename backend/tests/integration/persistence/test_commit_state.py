@@ -12,9 +12,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete, event, inspect, select, text
+from sqlalchemy import delete, event, inspect, select, text, update
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from duelo.adapters.persistence.change_repository import SqlAlchemyChangeRepository
@@ -178,9 +179,70 @@ async def test_tracked_commits_are_only_the_commits_of_that_project(
     await _add(session_factory, project, SHA[1], kind=ChangeKind.PR)  # una PR no se rastrea
     await _add(session_factory, other, SHA[2])  # ni los commits de otro proyecto
 
-    tracked = await SqlAlchemyCommitMarks(session_factory).tracked_commits(project)
+    tracked = await SqlAlchemyCommitMarks(session_factory).tracked_commits(project, limit=10)
 
     assert [(t.id, t.head_sha, t.discarded) for t in tracked] == [(mine.id, SHA[0], False)]
+
+
+async def _add_at(
+    session_factory: async_sessionmaker, project_id: UUID, sha: str, created_at: datetime
+) -> Change:
+    change = await _add(session_factory, project_id, sha)
+    async with session_factory.begin() as session:
+        await session.execute(
+            update(ChangeModel).where(ChangeModel.id == change.id).values(created_at=created_at)
+        )
+    return change
+
+
+@pytest.mark.parametrize(("limit", "expected"), [(2, [3, 2]), (3, [3, 2, 1]), (5, [3, 2, 1, 0])])
+async def test_tracked_commits_are_the_most_recent_up_to_the_limit(
+    session_factory: async_sessionmaker, limit: int, expected: list[int]
+) -> None:
+    project = await create_project(session_factory)
+    commits = [
+        await _add_at(session_factory, project, SHA[i], NOW + timedelta(minutes=i))
+        for i in range(4)
+    ]
+
+    tracked = await SqlAlchemyCommitMarks(session_factory).tracked_commits(project, limit=limit)
+
+    assert [t.id for t in tracked] == [commits[i].id for i in expected]
+
+
+async def test_tracked_commits_with_the_same_creation_break_the_tie_by_id(
+    session_factory: async_sessionmaker,
+) -> None:
+    project = await create_project(session_factory)
+    twins = [await _add_at(session_factory, project, SHA[i], NOW) for i in range(3)]
+
+    tracked = await SqlAlchemyCommitMarks(session_factory).tracked_commits(project, limit=2)
+
+    assert [t.id for t in tracked] == sorted((c.id for c in twins), reverse=True)[:2]
+
+
+async def test_the_tracked_commits_query_walks_the_kind_index(
+    engine: AsyncEngine, session_factory: async_sessionmaker
+) -> None:
+    project = await create_project(session_factory)
+    await _add(session_factory, project, SHA[0])
+    plans: list[str] = []
+
+    def explain(conn, cursor, statement, parameters, context, executemany):  # type: ignore[no-untyped-def]
+        if statement.lstrip().upper().startswith("SELECT") and "FROM changes" in statement:
+            cursor.execute("SET LOCAL enable_seqscan = off")
+            cursor.execute("EXPLAIN " + statement, parameters)
+            plans.append("\n".join(row[0] for row in cursor.fetchall()))
+
+    event.listen(engine.sync_engine, "before_cursor_execute", explain)
+    try:
+        await SqlAlchemyCommitMarks(session_factory).tracked_commits(project, limit=5000)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", explain)
+
+    (plan,) = plans
+    assert "ix_changes_project_kind_created_at_id" in plan, plan
+    assert "Sort" not in plan, plan
 
 
 async def test_apply_marks_the_discarded_commits_with_their_event(

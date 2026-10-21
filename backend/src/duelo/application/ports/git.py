@@ -69,8 +69,9 @@ class RepositoryHistory(Protocol):
 
 
 class CommitMarks(Protocol):
-    async def tracked_commits(self, project_id: UUID) -> list[TrackedCommit]:
-        """Los changes de tipo `commit` del proyecto, con lo que el barrido necesita saber."""
+    async def tracked_commits(self, project_id: UUID, *, limit: int) -> list[TrackedCommit]:
+        """Los changes de tipo `commit` del proyecto (como mucho `limit`, los de creación más
+        reciente, con desempate por id), con lo que el barrido necesita saber."""
         ...
 
     async def apply(
