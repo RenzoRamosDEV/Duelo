@@ -25,12 +25,13 @@ export interface AsyncResult {
 }
 
 /**
- * Runs `load` whenever it changes; stale responses are ignored. `retry` reruns it from scratch
+ * Runs `load` whenever it changes; the previous request is aborted through its signal and its
+ * outcome ignored. `retry` reruns it from scratch
  * (back to loading). With `pollMs` it also refreshes in the background: never overlapping, paused
  * while the tab is hidden and refreshing as soon as it is shown again.
  */
 export function useAsync<T>(
-  load: () => Promise<T>,
+  load: (signal: AbortSignal) => Promise<T>,
   options: AsyncOptions<T> = {},
 ): AsyncState<T> & AsyncResult {
   const { pollMs = 0 } = options;
@@ -46,38 +47,38 @@ export function useAsync<T>(
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` re-triggers the load on retry
   useEffect(() => {
-    let current = true;
+    const controller = new AbortController();
+    const { signal } = controller;
     setState({ status: "loading" });
     setUpdatedAt(null);
     setRefreshFailed(false);
-    load().then(
+    load(signal).then(
       (data) => {
-        if (!current) return;
+        if (signal.aborted) return;
         setState({ status: "ready", data });
         setUpdatedAt(Date.now());
       },
-      (error) => current && setState({ status: "error", error }),
+      (error) => !signal.aborted && setState({ status: "error", error }),
     );
-    return () => {
-      current = false;
-    };
+    return () => controller.abort();
   }, [load, attempt]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` restarts polling after a retry
   useEffect(() => {
-    let current = true;
+    const controller = new AbortController();
+    const { signal } = controller;
     let inFlight = false;
 
     async function refresh(force: boolean) {
-      if (!current || inFlight) return;
+      if (signal.aborted || inFlight) return;
       if (!force && document.visibilityState === "hidden") return;
       const { state: shown, options: opts } = latest.current;
       if (shown.status !== "ready") return;
       if (!force && opts.pollWhile && !opts.pollWhile(shown.data)) return;
       inFlight = true;
       try {
-        const data = await load();
-        if (!current) return;
+        const data = await load(signal);
+        if (signal.aborted) return;
         const equals = latest.current.options.equals;
         setState((prev) =>
           prev.status === "ready" && equals?.(prev.data, data) ? prev : { status: "ready", data },
@@ -85,25 +86,21 @@ export function useAsync<T>(
         setUpdatedAt(Date.now());
         setRefreshFailed(false);
       } catch {
-        if (current) setRefreshFailed(true);
+        if (!signal.aborted) setRefreshFailed(true);
       } finally {
         inFlight = false;
       }
     }
 
     refreshNow.current = (force) => void refresh(force);
-    if (pollMs <= 0) {
-      return () => {
-        current = false;
-      };
-    }
+    if (pollMs <= 0) return () => controller.abort();
     const timer = setInterval(() => void refresh(false), pollMs);
     const onVisibility = () => {
       if (document.visibilityState === "visible") void refresh(false);
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      current = false;
+      controller.abort();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };

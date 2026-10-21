@@ -154,3 +154,70 @@ describe("useAsync polling", () => {
     expect(result.current).toMatchObject({ status: "ready", data: "ok" });
   });
 });
+
+/** A load that never settles on its own and rejects with the abort reason, like `fetch`. */
+function hangingLoad() {
+  const signals: AbortSignal[] = [];
+  const load = vi.fn(
+    (signal: AbortSignal) =>
+      new Promise<string>((_resolve, reject) => {
+        signals.push(signal);
+        signal.addEventListener("abort", () => reject(signal.reason));
+      }),
+  );
+  return { load, signals };
+}
+
+describe("useAsync cancellation", () => {
+  it("aborts the load in progress on unmount", async () => {
+    const { load, signals } = hangingLoad();
+    const { unmount } = renderHook(() => useAsync(load));
+    await flush(0);
+    expect(signals[0].aborted).toBe(false);
+    unmount();
+    expect(signals[0].aborted).toBe(true);
+  });
+
+  it("aborts the previous load when `load` changes and keeps the new result", async () => {
+    const { load: first, signals } = hangingLoad();
+    const second = vi.fn(async (_signal: AbortSignal) => "b");
+    const { result, rerender } = renderHook(({ load }) => useAsync(load), {
+      initialProps: { load: first as (signal: AbortSignal) => Promise<string> },
+    });
+    await flush(0);
+    rerender({ load: second });
+    await flush(0);
+    expect(signals[0].aborted).toBe(true);
+    expect(result.current).toMatchObject({ status: "ready", data: "b" });
+  });
+
+  it("does not flag a refresh aborted by unmounting as failed", async () => {
+    const pending = hangingLoad();
+    const load = vi.fn((signal: AbortSignal) => pending.load(signal)).mockResolvedValueOnce("ok");
+    const { result, unmount } = renderHook(() => useAsync(load, { pollMs: 1000 }));
+    await flush(0);
+    await flush(1000);
+    const before = result.current;
+    unmount();
+    await flush(0);
+    expect(pending.signals[0].aborted).toBe(true);
+    expect(before).toMatchObject({ status: "ready", data: "ok" });
+    expect(result.current).toBe(before);
+  });
+
+  it("flags a refresh that times out and tries again on the next poll", async () => {
+    const timeout = new Error("El servidor no respondió a tiempo.");
+    const load = vi
+      .fn((_signal: AbortSignal) => Promise.resolve("ok"))
+      .mockResolvedValueOnce("ok")
+      .mockRejectedValueOnce(timeout);
+    const { result } = renderHook(() => useAsync(load, { pollMs: 1000 }));
+    await flush(0);
+    await flush(1000);
+    expect(result.current).toMatchObject({ status: "ready", data: "ok", refreshFailed: true });
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load.mock.calls[1][0]).toBeInstanceOf(AbortSignal);
+    await flush(1000);
+    expect(load).toHaveBeenCalledTimes(3);
+  });
+});
