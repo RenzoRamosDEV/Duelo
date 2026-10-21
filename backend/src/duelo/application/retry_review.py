@@ -5,7 +5,7 @@ from datetime import datetime
 from uuid import UUID
 
 from duelo.application.ports import ChangeRepository, ProjectAgents, ReviewRepository, ReviewStarter
-from duelo.application.project_agents import expected_agents_for
+from duelo.application.project_agents import expected_agents_for, expected_agents_of
 from duelo.domain.change import Change
 from duelo.domain.review_status import (
     RETRYABLE_STATUSES,
@@ -49,14 +49,21 @@ async def retry_review(
         raise ChangeNotFound(change_id)
 
     rows = await reviews.list_for_change(change_id)
-    expected_agents = await expected_agents_for(project_agents, change.project_id, expected_agents)
-    status = review_status_of_run(change.run, rows, expected_agents=expected_agents)
+    status = review_status_of_run(
+        change.run,
+        rows,
+        expected_agents=await expected_agents_of(change, project_agents, expected_agents),
+    )
     if status not in RETRYABLE_STATUSES:
         raise RetryNotAllowed(status)
 
+    # El run nuevo espera a los agentes que elige el starter: la selección actual.
+    next_expected = await expected_agents_for(project_agents, change.project_id, expected_agents)
     await starter.start(replace(change, run=change.run + 1))
 
-    advanced = await changes.advance_run(change_id, from_run=change.run, started_at=now)
+    advanced = await changes.advance_run(
+        change_id, from_run=change.run, started_at=now, expected_agents=next_expected
+    )
     if advanced is not None:
         return advanced
     # Otro reintento avanzó `run` antes: la ejecución ya está arrancada; se devuelve el actual.

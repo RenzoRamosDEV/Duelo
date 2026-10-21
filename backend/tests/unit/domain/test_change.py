@@ -74,3 +74,8 @@ def test_the_id_can_be_chosen_and_defaults_to_a_fresh_one() -> None:
 
     assert _new(id=chosen).id == chosen
     assert _new().id != _new().id
+
+
+def test_a_new_change_has_no_expected_agents_unless_given() -> None:
+    assert _new().expected_agents is None
+    assert _new(expected_agents=2).expected_agents == 2

@@ -88,6 +88,9 @@ class ChangeModel(Base):
     # Solo commits. El SHA que este commit revierte con `git revert` (`This reverts commit <sha>`),
     # o `NULL`. Un commit está revertido mientras algún commit vivo (no deshecho) apunte a su SHA.
     reverts_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Reviews que espera el `run` actual (los agentes con los que arrancó), o `NULL` en los
+    # changes anteriores a guardarlo: su estado se calcula con la selección actual.
+    expected_agents: Mapped[int | None] = mapped_column(Integer(), nullable=True)
 
 
 class EventModel(Base):

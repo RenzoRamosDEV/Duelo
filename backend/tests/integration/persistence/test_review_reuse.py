@@ -271,7 +271,7 @@ async def test_the_source_lookup_returns_only_the_current_run_of_the_commit(
         assert found is not None and found.change.id == commit.id
         assert sorted(r.agent for r in found.reviews) == list(AGENTS)
         assert await repo.find_commit_with_reviews(project_id, "0" * 40) is None
-        await repo.advance_run(commit.id, from_run=1, started_at=NOW)
+        await repo.advance_run(commit.id, from_run=1, started_at=NOW, expected_agents=2)
 
     async with session_factory() as session:
         retried = await SqlAlchemyChangeRepository(session).find_commit_with_reviews(

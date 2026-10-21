@@ -88,11 +88,12 @@ class ChangeRepository(Protocol):
         ...
 
     async def advance_run(
-        self, change_id: UUID, *, from_run: int, started_at: datetime
+        self, change_id: UUID, *, from_run: int, started_at: datetime, expected_agents: int
     ) -> Change | None:
         """Compare-and-swap: pasa `run` de `from_run` a `from_run + 1`, guarda `started_at` como
-        inicio del nuevo `run` y devuelve el change actualizado, o `None` si `run` ya no era
-        `from_run` (otro reintento llegó antes) o el change no existe."""
+        inicio del nuevo `run` y `expected_agents` como sus reviews esperadas, y devuelve el
+        change actualizado, o `None` si `run` ya no era `from_run` (otro reintento llegó antes)
+        o el change no existe."""
         ...
 
 

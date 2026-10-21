@@ -105,12 +105,14 @@ class FakeChangeRepository:
         self._by_natural_key[(str(change.project_id), change.kind.value, change.head_sha)] = change
 
     async def advance_run(
-        self, change_id: UUID, *, from_run: int, started_at: datetime
+        self, change_id: UUID, *, from_run: int, started_at: datetime, expected_agents: int
     ) -> Change | None:
         change = self._by_id.get(change_id)
         if change is None or change.run != from_run:
             return None
-        advanced = replace(change, run=from_run + 1, run_started_at=started_at)
+        advanced = replace(
+            change, run=from_run + 1, run_started_at=started_at, expected_agents=expected_agents
+        )
         self._by_id[change_id] = advanced
         self._by_natural_key[(str(change.project_id), change.kind.value, change.head_sha)] = (
             advanced
@@ -146,7 +148,9 @@ class FakeChangeRepository:
                 else None
             )
             stored = await self._reviews.list_for_change(c.id)
-            review_status = review_status_of_run(c.run, stored, expected_agents=expected_agents)
+            # Como el `coalesce(changes.expected_agents, :fallback)` del repositorio real.
+            expected = c.expected_agents if c.expected_agents is not None else expected_agents
+            review_status = review_status_of_run(c.run, stored, expected_agents=expected)
             if status and review_status not in status:
                 continue
             summaries.append(

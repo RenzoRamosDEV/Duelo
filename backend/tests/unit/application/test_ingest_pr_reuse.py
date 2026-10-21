@@ -215,7 +215,9 @@ async def test_a_retried_pr_is_a_normal_pr_again() -> None:
     world = World()
     await world.reviewed_commit()
     reused = (await world.pr()).change
-    advanced = await world.changes.advance_run(reused.id, from_run=1, started_at=NOW)
+    advanced = await world.changes.advance_run(
+        reused.id, from_run=1, started_at=NOW, expected_agents=2
+    )
     assert advanced is not None and advanced.run == 2
 
     again = await world.pr()

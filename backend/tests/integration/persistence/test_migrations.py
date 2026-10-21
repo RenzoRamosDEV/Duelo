@@ -168,3 +168,81 @@ async def test_the_local_projects_migration_keeps_existing_projects_and_is_rever
         )
     assert tuple(row) == (None, False, False)
     assert ("path",) in uniques and ("slug",) in uniques
+
+
+async def _columns(engine: AsyncEngine, table: str) -> set[str]:
+    async with engine.connect() as conn:
+        return await conn.run_sync(lambda c: {col["name"] for col in inspect(c).get_columns(table)})
+
+
+async def test_the_expected_agents_migration_backfills_the_agents_of_the_current_run(
+    database_url: str, engine: AsyncEngine
+) -> None:
+    """Cada change existente queda con los agentes distintos con review en su run actual (las
+    de runs anteriores no cuentan), o `NULL` si ese run no tiene ninguna; bajar quita la
+    columna sin tocar changes ni reviews."""
+    os.environ["DATABASE_URL"] = database_url
+    await asyncio.to_thread(command.downgrade, _alembic(), "i9f7a1d5e348")
+    project_id, retried, untouched = uuid4(), uuid4(), uuid4()
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO projects (id, slug) VALUES (:id, :slug)"),
+            {"id": project_id, "slug": f"exp-{project_id}"},
+        )
+        for change_id, run, sha in ((retried, 2, "a" * 40), (untouched, 2, "b" * 40)):
+            await conn.execute(
+                text(
+                    "INSERT INTO changes (id, project_id, kind, ref, head_sha, title, author,"
+                    " url, diff, diff_truncated, status, run)"
+                    " VALUES (:id, :project_id, 'commit', 'r', :sha, 't', 'a', 'u', '',"
+                    " false, 'pending', :run)"
+                ),
+                {"id": change_id, "project_id": project_id, "sha": sha, "run": run},
+            )
+        # `retried`: claude y codex en su run 2 (más claude en el 1); `untouched`: solo el run 1.
+        for change_id, agent, run in (
+            (retried, "claude", 1),
+            (retried, "claude", 2),
+            (retried, "codex", 2),
+            (untouched, "claude", 1),
+            (untouched, "codex", 1),
+        ):
+            await conn.execute(
+                text(
+                    "INSERT INTO reviews (id, change_id, agent, run, status)"
+                    " VALUES (:id, :change_id, :agent, :run, 'completed')"
+                ),
+                {"id": uuid4(), "change_id": change_id, "agent": agent, "run": run},
+            )
+
+    await asyncio.to_thread(command.upgrade, _alembic(), "head")
+
+    async with engine.connect() as conn:
+        stored = dict(
+            (
+                await conn.execute(
+                    text("SELECT id, expected_agents FROM changes WHERE project_id = :p"),
+                    {"p": project_id},
+                )
+            ).all()
+        )
+    assert stored == {retried: 2, untouched: None}
+
+    await asyncio.to_thread(command.downgrade, _alembic(), "i9f7a1d5e348")
+    try:
+        assert "expected_agents" not in await _columns(engine, "changes")
+        async with engine.connect() as conn:
+            changes = (
+                await conn.execute(
+                    text("SELECT count(*) FROM changes WHERE project_id = :p"), {"p": project_id}
+                )
+            ).scalar_one()
+            reviews = (
+                await conn.execute(
+                    text("SELECT count(*) FROM reviews WHERE change_id IN (:a, :b)"),
+                    {"a": retried, "b": untouched},
+                )
+            ).scalar_one()
+        assert (changes, reviews) == (2, 5)
+    finally:
+        await asyncio.to_thread(command.upgrade, _alembic(), "head")

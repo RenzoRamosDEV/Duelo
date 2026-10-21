@@ -14,7 +14,7 @@ from duelo.application.ports import (
     ProjectRepository,
     ReviewRepository,
 )
-from duelo.application.project_agents import expected_agents_for
+from duelo.application.project_agents import expected_agents_of
 from duelo.application.read_models import (
     AgentStats,
     ChangeCursor,
@@ -93,7 +93,7 @@ async def get_change_detail(
     change = await changes.get(change_id)
     if change is None:
         return None
-    expected_agents = await expected_agents_for(project_agents, change.project_id, expected_agents)
+    expected_agents = await expected_agents_of(change, project_agents, expected_agents)
     rows = await reviews.list_for_change(change_id)
     # Los findings de runs anteriores quedaron superados por el reintento: no cuentan.
     findings = summarize_severities(

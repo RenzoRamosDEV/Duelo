@@ -120,7 +120,7 @@ async def test_advance_run_stores_the_start_of_the_new_run_and_keeps_the_creatio
 
     async with session_factory() as session:
         advanced = await SqlAlchemyChangeRepository(session).advance_run(
-            change.id, from_run=1, started_at=started
+            change.id, from_run=1, started_at=started, expected_agents=2
         )
 
     assert advanced is not None
@@ -136,10 +136,12 @@ async def test_a_lost_compare_and_swap_does_not_touch_the_clock(
 ) -> None:
     change = await _persist(session_factory, "3" * 40)
     async with session_factory() as session:
-        await SqlAlchemyChangeRepository(session).advance_run(change.id, from_run=1, started_at=NOW)
+        await SqlAlchemyChangeRepository(session).advance_run(
+            change.id, from_run=1, started_at=NOW, expected_agents=2
+        )
     async with session_factory() as session:
         lost = await SqlAlchemyChangeRepository(session).advance_run(
-            change.id, from_run=1, started_at=NOW + timedelta(days=9)
+            change.id, from_run=1, started_at=NOW + timedelta(days=9), expected_agents=2
         )
 
     async with session_factory() as session:
@@ -155,7 +157,7 @@ async def test_the_channel_listing_carries_the_start_of_the_current_run(
     started = NOW + timedelta(days=1)
     async with session_factory() as session:
         await SqlAlchemyChangeRepository(session).advance_run(
-            change.id, from_run=1, started_at=started
+            change.id, from_run=1, started_at=started, expected_agents=2
         )
 
     async with session_factory() as session:

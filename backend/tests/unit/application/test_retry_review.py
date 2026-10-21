@@ -201,7 +201,7 @@ async def test_two_simultaneous_retries_start_one_execution_and_advance_run_once
 async def test_a_change_deleted_between_the_check_and_the_swap_is_reported_as_not_found() -> None:
     class VanishingChanges(FakeChangeRepository):
         async def advance_run(
-            self, change_id: UUID, *, from_run: int, started_at: datetime
+            self, change_id: UUID, *, from_run: int, started_at: datetime, expected_agents: int
         ) -> Change | None:
             self._by_id.pop(change_id)
             return None

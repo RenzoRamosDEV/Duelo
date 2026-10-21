@@ -5,6 +5,7 @@ from uuid import UUID
 
 from duelo.application.ingest_commit import ProjectNotFound
 from duelo.application.ports import ProjectAgents
+from duelo.domain.change import Change
 from duelo.domain.project import Project
 
 
@@ -39,3 +40,11 @@ async def expected_agents_for(
     if projects is None:
         return fallback
     return len(await projects.agents_of(project_id)) or fallback
+
+
+async def expected_agents_of(change: Change, projects: ProjectAgents | None, fallback: int) -> int:
+    """Reviews que espera el run actual de `change`: las guardadas al arrancarlo o, en un change
+    que no las guardó, las de la selección actual (ver `expected_agents_for`)."""
+    if change.expected_agents is not None:
+        return change.expected_agents
+    return await expected_agents_for(projects, change.project_id, fallback)

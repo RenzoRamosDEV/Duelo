@@ -56,6 +56,7 @@ class SqlAlchemyChangeRepository:
                     run_started_at=change.run_started_at,
                     diff_summary=_summary_to_json(change.diff_summary),
                     reverts_sha=change.reverts_sha,
+                    expected_agents=change.expected_agents,
                 )
                 # La constraint UNIQUE (project_id, kind, head_sha) resuelve la
                 # idempotencia de forma atómica: si ya existía, no se inserta fila y
@@ -202,6 +203,8 @@ class SqlAlchemyChangeRepository:
         )
         completed = counts.c.completed
         failed = counts.c.failed
+        # Lo guardado para el run manda; `expected_agents` solo cubre los changes sin dato.
+        expected = func.coalesce(ChangeModel.expected_agents, expected_agents)
         # El revert más reciente que sigue en la rama de CADA commit, también como LATERAL (con el
         # índice parcial `ix_changes_project_reverts_sha`): da el SHA del revert sin una consulta
         # por fila. Un revert deshecho (`discarded_at`) ya no cuenta.
@@ -244,6 +247,7 @@ class SqlAlchemyChangeRepository:
                 live_reverter.c.head_sha.label("reverted_by_sha"),
                 completed.label("completed_reviews"),
                 failed.label("failed_reviews"),
+                expected.label("expected_agents"),
             )
             # `select_from` fija el lado izquierdo: con dos LATERAL hay varias fuentes y SQLAlchemy
             # no sabría desde cuál unir.
@@ -258,7 +262,7 @@ class SqlAlchemyChangeRepository:
             stmt = stmt.where(ChangeModel.kind == kind.value)
         if status:
             stmt = stmt.where(
-                or_(*(_status_predicate(s, completed, failed, expected_agents) for s in status))
+                or_(*(_status_predicate(s, completed, failed, expected) for s in status))
             )
         if q:
             # `autoescape`: `%`, `_` y `\` de la búsqueda son texto, no comodines de LIKE.
@@ -291,7 +295,7 @@ class SqlAlchemyChangeRepository:
                 review_status=review_status_from_counts(
                     completed=r.completed_reviews,
                     failed=r.failed_reviews,
-                    expected_agents=expected_agents,
+                    expected_agents=r.expected_agents,
                 ),
                 run=r.run,
                 created_at=r.created_at,
@@ -348,13 +352,15 @@ class SqlAlchemyChangeRepository:
         return {change_id: tuple(items) for change_id, items in grouped.items()}
 
     async def advance_run(
-        self, change_id: UUID, *, from_run: int, started_at: datetime
+        self, change_id: UUID, *, from_run: int, started_at: datetime, expected_agents: int
     ) -> Change | None:
         row = (
             await self._session.execute(
                 update(ChangeModel)
                 .where(ChangeModel.id == change_id, ChangeModel.run == from_run)
-                .values(run=from_run + 1, run_started_at=started_at)
+                .values(
+                    run=from_run + 1, run_started_at=started_at, expected_agents=expected_agents
+                )
                 .returning(ChangeModel)
             )
         ).scalar_one_or_none()
@@ -369,7 +375,7 @@ def _status_predicate(
     status: ChangeReviewStatus,
     completed: ColumnElement[int],
     failed: ColumnElement[int],
-    expected_agents: int,
+    expected_agents: ColumnElement[int],
 ) -> ColumnElement[bool]:
     """Predicado SQL equivalente a `review_status_from_counts` (un test de integración recorre
     la matriz de contadores para garantizar que coinciden)."""
@@ -407,6 +413,7 @@ def _to_domain(row: ChangeModel) -> Change:
         diff_summary=_summary_from_json(row.diff_summary),
         discarded_at=row.discarded_at,
         reverts_sha=row.reverts_sha,
+        expected_agents=row.expected_agents,
     )
 
 

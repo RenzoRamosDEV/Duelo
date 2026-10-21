@@ -29,7 +29,8 @@ async def ingest_change(
     """Persiste el change. `change_id` fija el id del candidato: si el repositorio devuelve un
     change con otro id, ya existía (la identidad natural es otra).
 
-    Una PR (con `agent_names`, los agentes esperados) nace con las reviews copiadas de su commit
+    `agent_names` son los agentes que revisarán su primer run: su número queda guardado como las
+    reviews esperadas. Una PR (con `agent_names`) nace con las reviews copiadas de su commit
     idéntico cuando todos las completaron: se guardan en la misma transacción que el change."""
     now = datetime.now(UTC)
     change = Change.new(
@@ -45,6 +46,7 @@ async def ingest_change(
         created_at=now,
         id=change_id,
         reverts_sha=reverts_sha,
+        expected_agents=len(agent_names) or None,
     )
     event = ChangeCreated(
         change_id=change.id,

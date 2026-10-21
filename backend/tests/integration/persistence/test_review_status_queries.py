@@ -32,6 +32,7 @@ async def _add_change(
     title: str = "",
     author: str = "renzo",
     ref: str = "refs/heads/main",
+    expected_agents: int | None = None,
 ) -> Change:
     change = Change.new(
         project_id=project_id,
@@ -44,6 +45,7 @@ async def _add_change(
         diff="d",
         diff_truncated=False,
         created_at=T0 + timedelta(minutes=i),
+        expected_agents=expected_agents,
     )
     event = ChangeCreated(
         change_id=change.id, project_id=project_id, kind="commit", head_sha=change.head_sha
@@ -171,7 +173,7 @@ async def test_only_the_current_run_counts_for_the_status(
     await _review(session_factory, change, "b", 1, fail=True)
     async with session_factory() as session:
         assert await SqlAlchemyChangeRepository(session).advance_run(
-            change.id, from_run=1, started_at=_RETRIED_AT
+            change.id, from_run=1, started_at=_RETRIED_AT, expected_agents=2
         )
 
     (row,) = await _list(session_factory, project)
@@ -245,7 +247,7 @@ async def test_advance_run_is_a_compare_and_swap(session_factory: async_sessionm
     async def advance(from_run: int) -> Change | None:
         async with session_factory() as session:
             return await SqlAlchemyChangeRepository(session).advance_run(
-                change.id, from_run=from_run, started_at=_RETRIED_AT
+                change.id, from_run=from_run, started_at=_RETRIED_AT, expected_agents=2
             )
 
     stale = await advance(5)  # run actual 1: no coincide
@@ -268,7 +270,7 @@ async def test_concurrent_advance_run_has_exactly_one_winner(
     async def advance() -> Change | None:
         async with session_factory() as session:
             return await SqlAlchemyChangeRepository(session).advance_run(
-                change.id, from_run=1, started_at=_RETRIED_AT
+                change.id, from_run=1, started_at=_RETRIED_AT, expected_agents=2
             )
 
     results = await asyncio.gather(*(advance() for _ in range(8)))
@@ -286,6 +288,72 @@ async def test_advance_run_of_an_unknown_change_is_none(
 
     async with session_factory() as session:
         result = await SqlAlchemyChangeRepository(session).advance_run(
-            uuid4(), from_run=1, started_at=_RETRIED_AT
+            uuid4(), from_run=1, started_at=_RETRIED_AT, expected_agents=2
         )
         assert result is None
+
+
+# --- reviews esperadas guardadas con el change ----------------------------------------------
+
+
+async def test_a_reviewed_change_stays_completed_after_the_selection_grows(
+    session_factory: async_sessionmaker,
+) -> None:
+    """«Cambio de agentes tras revisar»: el change guardó 1 agente esperado y tiene su review;
+    la selección del proyecto pasa a 2 (el `expected_agents` de reserva del canal)."""
+    project = await create_project(session_factory)
+    change = await _add_change(session_factory, project, 1, expected_agents=1)
+    await _review(session_factory, change, "a", 1, fail=False)
+
+    everything = await _list(session_factory, project, expected_agents=2)
+    completed = await _list(
+        session_factory,
+        project,
+        status=frozenset({ChangeReviewStatus.COMPLETED}),
+        expected_agents=2,
+    )
+    running = await _list(
+        session_factory, project, status=frozenset({ChangeReviewStatus.RUNNING}), expected_agents=2
+    )
+
+    assert [(r.id, r.review_status) for r in everything] == [
+        (change.id, ChangeReviewStatus.COMPLETED)
+    ]
+    assert [r.id for r in completed] == [change.id]
+    assert running == []
+
+
+async def test_a_change_without_saved_agents_uses_the_fallback_as_before(
+    session_factory: async_sessionmaker,
+) -> None:
+    project = await create_project(session_factory)
+    change = await _add_change(session_factory, project, 1)
+    await _review(session_factory, change, "a", 1, fail=False)
+
+    (row,) = await _list(session_factory, project, expected_agents=2)
+    running = await _list(
+        session_factory, project, status=frozenset({ChangeReviewStatus.RUNNING}), expected_agents=2
+    )
+
+    assert row.review_status is ChangeReviewStatus.RUNNING
+    assert [r.id for r in running] == [change.id]
+
+
+async def test_the_saved_expected_agents_round_trip_and_advance_run_replaces_them(
+    session_factory: async_sessionmaker,
+) -> None:
+    project = await create_project(session_factory)
+    change = await _add_change(session_factory, project, 1, expected_agents=1)
+    async with session_factory() as session:
+        stored = await SqlAlchemyChangeRepository(session).get(change.id)
+    assert stored is not None and stored.expected_agents == 1
+
+    async with session_factory() as session:
+        advanced = await SqlAlchemyChangeRepository(session).advance_run(
+            change.id, from_run=1, started_at=_RETRIED_AT, expected_agents=2
+        )
+    async with session_factory() as session:
+        reread = await SqlAlchemyChangeRepository(session).get(change.id)
+
+    assert advanced is not None and (advanced.run, advanced.expected_agents) == (2, 2)
+    assert reread == advanced

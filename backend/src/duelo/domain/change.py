@@ -57,6 +57,9 @@ class Change:
     # `git revert`), o `None`. Un commit está «revertido» mientras exista un commit de revert que
     # sigue en la rama y apunta a su SHA: así no importa el orden de llegada ni los `amend`.
     reverts_sha: str | None = None
+    # Reviews que espera el `run` actual: los agentes de la selección con la que arrancó. `None`
+    # en los changes anteriores a guardarlo (su estado se calcula con la selección actual).
+    expected_agents: int | None = None
 
     @classmethod
     def new(
@@ -74,6 +77,7 @@ class Change:
         created_at: datetime,
         id: UUID | None = None,  # noqa: A002 - es el nombre del campo
         reverts_sha: str | None = None,
+        expected_agents: int | None = None,
     ) -> Change:
         if not head_sha:
             raise ValueError("head_sha no puede estar vacío")
@@ -97,4 +101,5 @@ class Change:
             run_started_at=created_at,
             diff_summary=summarize_diff(diff),
             reverts_sha=reverts_sha if kind is ChangeKind.COMMIT else None,
+            expected_agents=expected_agents,
         )

@@ -98,11 +98,20 @@ async def ingest_commit(
     submission: ChangeSubmission,
     *,
     max_diff_chars: int,
+    agent_names: Sequence[str] = (),
 ) -> IngestResult:
     """Persiste el commit y arranca su review. Ambos pasos son idempotentes, así que
-    reintentar tras un fallo del starter es seguro: el `Change` ya está guardado."""
+    reintentar tras un fallo del starter es seguro: el `Change` ya está guardado.
+
+    `agent_names` (los configurados) solo cuentan si el proyecto no tiene selección."""
     return await _ingest(
-        ChangeKind.COMMIT, projects, changes, starter, submission, max_diff_chars=max_diff_chars
+        ChangeKind.COMMIT,
+        projects,
+        changes,
+        starter,
+        submission,
+        max_diff_chars=max_diff_chars,
+        agent_names=agent_names,
     )
 
 

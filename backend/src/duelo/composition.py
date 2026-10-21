@@ -75,6 +75,7 @@ def build_api_dependencies(settings: Settings) -> ApiDependencies:
                 starter,
                 submission,
                 max_diff_chars=settings.max_diff_chars,
+                agent_names=settings.agent_names,
             )
 
     async def ingest_pull_request(submission: ChangeSubmission) -> IngestResult:
