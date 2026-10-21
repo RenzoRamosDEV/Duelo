@@ -182,7 +182,7 @@ def build_fake_api(
         await remove_local_project(hooks, projects, projects, slug)
 
     async def sync_prs(slug: str) -> SyncResult:
-        return await sync_pull_requests(projects, github, ingest_pull_request, slug)
+        return await sync_pull_requests(projects, changes, github, ingest_pull_request, slug)
 
     deps = ApiDependencies(
         add_local_project=add_project if local_projects else None,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,18 @@ LISTING = [
     },
 ]
 
+DIFF_OF_7 = "diff de la PR 7\n"
+
+Query = Callable[[GhPrSource, str], Awaitable[object]]
+# Los errores de `gh` se informan igual al listar que al pedir un diff.
+QUERIES = pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param(lambda gh, root: gh.open_prs(root), id="open_prs"),
+        pytest.param(lambda gh, root: gh.pr_diff(root, 7), id="pr_diff"),
+    ],
+)
+
 
 @pytest.fixture
 def bin_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -38,15 +51,26 @@ def bin_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
-async def test_lists_open_prs_with_their_diff(bin_dir: Path, tmp_path: Path) -> None:
+async def test_lists_open_prs_without_asking_for_any_diff(bin_dir: Path, tmp_path: Path) -> None:
     fake_gh(bin_dir, LISTING)
 
     pulls = await GhPrSource().open_prs(str(tmp_path))
 
-    assert [(p.number, p.title, p.author, p.ref, p.head_sha, p.url, p.diff) for p in pulls] == [
-        (7, "feat: algo", "ana", "feature-x", "a" * 40, LISTING[0]["url"], "diff de la PR 7\n"),
-        (8, "fix: otra", "", "fix-y", "b" * 40, LISTING[1]["url"], "diff de la PR 8\n"),
+    assert [(p.number, p.title, p.author, p.ref, p.head_sha, p.url) for p in pulls] == [
+        (7, "feat: algo", "ana", "feature-x", "a" * 40, LISTING[0]["url"]),
+        (8, "fix: otra", "", "fix-y", "b" * 40, LISTING[1]["url"]),
     ]
+    calls = (bin_dir / "calls").read_text().splitlines()
+    assert [c.split()[:2] for c in calls] == [["pr", "list"]]
+
+
+async def test_the_diff_of_one_pr_is_asked_by_its_number(bin_dir: Path, tmp_path: Path) -> None:
+    fake_gh(bin_dir, LISTING)
+
+    diff = await GhPrSource().pr_diff(str(tmp_path), 7)
+
+    assert diff == DIFF_OF_7
+    assert (bin_dir / "calls").read_text().splitlines() == ["pr diff 7"]
 
 
 async def test_asks_gh_for_open_prs_with_a_bounded_list(bin_dir: Path, tmp_path: Path) -> None:
@@ -81,38 +105,49 @@ async def test_malformed_entries_are_skipped_without_losing_the_good_ones(
     assert [p.number for p in pulls] == [7]
 
 
+@pytest.mark.parametrize(
+    ("limit", "expected"),
+    [
+        (len(DIFF_OF_7) - 1, DIFF_OF_7[:-1]),
+        (len(DIFF_OF_7), DIFF_OF_7),
+        (len(DIFF_OF_7) + 1, DIFF_OF_7),
+    ],
+)
 async def test_a_huge_diff_is_cut(
-    bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, limit: int, expected: str
 ) -> None:
-    fake_gh(bin_dir, [LISTING[0]])
-    monkeypatch.setattr(gh_cli, "MAX_DIFF_CHARS", 5)
+    fake_gh(bin_dir, LISTING)
+    monkeypatch.setattr(gh_cli, "MAX_DIFF_CHARS", limit)
 
-    (pull,) = await GhPrSource().open_prs(str(tmp_path))
-
-    assert pull.diff == "diff "
+    assert await GhPrSource().pr_diff(str(tmp_path), 7) == expected
 
 
-async def test_gh_not_installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@QUERIES
+async def test_gh_not_installed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, query: Query
+) -> None:
     monkeypatch.setenv("PATH", str(tmp_path / "vacio"))
 
     with pytest.raises(GithubUnavailable, match="no está instalado"):
-        await GhPrSource().open_prs(str(tmp_path))
+        await query(GhPrSource(), str(tmp_path))
 
 
-async def test_gh_without_a_session(bin_dir: Path, tmp_path: Path) -> None:
+@QUERIES
+async def test_gh_without_a_session(bin_dir: Path, tmp_path: Path, query: Query) -> None:
     fake_gh(
         bin_dir, exit_code=4, stderr="To get started with GitHub CLI, please run: gh auth login"
     )
 
     with pytest.raises(GithubUnavailable, match="gh auth login"):
-        await GhPrSource().open_prs(str(tmp_path))
+        await query(GhPrSource(), str(tmp_path))
 
 
-async def test_any_other_gh_failure(bin_dir: Path, tmp_path: Path) -> None:
+@QUERIES
+async def test_any_other_gh_failure(bin_dir: Path, tmp_path: Path, query: Query) -> None:
     fake_gh(bin_dir, exit_code=1, stderr="HTTP 500")
 
     with pytest.raises(GithubUnavailable, match="no pudo consultar"):
-        await GhPrSource().open_prs(str(tmp_path))
+        await query(GhPrSource(), str(tmp_path))
 
 
 @pytest.mark.parametrize("raw", ["esto no es json", '{"number": 1}', "42"])
@@ -123,8 +158,9 @@ async def test_an_answer_that_is_not_a_list_of_prs(bin_dir: Path, tmp_path: Path
         await GhPrSource().open_prs(str(tmp_path))
 
 
-async def test_a_gh_that_hangs_is_cut_off(bin_dir: Path, tmp_path: Path) -> None:
+@QUERIES
+async def test_a_gh_that_hangs_is_cut_off(bin_dir: Path, tmp_path: Path, query: Query) -> None:
     fake_gh(bin_dir, sleep=30)
 
     with pytest.raises(GithubUnavailable, match="a tiempo"):
-        await GhPrSource(timeout=0.3).open_prs(str(tmp_path))
+        await query(GhPrSource(timeout=0.3), str(tmp_path))

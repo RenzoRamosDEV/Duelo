@@ -156,6 +156,20 @@ class SqlAlchemyChangeRepository:
         ).scalar_one_or_none()
         return _to_domain(row) if row is not None else None
 
+    async def registered_heads(
+        self, project_id: UUID, kind: ChangeKind, head_shas: Sequence[str]
+    ) -> frozenset[str]:
+        if not head_shas:
+            return frozenset()
+        rows = await self._session.execute(
+            select(ChangeModel.head_sha).where(
+                ChangeModel.project_id == project_id,
+                ChangeModel.kind == kind.value,
+                ChangeModel.head_sha.in_(head_shas),
+            )
+        )
+        return frozenset(rows.scalars())
+
     async def live_reverter(self, project_id: UUID, head_sha: str) -> RevertRef | None:
         row = (
             await self._session.execute(

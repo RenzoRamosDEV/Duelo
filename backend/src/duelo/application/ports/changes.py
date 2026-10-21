@@ -61,6 +61,13 @@ class ChangeRepository(Protocol):
         """Devuelve el `Change` con ese id, o `None` si no existe."""
         ...
 
+    async def registered_heads(
+        self, project_id: UUID, kind: ChangeKind, head_shas: Sequence[str]
+    ) -> frozenset[str]:
+        """Los `head_shas` que ya son un change de tipo `kind` del proyecto, en una sola
+        consulta (ninguna si la lista está vacía)."""
+        ...
+
     async def live_reverter(self, project_id: UUID, head_sha: str) -> RevertRef | None:
         """El commit de revert más reciente que sigue en la rama (no deshecho) y apunta a
         `head_sha` (`Change.reverts_sha`) en ese proyecto, o `None` si no hay ninguno.

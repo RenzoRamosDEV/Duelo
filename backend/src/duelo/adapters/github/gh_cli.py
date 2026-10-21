@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 
 from duelo.adapters.subprocess_runner import CommandNotFound, CommandTimeout, run_command
 from duelo.application.ports import GithubUnavailable, PullRequestInfo
@@ -27,14 +26,12 @@ class GhPrSource:
             raise GithubUnavailable("gh devolvió una respuesta que no es JSON") from exc
         if not isinstance(raw, list):
             raise GithubUnavailable("gh devolvió una respuesta inesperada")
-        pulls: list[PullRequestInfo] = []
-        for entry in raw:
-            parsed = _parse(entry)
-            if parsed is None:
-                continue  # una PR malformada no debe tirar las demás
-            diff = await self._gh(["pr", "diff", str(parsed.number)], root)
-            pulls.append(replace(parsed, diff=diff[:MAX_DIFF_CHARS]))
-        return pulls
+        # Una PR malformada se descarta sin tirar las demás.
+        return [pull for pull in map(_parse, raw) if pull is not None]
+
+    async def pr_diff(self, root: str, number: int) -> str:
+        diff = await self._gh(["pr", "diff", str(number)], root)
+        return diff[:MAX_DIFF_CHARS]
 
     async def _gh(self, args: list[str], root: str) -> str:
         try:
@@ -52,7 +49,7 @@ class GhPrSource:
 
 
 def _parse(entry: object) -> PullRequestInfo | None:
-    """Una PR de `gh` (sin diff todavía), o `None` si le faltan campos o son de otro tipo."""
+    """Una PR de `gh`, o `None` si le faltan campos o son de otro tipo."""
     if not isinstance(entry, dict):
         return None
     number, title = entry.get("number"), entry.get("title")
@@ -72,5 +69,4 @@ def _parse(entry: object) -> PullRequestInfo | None:
         ref=ref,
         head_sha=sha,
         url=url,
-        diff="",
     )

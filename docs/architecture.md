@@ -120,7 +120,8 @@ que ya está en el spec o en `openspec/specs/`.
   `origin`, `owner/repo`, o del nombre de la carpeta) e instala los hooks `post-commit` y
   `pre-push`; `DELETE /projects/{slug}` los quita y borra el proyecto con sus changes, reviews y
   eventos; `POST /projects/{slug}/sync-prs` ingesta las PRs abiertas con `gh` (y
-  `PR_SYNC_INTERVAL_SECONDS` lo repite). Los puertos `GitRepository`, `HookInstaller`,
+  `PR_SYNC_INTERVAL_SECONDS` lo repite): solo descarga el diff de las PRs cuya cabeza aún no está
+  registrada, así que una PR conocida cuya review falló se relanza con `POST /changes/{id}/retry`. Los puertos `GitRepository`, `HookInstaller`,
   `GithubPrSource` y `ProjectCatalog` viven en `application/ports/` (un módulo por capacidad:
   `git`, `github`, `projects`...); los adaptadores usan un
   único ejecutor de subprocesos sin shell y con plazo (`adapters/subprocess_runner.py`). El hook

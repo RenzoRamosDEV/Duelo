@@ -148,3 +148,63 @@ async def test_rolls_back_change_if_event_write_fails(
             await session.execute(select(ChangeModel).where(ChangeModel.id == change.id))
         ).scalar_one_or_none()
     assert row is None
+
+
+# --- cabezas registradas ---------------------------------------------------------------------
+
+
+async def _register(
+    session_factory: async_sessionmaker, project_id: UUID, sha: str, kind: ChangeKind
+) -> None:
+    async with session_factory() as session:
+        await ingest_change(
+            SqlAlchemyChangeRepository(session),
+            project_id=project_id,
+            kind=kind,
+            ref="feature",
+            head_sha=sha,
+            title="t",
+            author="a",
+            url="",
+            diff="d",
+            diff_truncated=False,
+        )
+
+
+async def test_registered_heads_are_the_listed_shas_already_stored_with_that_kind(
+    session_factory: async_sessionmaker,
+) -> None:
+    project, other = await create_project(session_factory), await create_project(session_factory)
+    aaa, bbb, ccc = "a" * 40, "b" * 40, "c" * 40
+    await _register(session_factory, project, aaa, ChangeKind.PR)
+    await _register(session_factory, project, bbb, ChangeKind.COMMIT)
+    await _register(session_factory, other, ccc, ChangeKind.PR)
+
+    async with session_factory() as session:
+        repository = SqlAlchemyChangeRepository(session)
+        mine = await repository.registered_heads(project, ChangeKind.PR, [aaa, bbb, ccc])
+        elsewhere = await repository.registered_heads(other, ChangeKind.PR, [aaa, bbb])
+
+    assert mine == frozenset({aaa})
+    assert elsewhere == frozenset()
+
+
+async def test_registered_heads_of_no_shas_is_empty_without_a_query(
+    session_factory: async_sessionmaker,
+) -> None:
+    project = await create_project(session_factory)
+    async with session_factory() as session:
+        executed: list[object] = []
+        real_execute = session.execute
+
+        async def spy(*args: object, **kwargs: object) -> object:
+            executed.append(args[0])
+            return await real_execute(*args, **kwargs)  # type: ignore[arg-type]
+
+        session.execute = spy  # type: ignore[method-assign]
+        heads = await SqlAlchemyChangeRepository(session).registered_heads(
+            project, ChangeKind.PR, []
+        )
+
+    assert heads == frozenset()
+    assert executed == []

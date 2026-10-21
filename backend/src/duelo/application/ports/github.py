@@ -18,11 +18,15 @@ class PullRequestInfo:
     ref: str
     head_sha: str
     url: str
-    diff: str
 
 
 class GithubPrSource(Protocol):
     async def open_prs(self, root: str) -> list[PullRequestInfo]:
-        """PRs abiertas del repo de `root` (con su diff). Lanza `GithubUnavailable` si no se
-        pueden consultar."""
+        """PRs abiertas del repo de `root` (sin diff). Lanza `GithubUnavailable` si no se pueden
+        consultar."""
+        ...
+
+    async def pr_diff(self, root: str, number: int) -> str:
+        """El diff de la PR `number` del repo de `root` (recortado al límite del adaptador).
+        Lanza `GithubUnavailable` si no se puede consultar."""
         ...

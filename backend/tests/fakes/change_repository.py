@@ -27,6 +27,7 @@ class FakeChangeRepository:
         self._by_natural_key: dict[tuple[str, str, str], Change] = {}
         self._by_id: dict[UUID, Change] = {}
         self.persisted_events: list[ChangeCreated] = []
+        self.registered_heads_calls = 0
 
     async def add(
         self,
@@ -82,6 +83,14 @@ class FakeChangeRepository:
 
     async def get(self, change_id: UUID) -> Change | None:
         return self._by_id.get(change_id)
+
+    async def registered_heads(
+        self, project_id: UUID, kind: ChangeKind, head_shas: Sequence[str]
+    ) -> frozenset[str]:
+        self.registered_heads_calls += 1
+        return frozenset(
+            sha for sha in head_shas if (str(project_id), kind.value, sha) in self._by_natural_key
+        )
 
     async def live_reverter(self, project_id: UUID, head_sha: str) -> RevertRef | None:
         """El revert más reciente que sigue en la rama (los deshechos ya no revierten)."""

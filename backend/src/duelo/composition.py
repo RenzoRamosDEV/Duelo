@@ -235,7 +235,10 @@ def _local_projects_wiring(
         await remove_local_project(hooks, projects, projects, slug)
 
     async def sync(slug: str) -> SyncResult:
-        return await sync_pull_requests(projects, github, ingest_pull_request, slug)
+        async with session_factory() as session:
+            return await sync_pull_requests(
+                projects, SqlAlchemyChangeRepository(session), github, ingest_pull_request, slug
+            )
 
     async def sync_all() -> None:
         await sync_all_pull_requests(projects, sync)

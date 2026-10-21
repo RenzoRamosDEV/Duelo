@@ -42,19 +42,34 @@ class FakeHookInstaller:
         self.uninstalled.append(root)
 
 
+PR_DIFF = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n"
+
+
 class FakeGithubPrSource:
+    """PRs abiertas fijas; el diff de cada una es `PR_DIFF` salvo que `diffs` diga otro."""
+
     def __init__(
-        self, prs: list[PullRequestInfo] | None = None, *, unavailable: str | None = None
+        self,
+        prs: list[PullRequestInfo] | None = None,
+        *,
+        diffs: dict[int, str] | None = None,
+        unavailable: str | None = None,
     ) -> None:
         self.prs = prs or []
+        self.diffs = diffs or {}
         self.unavailable = unavailable
         self.queried: list[str] = []
+        self.diffs_requested: list[int] = []
 
     async def open_prs(self, root: str) -> list[PullRequestInfo]:
         self.queried.append(root)
         if self.unavailable is not None:
             raise GithubUnavailable(self.unavailable)
         return list(self.prs)
+
+    async def pr_diff(self, root: str, number: int) -> str:
+        self.diffs_requested.append(number)
+        return self.diffs.get(number, PR_DIFF)
 
 
 def pull_request(number: int = 1, **overrides: object) -> PullRequestInfo:
@@ -65,7 +80,6 @@ def pull_request(number: int = 1, **overrides: object) -> PullRequestInfo:
         "ref": f"feature-{number}",
         "head_sha": f"{number:040x}",
         "url": f"https://github.com/acme/widgets/pull/{number}",
-        "diff": "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n",
     }
     values.update(overrides)
     return PullRequestInfo(**values)  # type: ignore[arg-type]

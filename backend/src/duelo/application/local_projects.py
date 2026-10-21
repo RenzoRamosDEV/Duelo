@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from duelo.application.ingest_commit import ChangeSubmission, IngestResult, ProjectNotFound
 from duelo.application.ports import (
+    ChangeRepository,
     GithubPrSource,
     GitRepository,
     HookInstaller,
@@ -18,6 +19,7 @@ from duelo.application.ports import (
     ProjectCatalog,
     ProjectRepository,
 )
+from duelo.domain.change import ChangeKind
 from duelo.domain.project import InvalidSlug, Project, slug_for_repository
 
 logger = logging.getLogger(__name__)
@@ -93,18 +95,30 @@ async def remove_local_project(
 
 async def sync_pull_requests(
     projects: ProjectRepository,
+    changes: ChangeRepository,
     github: GithubPrSource,
     ingest_pr: Callable[[ChangeSubmission], Awaitable[IngestResult]],
     slug: str,
 ) -> SyncResult:
-    """Registra como change `pr` cada PR abierta del repo del proyecto (idempotente por sha)."""
+    """Registra como change `pr` cada PR abierta del repo del proyecto (idempotente por sha).
+
+    Solo se descarga el diff (y se ingiere) de las PRs cuya cabeza aún no es un change `pr`: las
+    ya registradas siguen sincronizadas sin coste. Su review, si falló, se relanza con el
+    reintento, no aquí."""
     project = await projects.get_by_slug(slug)
     if project is None:
         raise ProjectNotFound(slug)
     if project.path is None:
         raise ProjectHasNoFolder(slug)
+    pulls = await github.open_prs(project.path)
+    known = await changes.registered_heads(
+        project.id, ChangeKind.PR, [pull.head_sha for pull in pulls]
+    )
     synced = created = 0
-    for pull in await github.open_prs(project.path):
+    for pull in pulls:
+        if pull.head_sha in known:
+            synced += 1
+            continue
         try:
             result = await ingest_pr(
                 ChangeSubmission(
@@ -114,7 +128,7 @@ async def sync_pull_requests(
                     title=pull.title,
                     author=pull.author,
                     url=pull.url,
-                    diff=pull.diff,
+                    diff=await github.pr_diff(project.path, pull.number),
                 )
             )
         except ValueError:

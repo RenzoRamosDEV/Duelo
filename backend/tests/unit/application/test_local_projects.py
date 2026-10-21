@@ -258,7 +258,7 @@ async def test_sync_registers_each_open_pr_as_a_pr_change() -> None:
     github = FakeGithubPrSource([pull_request(1), pull_request(2)])
     ingest = _Ingest(catalog)
 
-    result = await sync_pull_requests(catalog, github, ingest, "acme/widgets")
+    result = await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     assert result == SyncResult(synced=2, created=2)
     assert github.queried == [ROOT]
@@ -271,7 +271,8 @@ async def test_sync_forwards_every_field_of_the_pr() -> None:
     pr = pull_request(7, author="luis", ref="feature-x", head_sha="b" * 40)
     ingest = _Ingest(catalog)
 
-    await sync_pull_requests(catalog, FakeGithubPrSource([pr]), ingest, "acme/widgets")
+    github = FakeGithubPrSource([pr], diffs={7: "diff de la 7"})
+    await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     (change,) = ingest.starter.started.values()
     assert (change.ref, change.head_sha, change.author, change.url, change.diff) == (
@@ -279,17 +280,18 @@ async def test_sync_forwards_every_field_of_the_pr() -> None:
         "b" * 40,
         "luis",
         pr.url,
-        pr.diff,
+        "diff de la 7",
     )
+    assert github.diffs_requested == [7]
 
 
 async def test_sync_twice_creates_nothing_the_second_time() -> None:
     catalog = await _local_catalog()
     github = FakeGithubPrSource([pull_request(1), pull_request(2)])
     ingest = _Ingest(catalog)
-    await sync_pull_requests(catalog, github, ingest, "acme/widgets")
+    await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
-    again = await sync_pull_requests(catalog, github, ingest, "acme/widgets")
+    again = await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     assert again == SyncResult(synced=2, created=0)
 
@@ -297,10 +299,16 @@ async def test_sync_twice_creates_nothing_the_second_time() -> None:
 async def test_sync_counts_only_the_new_prs() -> None:
     catalog = await _local_catalog()
     ingest = _Ingest(catalog)
-    await sync_pull_requests(catalog, FakeGithubPrSource([pull_request(1)]), ingest, "acme/widgets")
+    await sync_pull_requests(
+        catalog, ingest.changes, FakeGithubPrSource([pull_request(1)]), ingest, "acme/widgets"
+    )
 
     result = await sync_pull_requests(
-        catalog, FakeGithubPrSource([pull_request(1), pull_request(2)]), ingest, "acme/widgets"
+        catalog,
+        ingest.changes,
+        FakeGithubPrSource([pull_request(1), pull_request(2)]),
+        ingest,
+        "acme/widgets",
     )
 
     assert result == SyncResult(synced=2, created=1)
@@ -310,7 +318,9 @@ async def test_sync_skips_a_pr_that_breaks_the_domain_limits_and_keeps_the_rest(
     catalog = await _local_catalog()
     github = FakeGithubPrSource([pull_request(1, ref="r" * (MAX_REF + 1)), pull_request(2)])
 
-    result = await sync_pull_requests(catalog, github, _Ingest(catalog), "acme/widgets")
+    ingest = _Ingest(catalog)
+
+    result = await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     assert result == SyncResult(synced=1, created=1)
 
@@ -330,7 +340,7 @@ def _gh_listing(count: int) -> list[dict[str, object]]:
     ]
 
 
-async def test_a_cycle_without_new_heads_costs_gh_diffs_and_starts(
+async def test_a_cycle_without_new_heads_costs_no_gh_diff_nor_start(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Medición: con 30 PRs ya registradas, cuántos `gh pr diff` y `starter.start` cuesta un
@@ -344,22 +354,64 @@ async def test_a_cycle_without_new_heads_costs_gh_diffs_and_starts(
     )
     await add_local_project(git, FakeHookInstaller(), catalog, str(tmp_path))
     ingest = _Ingest(catalog)
-    await sync_pull_requests(catalog, GhPrSource(), ingest, "acme/widgets")
+    await sync_pull_requests(catalog, ingest.changes, GhPrSource(), ingest, "acme/widgets")
     (bin_dir / "calls").unlink()
     starts_before = ingest.starter.calls
 
-    result = await sync_pull_requests(catalog, GhPrSource(), ingest, "acme/widgets")
+    result = await sync_pull_requests(catalog, ingest.changes, GhPrSource(), ingest, "acme/widgets")
 
     calls = (bin_dir / "calls").read_text().splitlines()
     diffs = [c for c in calls if c.startswith("pr diff")]
-    assert (len(diffs), ingest.starter.calls - starts_before) == (30, 30)
+    assert (len(diffs), ingest.starter.calls - starts_before) == (0, 0)
     assert result == SyncResult(synced=30, created=0)
 
 
+async def test_a_pr_with_a_new_push_is_downloaded_and_ingested() -> None:
+    catalog = await _local_catalog()
+    ingest = _Ingest(catalog)
+    await sync_pull_requests(
+        catalog,
+        ingest.changes,
+        FakeGithubPrSource([pull_request(5, head_sha="a" * 40)]),
+        ingest,
+        "acme/widgets",
+    )
+    pushed = FakeGithubPrSource([pull_request(5, head_sha="b" * 40)])
+
+    result = await sync_pull_requests(catalog, ingest.changes, pushed, ingest, "acme/widgets")
+
+    assert result == SyncResult(synced=1, created=1)
+    assert pushed.diffs_requested == [5]
+    assert {c.head_sha for c in ingest.starter.started.values()} == {"a" * 40, "b" * 40}
+
+
+async def test_only_the_prs_with_an_unregistered_head_are_downloaded() -> None:
+    catalog = await _local_catalog()
+    ingest = _Ingest(catalog)
+    await sync_pull_requests(
+        catalog,
+        ingest.changes,
+        FakeGithubPrSource([pull_request(1), pull_request(2)]),
+        ingest,
+        "acme/widgets",
+    )
+    github = FakeGithubPrSource([pull_request(1), pull_request(2), pull_request(3)])
+    starts_before = ingest.starter.calls
+
+    result = await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
+
+    assert result == SyncResult(synced=3, created=1)
+    assert github.diffs_requested == [3]
+    assert ingest.starter.calls - starts_before == 1
+    assert ingest.changes.registered_heads_calls == 2  # una por sincronización
+
+
 async def test_sync_of_an_unknown_project_is_not_found() -> None:
+    ingest = _Ingest(FakeProjectRepository())
+
     with pytest.raises(ProjectNotFound) as caught:
         await sync_pull_requests(
-            FakeProjectRepository(), FakeGithubPrSource(), _Ingest(FakeProjectRepository()), "x/y"
+            FakeProjectRepository(), ingest.changes, FakeGithubPrSource(), ingest, "x/y"
         )
 
     assert caught.value.slug == "x/y"
@@ -368,9 +420,10 @@ async def test_sync_of_an_unknown_project_is_not_found() -> None:
 async def test_sync_of_a_project_without_folder_is_refused_before_asking_github() -> None:
     plain = Project(id=uuid4(), slug="solo/db")
     catalog, github = FakeProjectRepository(plain), FakeGithubPrSource([pull_request(1)])
+    ingest = _Ingest(catalog)
 
     with pytest.raises(ProjectHasNoFolder, match="solo/db no tiene carpeta local") as caught:
-        await sync_pull_requests(catalog, github, _Ingest(catalog), "solo/db")
+        await sync_pull_requests(catalog, ingest.changes, github, ingest, "solo/db")
 
     assert caught.value.slug == "solo/db"
 
@@ -379,10 +432,15 @@ async def test_sync_of_a_project_without_folder_is_refused_before_asking_github(
 
 async def test_sync_propagates_github_being_unavailable() -> None:
     catalog = await _local_catalog()
+    ingest = _Ingest(catalog)
 
     with pytest.raises(GithubUnavailable, match="sin gh"):
         await sync_pull_requests(
-            catalog, FakeGithubPrSource(unavailable="sin gh"), _Ingest(catalog), "acme/widgets"
+            catalog,
+            ingest.changes,
+            FakeGithubPrSource(unavailable="sin gh"),
+            ingest,
+            "acme/widgets",
         )
 
 
@@ -441,7 +499,8 @@ async def test_a_discarded_pr_is_logged_with_its_number_and_project(
     catalog = await _local_catalog()
     github = FakeGithubPrSource([pull_request(41, ref="r" * (MAX_REF + 1))])
 
-    await sync_pull_requests(catalog, github, _Ingest(catalog), "acme/widgets")
+    ingest = _Ingest(catalog)
+    await sync_pull_requests(catalog, ingest.changes, github, ingest, "acme/widgets")
 
     assert [r.getMessage() for r in log.records] == [
         "PR #41 de acme/widgets descartada: datos fuera de límites"

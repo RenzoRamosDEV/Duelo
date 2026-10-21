@@ -32,19 +32,19 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 2. Sincronización de PRs
 
-- [ ] 2.1 Rojo (unit, `tests/unit/adapters/github/test_gh_cli.py`, con el `gh` falso en
+- [x] 2.1 Rojo (unit, `tests/unit/adapters/github/test_gh_cli.py`, con el `gh` falso en
       `bin_dir`): `open_prs` solo ejecuta `gh pr list` (el script registra cada invocación) y las
       PRs no llevan diff; `pr_diff(root, 7)` ejecuta `gh pr diff 7` y recorta a `MAX_DIFF_CHARS`
       (bordes: `MAX_DIFF_CHARS` − 1, igual y + 1); los errores de sesión/plazo/ausencia siguen dando
       `GithubUnavailable`. Verde: partir `GhPrSource`, quitar `diff` de `PullRequestInfo`, actualizar
       el puerto `GithubPrSource` y `FakeGithubPrSource` (con `diffs_requested`).
-- [ ] 2.2 Rojo (integración, `tests/integration/persistence`): `registered_heads(project, PR,
+- [x] 2.2 Rojo (integración, `tests/integration/persistence`): `registered_heads(project, PR,
       [aaa, bbb, ccc])` con `aaa` registrada como `pr` y `bbb` como `commit` devuelve `{aaa}`; con
       otro proyecto o lista vacía devuelve vacío (la vacía sin consulta, con un espía de
       `session.execute`). Verde: método en `ChangeRepository` (puerto), en
       `SqlAlchemyChangeRepository` y en `FakeChangeRepository` (la tarea 4.1 lo pasa a
       `short_read`).
-- [ ] 2.3 Rojo (unit, `test_local_projects.py`): el test de la tarea 0.1 afirma 0 `gh pr diff`,
+- [x] 2.3 Rojo (unit, `test_local_projects.py`): el test de la tarea 0.1 afirma 0 `gh pr diff`,
       0 `starter.start` y `SyncResult(synced=30, created=0)`; con `FakeGithubPrSource`: escenario «PR con push nuevo» (`aaa`
       registrada pasa a `bbb`: un diff pedido para esa PR y `bbb` ingerida); mezcla de 3 PRs con 1
       nueva → 1 diff, `synced=3`, `created=1`; `registered_heads` se llama una vez por
@@ -53,8 +53,12 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
       en `composition.py` (sesión propia por sincronización). Actualizar
       `tests/unit/entrypoints/test_local_projects_api.py` y `tests/e2e/test_local_projects_flow.py`
       si dependen de la firma.
-- [ ] 2.4 Medición después: anotar aquí el resultado del test de 0.1 (esperado: 30 → 0 llamadas a
+- [x] 2.4 Medición después: anotar aquí el resultado del test de 0.1 (esperado: 30 → 0 llamadas a
       `gh pr diff` por ciclo con 30 PRs sin cambios) para el informe del PR.
+      **Medido (2026-10-21, `test_a_cycle_without_new_heads_costs_no_gh_diff_nor_start`):**
+      antes 31 invocaciones de `gh` (1 `pr list` + 30 `pr diff`) y 30 `starter.start` por ciclo;
+      después 1 invocación (`pr list`), 0 `pr diff`, 0 `starter.start` y una consulta
+      `registered_heads`; `SyncResult(synced=30, created=0)` en ambos casos.
 
 ## 3. Reviews sin `raw_output` y recuento por estado
 
