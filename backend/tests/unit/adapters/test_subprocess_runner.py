@@ -304,3 +304,63 @@ async def test_the_output_limit_can_be_lowered_per_call() -> None:
     result = await run_command([sys.executable, "-c", "print('a' * 1000)"], max_output_bytes=10)
 
     assert result.stdout == "a" * 10
+
+
+# --- memoria acotada -------------------------------------------------------------------------
+
+
+async def test_a_runaway_program_that_ends_keeps_its_real_exit_code() -> None:
+    """«Proceso desbocado»: se recorta sin matarlo y devuelve su código de salida real."""
+    result = await run_command(
+        [sys.executable, "-c", "import sys; sys.stdout.write('a' * 10_000)"],
+        max_output_bytes=1000,
+    )
+
+    assert (len(result.stdout), result.truncated, result.returncode) == (1000, True, 0)
+
+
+async def test_a_runaway_program_that_never_ends_is_cut_by_the_timeout() -> None:
+    started = time.monotonic()
+
+    code = "import sys, time; sys.stdout.write('a' * 10_000); sys.stdout.flush(); time.sleep(30)"
+
+    with pytest.raises(CommandTimeout):
+        await run_command(
+            [sys.executable, "-c", code],
+            max_output_bytes=1000,
+            timeout=0.5,
+        )
+
+    assert time.monotonic() - started < 5
+
+
+async def test_the_bytes_kept_per_stream_never_exceed_the_limit_plus_one_chunk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    limit = 100_000
+    kept: list[int] = []
+    real_read = subprocess_runner._read_bounded
+
+    async def spy(stream: asyncio.StreamReader, max_bytes: int) -> bytes:
+        data = await real_read(stream, max_bytes)
+        kept.append(len(data))
+        return data
+
+    monkeypatch.setattr(subprocess_runner, "_read_bounded", spy)
+    code = f"import sys; sys.stdout.write('a' * {10 * limit}); sys.stderr.write('e' * {10 * limit})"
+
+    result = await run_command([sys.executable, "-c", code], max_output_bytes=limit)
+
+    assert len(kept) == 2
+    assert all(n <= limit + subprocess_runner.CHUNK_BYTES for n in kept), kept
+    assert (len(result.stdout), len(result.stderr), result.truncated) == (limit, limit, True)
+
+
+async def test_a_large_input_with_runaway_output_does_not_hang() -> None:
+    code = "import sys; data = sys.stdin.read(); sys.stdout.write('a' * 10 * len(data))"
+
+    result = await run_command(
+        [sys.executable, "-c", code], input="x" * 200_000, max_output_bytes=1000, timeout=10
+    )
+
+    assert (len(result.stdout), result.truncated, result.returncode) == (1000, True, 0)

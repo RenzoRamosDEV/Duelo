@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from functools import partial
 from pathlib import Path
 
 import pytest
 
 from duelo.adapters.github import gh_cli
 from duelo.adapters.github.gh_cli import GhPrSource
+from duelo.adapters.subprocess_runner import run_command
 from duelo.application.ports import GithubUnavailable
 from tests.fakes.gh import fake_gh
 
@@ -164,3 +166,27 @@ async def test_a_gh_that_hangs_is_cut_off(bin_dir: Path, tmp_path: Path, query: 
 
     with pytest.raises(GithubUnavailable, match="a tiempo"):
         await query(GhPrSource(timeout=0.3), str(tmp_path))
+
+
+def _cut_gh_output_at(monkeypatch: pytest.MonkeyPatch, max_bytes: int) -> None:
+    monkeypatch.setattr(gh_cli, "run_command", partial(run_command, max_output_bytes=max_bytes))
+
+
+async def test_a_truncated_diff_of_a_gh_that_ended_well_is_still_a_diff(
+    bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_gh(bin_dir, LISTING)
+    _cut_gh_output_at(monkeypatch, 4)
+    monkeypatch.setattr(gh_cli, "MAX_DIFF_CHARS", 3)
+
+    assert await GhPrSource().pr_diff(str(tmp_path), 7) == "dif"
+
+
+async def test_a_truncated_listing_is_not_valid_json_and_gh_is_unavailable(
+    bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_gh(bin_dir, LISTING)
+    _cut_gh_output_at(monkeypatch, 20)
+
+    with pytest.raises(GithubUnavailable, match="no es JSON"):
+        await GhPrSource().open_prs(str(tmp_path))
