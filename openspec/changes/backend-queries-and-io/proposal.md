@@ -23,7 +23,8 @@ toda la salida antes de recortarla; y borrar un proyecto barre entera la tabla `
 - **Transacción del reintento**: ninguna transacción queda abierta en la sesión durante
   `starter.start`.
 - **Salida acotada**: `run_command` lee por bloques, deja de acumular al llegar a
-  `max_output_bytes`, mata el proceso y marca `truncated`; el plazo sigue aplicándose.
+  `max_output_bytes`, descarta el resto hasta que el proceso termina y marca `truncated`; el plazo
+  sigue siendo lo único que mata el proceso.
 - **Índice**: migración con `ix_events_project_id` sobre `events(project_id)`, declarado también
   en `models.py`.
 - **Starter**: `ReviewStarter.start(change, *, project_slug, agent_names)` recibe el slug y los
@@ -50,8 +51,8 @@ contrato HTTP.
 - `review-retry`: el reintento no consulta reviews completas ni retiene una transacción mientras
   arranca la ejecución.
 - `review-raw-output`: la salida cruda solo se lee en su endpoint.
-- `cli-review-agents`: la memoria que retiene la lectura de un programa externo está acotada y el
-  programa que se pasa del límite se mata.
+- `cli-review-agents`: la memoria que retiene la lectura de un programa externo está acotada; el
+  programa que se pasa del límite no se mata y termina (o lo corta el plazo) como hasta ahora.
 
 El starter, el índice de `events` y la URL de la base de datos no cambian comportamiento
 observable: no llevan delta.

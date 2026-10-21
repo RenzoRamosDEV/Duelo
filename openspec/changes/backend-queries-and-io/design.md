@@ -118,18 +118,19 @@ Con eso, en `retry_review` las lecturas terminan con commit antes de `starter.st
 
 **`run_command` por bloques.** Sustituye `communicate()` por una corrutina de recogida que escribe
 `input` (y cierra stdin; un `BrokenPipeError` se ignora, como hoy) y lee stdout y stderr en
-paralelo. Cada lector pide `min(CHUNK_BYTES, limit + 1 - len(buf))` bytes (`CHUNK_BYTES = 65_536`),
-así que cada buffer no pasa de `limit + 1` y el total queda por debajo de `2 × limit` más un bloque.
-Superar `limit` (no alcanzarlo: el borde exacto no recorta) marca `truncated`, mata el grupo con
-`_kill_group` y recoge lo que quede con la espera acotada de `_reap_after_kill` (generalizada a la
-corrutina de recogida). El plazo y la cancelación envuelven la recogida entera, como hoy.
-`returncode` es el real del proceso (−9 tras el `SIGKILL`).
-- `gh_cli._gh` mira `truncated` antes que `returncode`: un diff recortado sigue siendo un diff (lo
-  recorta igualmente a `MAX_DIFF_CHARS` y la ingesta marca `diff_truncated`); un listado recortado
-  falla al parsear el JSON y da `GithubUnavailable`, como hoy. Claude y `history.py` ya miran
-  `truncated` primero.
-- Alternativa descartada: no matar y seguir drenando sin acumular. Cumple la memoria pero deja
-  correr un proceso desbocado hasta el plazo, y el tope pedido es terminarlo.
+paralelo por bloques de `CHUNK_BYTES = 65_536`. Cada lector acumula hasta `limit + 1` bytes; a
+partir de ahí sigue leyendo y **descarta** el resto hasta el EOF (el proceso termina o vence el
+plazo), así que cada buffer no pasa de `limit + 1` y el total retenido queda por debajo de
+`2 × limit` más un bloque. Superar `limit` (no alcanzarlo: el borde exacto no recorta) marca
+`truncated`. El proceso **no se mata** por exceso de salida: el plazo y la cancelación envuelven la
+recogida entera, como hoy, y son lo único que lo mata. `returncode` es el real del proceso.
+- `gh_cli._gh` no cambia: sigue mirando solo `returncode` y devolviendo `stdout`. Un diff
+  recortado que termina bien sigue siendo un diff (se recorta igualmente a `MAX_DIFF_CHARS` y la
+  ingesta marca `diff_truncated`); un listado recortado falla al parsear el JSON y da
+  `GithubUnavailable`, como hoy. Claude y `history.py` ya miran `truncated` primero.
+- Alternativa descartada: matar el proceso al superar el límite. Haría fallar con `CliFailed`
+  reviews de Codex que hoy terminan bien con su stdout recortado (Codex lee el resultado de `-o`):
+  una regresión. Un proceso desbocado que no termina lo sigue cortando el plazo existente.
 
 **Índice de eventos.** Revisión nueva sobre `j0b8c2e6f459`: `op.create_index("ix_events_project_id",
 "events", ["project_id"])`, `downgrade` con `drop_index`. `EventModel.__table_args__` declara
@@ -151,10 +152,9 @@ del default y del entorno; el default queda cubierto por `tests/unit/test_config
 - [Una PR conocida cuyo workflow falló ya no se relanza en la sincronización] → Hoy la reingesta
   la relanzaba de rebote por `ALLOW_DUPLICATE_FAILED_ONLY`. El camino previsto es
   `POST /changes/{id}/retry`; se anota en el README si lo menciona.
-- [Un CLI que escribe más de `MAX_CLI_OUTPUT_BYTES` (4 MB) en stdout se mata] → Antes Codex podía
-  terminar bien con su stdout recortado (lee el resultado de `-o`); ahora la review falla con
-  `CliFailed` y se puede reintentar. 4 MB de transcripción es improbable y es el límite que el spec
-  ya fija.
+- [Un proceso desbocado que no termina sigue consumiendo CPU hasta el plazo] → Su salida ya no
+  ocupa memoria (se descarta) y el plazo existente lo mata como hoy; matarlo antes rompería las
+  reviews de Codex que terminan bien con stdout recortado.
 - [`short_read` cambia cuándo termina la transacción de `get`] → Solo si la sesión no estaba ya en
   una; los llamadores actuales (`get_change_detail`, activities) leen en sesiones propias y no
   escriben después en la misma transacción. Lo cubren los tests de integración existentes.
@@ -179,4 +179,7 @@ Commits atómicos por bloque: `perf(persistence)` barrido, `perf(github)` sincro
 - `retry_review` carga el `Project` con `ProjectRepository.get(project_id)` (método nuevo) en lugar
   de `slug_of` + `agents_of`.
 - `alembic/env.py` lee `WorkerSettings`, no `Settings`.
-- `returncode` real tras matar por exceso de salida; `gh_cli` prioriza `truncated`.
+- `run_command` no mata al superar `max_output_bytes`: deja de acumular, descarta el resto hasta
+  que el proceso termina o vence el plazo, marca `truncated` y devuelve el `returncode` real.
+  `gh_cli` conserva su comportamiento (no mira `truncated`). Corrección posterior a la propuesta
+  para no romper las reviews de Codex con stdout recortado.

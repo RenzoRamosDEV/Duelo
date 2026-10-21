@@ -89,19 +89,18 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 ## 5. Salida acotada de `run_command`
 
 - [ ] 5.1 Rojo (unit, `tests/unit/adapters/test_subprocess_runner.py`): escenario «Proceso
-      desbocado» (`max_output_bytes=1000`, un programa que escribe 10 000 bytes en stdout y luego
-      duerme 60 s) → como mucho 1000 bytes, `truncated`, el proceso ya no existe
-      (`os.kill(pid, 0)` lanza) y la llamada tarda mucho menos que el plazo; lo mismo por stderr;
-      bytes retenidos con un proceso que emite 10 × `max_output_bytes` por ambos (espía sobre el
-      lector) ≤ `2 × max_output_bytes` + `CHUNK_BYTES`; bordes: exactamente el límite → no
-      recortado ni matado, límite + 1 → recortado; con `input` grande y salida desbocada no se
-      cuelga. Los tests existentes (plazo, cancelación, descendiente desasociado, stdin cerrado)
-      siguen en verde. Verde: recogida por bloques, `_kill_group` al superar el límite y
-      `_reap_after_kill` generalizado.
-- [ ] 5.2 Rojo (unit, `test_gh_cli.py`): un `gh pr diff` cuyo resultado llega con `truncated` y
-      `returncode` −9 devuelve el diff recortado, no `GithubUnavailable`; un `gh pr list`
-      recortado sigue dando `GithubUnavailable`. Verde: `_gh` mira `truncated` antes que
-      `returncode`.
+      desbocado» (`max_output_bytes=1000`, un programa que escribe 10 000 bytes en stdout y
+      termina) → como mucho 1000 bytes, `truncated`, `returncode` 0; lo mismo por stderr; si no
+      termina, lo corta el plazo existente (`CommandTimeout`); bytes retenidos con un proceso que
+      emite 10 × `max_output_bytes` por ambos (espía sobre el lector) ≤ `max_output_bytes` +
+      `CHUNK_BYTES` por flujo; bordes: exactamente el límite → no recortado, límite + 1 →
+      recortado; con `input` grande y salida desbocada no se cuelga. Los tests existentes (plazo,
+      cancelación, descendiente desasociado, stdin cerrado) siguen en verde. Verde: recogida por
+      bloques que descarta lo que pasa del límite, sin matar el proceso.
+- [ ] 5.2 Caracterización (unit, `test_gh_cli.py`): `gh_cli` conserva su comportamiento con
+      `truncated` (no lo mira): un `gh pr diff` recortado que termina con `returncode` 0 devuelve
+      el diff recortado a `MAX_DIFF_CHARS`; un `gh pr list` recortado sigue dando
+      `GithubUnavailable` (JSON inválido). Sin cambio de código en `_gh`.
 
 ## 6. Índice de eventos
 
