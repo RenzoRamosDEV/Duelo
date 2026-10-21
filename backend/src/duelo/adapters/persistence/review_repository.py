@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from duelo.adapters.persistence.events import append_event
 from duelo.adapters.persistence.models import ChangeModel, ReviewModel
@@ -80,10 +81,20 @@ class SqlAlchemyReviewRepository:
     async def list_for_change(self, change_id: UUID) -> list[Review]:
         rows = await self._session.execute(
             select(ReviewModel)
+            # `raiseload`: leer la salida cruda por descuido falla en lugar de lanzar otra consulta.
+            .options(defer(ReviewModel.raw_output, raiseload=True))
             .where(ReviewModel.change_id == change_id)
             .order_by(ReviewModel.created_at, ReviewModel.agent, ReviewModel.run)
         )
-        return [review_from_row(row) for row in rows.scalars()]
+        return [review_from_row(row, with_raw_output=False) for row in rows.scalars()]
+
+    async def status_counts(self, change_id: UUID, run: int) -> dict[ReviewStatus, int]:
+        rows = await self._session.execute(
+            select(ReviewModel.status, func.count())
+            .where(ReviewModel.change_id == change_id, ReviewModel.run == run)
+            .group_by(ReviewModel.status)
+        )
+        return {ReviewStatus(status): count for status, count in rows}
 
     async def get(self, review_id: UUID) -> Review | None:
         row = (
@@ -126,7 +137,7 @@ class SqlAlchemyReviewRepository:
         ]
 
 
-def review_from_row(row: ReviewModel) -> Review:
+def review_from_row(row: ReviewModel, *, with_raw_output: bool = True) -> Review:
     return Review(
         id=row.id,
         change_id=row.change_id,
@@ -144,7 +155,7 @@ def review_from_row(row: ReviewModel) -> Review:
             )
             for f in row.findings
         ),
-        raw_output=row.raw_output,
+        raw_output=row.raw_output if with_raw_output else None,
         duration_ms=row.duration_ms,
         error=row.error,
         created_at=row.created_at,

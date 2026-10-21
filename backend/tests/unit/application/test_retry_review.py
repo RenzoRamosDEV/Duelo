@@ -223,3 +223,38 @@ async def test_not_found_carries_the_id_in_its_message() -> None:
         await retry_review(
             *_world(), FakeReviewStarter(), missing, expected_agents=2, now=RETRIED_AT
         )
+
+
+# --- recuento por estado ---------------------------------------------------------------------
+
+
+async def test_the_decision_counts_the_current_run_without_loading_the_reviews() -> None:
+    """«Run actual con un fallo»: se acepta con un único recuento del run actual."""
+    changes, reviews = _world()
+    change = await _change(changes)
+    await _review(reviews, change, "a", fail=False)
+    await _review(reviews, change, "b", fail=True)
+
+    retried = await _retry(changes, reviews, FakeReviewStarter(), change)
+
+    assert retried.run == 2
+    assert reviews.status_counts_calls == [(change.id, 1)]
+    assert reviews.list_for_change_calls == 0
+
+
+async def test_failures_of_a_previous_run_do_not_make_the_current_one_retryable() -> None:
+    """«Reviews de runs anteriores»: run 1 con dos fallos, run 2 con dos completadas → 409."""
+    changes, reviews = _world()
+    starter = FakeReviewStarter()
+    change = await _change(changes)
+    await _review(reviews, change, "a", fail=True)
+    await _review(reviews, change, "b", fail=True)
+    await _retry(changes, reviews, starter, change)
+    await _review(reviews, change, "a", fail=False, run=2)
+    await _review(reviews, change, "b", fail=False, run=2)
+
+    with pytest.raises(RetryNotAllowed) as error:
+        await _retry(changes, reviews, starter, change)
+
+    assert error.value.status is ChangeReviewStatus.COMPLETED
+    assert reviews.status_counts_calls[-1] == (change.id, 2)

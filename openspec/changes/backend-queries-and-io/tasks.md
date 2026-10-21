@@ -62,18 +62,18 @@ después el código mínimo que lo pone en verde y, al final, el refactor con lo
 
 ## 3. Reviews sin `raw_output` y recuento por estado
 
-- [ ] 3.1 Rojo (integración, `tests/integration/persistence/test_sqlalchemy_review_repository.py`):
+- [x] 3.1 Rojo (integración, `tests/integration/persistence/test_sqlalchemy_review_repository.py`):
       `list_for_change` de un change con reviews con `raw_output` en dos runs devuelve todas con
       `raw_output is None` y la sentencia emitida (capturada con un listener
       `before_cursor_execute`) no contiene `raw_output`; `get` sigue devolviéndolo completo.
       Verde: `defer(ReviewModel.raw_output, raiseload=True)` y `review_from_row(...,
       with_raw_output=False)`; docstring del puerto.
-- [ ] 3.2 Rojo (integración): `status_counts(change_id, run=2)` con reviews `completed`/`failed` en
+- [x] 3.2 Rojo (integración): `status_counts(change_id, run=2)` con reviews `completed`/`failed` en
       los runs 1 y 2 devuelve solo las del 2 (`{COMPLETED: 1, FAILED: 1}`); run sin reviews →
       `{}`; una sola sentencia con `GROUP BY`. Verde: método en `SqlAlchemyReviewRepository` y en el
       puerto `ReviewRepository`; `FakeReviewRepository.status_counts` sobre sus reviews (test unit
       del fake con los mismos casos).
-- [ ] 3.3 Rojo (unit, `tests/unit/application/test_retry_review.py`): con un
+- [x] 3.3 Rojo (unit, `tests/unit/application/test_retry_review.py`): con un
       `FakeReviewRepository` espía, `retry_review` llama a `status_counts(change_id, change.run)`
       una vez y nunca a `list_for_change`; los escenarios «Run actual con un fallo» (acepta) y
       «Reviews de runs anteriores» (run 1 con dos `failed`, run 2 con dos `completed` → 409) y la

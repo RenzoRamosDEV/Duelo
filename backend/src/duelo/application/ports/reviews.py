@@ -11,7 +11,7 @@ from duelo.application.read_models import (
 )
 from duelo.domain.change import Change
 from duelo.domain.events import ReviewCompleted, ReviewFailed
-from duelo.domain.review import Review, ReviewResult
+from duelo.domain.review import Review, ReviewResult, ReviewStatus
 
 
 class ReviewAgent(Protocol):
@@ -57,7 +57,13 @@ class ReviewRepository(Protocol):
         ...
 
     async def list_for_change(self, change_id: UUID) -> list[Review]:
-        """Devuelve las reviews del change (completadas y fallidas) por fecha de creación."""
+        """Devuelve las reviews del change (completadas y fallidas) por fecha de creación, sin su
+        salida cruda (`raw_output` es `None`): solo `get` la lee."""
+        ...
+
+    async def status_counts(self, change_id: UUID, run: int) -> dict[ReviewStatus, int]:
+        """Cuántas reviews del `run` del change hay en cada estado (los estados sin ninguna no
+        aparecen), con una única consulta agregada."""
         ...
 
     async def get(self, review_id: UUID) -> Review | None:

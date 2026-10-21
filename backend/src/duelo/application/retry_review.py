@@ -7,10 +7,11 @@ from uuid import UUID
 from duelo.application.ports import ChangeRepository, ProjectAgents, ReviewRepository, ReviewStarter
 from duelo.application.project_agents import expected_agents_for, expected_agents_of
 from duelo.domain.change import Change
+from duelo.domain.review import ReviewStatus
 from duelo.domain.review_status import (
     RETRYABLE_STATUSES,
     ChangeReviewStatus,
-    review_status_of_run,
+    review_status_from_counts,
 )
 
 
@@ -48,10 +49,10 @@ async def retry_review(
     if change is None:
         raise ChangeNotFound(change_id)
 
-    rows = await reviews.list_for_change(change_id)
-    status = review_status_of_run(
-        change.run,
-        rows,
+    counts = await reviews.status_counts(change_id, change.run)
+    status = review_status_from_counts(
+        completed=counts.get(ReviewStatus.COMPLETED, 0),
+        failed=counts.get(ReviewStatus.FAILED, 0),
         expected_agents=await expected_agents_of(change, project_agents, expected_agents),
     )
     if status not in RETRYABLE_STATUSES:

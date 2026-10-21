@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+from sqlalchemy import event, select
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from duelo.adapters.persistence.change_repository import SqlAlchemyChangeRepository
 from duelo.adapters.persistence.models import EventModel, ReviewModel
@@ -11,7 +14,7 @@ from duelo.adapters.persistence.review_repository import SqlAlchemyReviewReposit
 from duelo.application.ingest_change import ingest_change
 from duelo.application.record_review import record_review_failure, record_review_success
 from duelo.domain.change import Change, ChangeKind
-from duelo.domain.review import ReviewResult
+from duelo.domain.review import ReviewResult, ReviewStatus
 from tests.integration.conftest import create_project
 
 
@@ -190,3 +193,87 @@ async def test_reviews_a_pr_reuses_from_its_commit_count_once_in_the_stats(
             stats = await SqlAlchemyReviewRepository(session).agent_stats(project_id=scope)
         claude = next(s for s in stats if s.agent == "claude")
         assert (claude.total, claude.completed, claude.avg_score) == (1, 1, 8.0), scope
+
+
+# --- lecturas sin salida cruda y recuento por estado -----------------------------------------
+
+
+@contextmanager
+def _statements(engine: AsyncEngine) -> Iterator[list[str]]:
+    seen: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):  # type: ignore[no-untyped-def]
+        seen.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", capture)
+    try:
+        yield seen
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", capture)
+
+
+async def _record(
+    session_factory: async_sessionmaker, change: Change, agent: str, run: int, *, ok: bool
+) -> None:
+    async with session_factory() as session:
+        repository = SqlAlchemyReviewRepository(session)
+        if ok:
+            await record_review_success(
+                repository,
+                change=change,
+                agent=agent,
+                run=run,
+                result=ReviewResult(summary="ok", score=7),
+                raw_output="salida cruda " * 1000,
+                duration_ms=10,
+            )
+        else:
+            await record_review_failure(repository, change=change, agent=agent, run=run, error="x")
+
+
+async def test_listing_the_reviews_of_a_change_does_not_read_their_raw_output(
+    engine: AsyncEngine, session_factory: async_sessionmaker
+) -> None:
+    change = await _create_change(session_factory, head_sha="f" * 40)
+    for run in (1, 2):
+        await _record(session_factory, change, "claude", run, ok=True)
+
+    with _statements(engine) as seen:
+        async with session_factory() as session:
+            listed = await SqlAlchemyReviewRepository(session).list_for_change(change.id)
+
+    assert [(r.run, r.raw_output) for r in listed] == [(1, None), (2, None)]
+    assert all(r.summary == "ok" for r in listed)
+    (statement,) = seen
+    assert "raw_output" not in statement
+    async with session_factory() as session:
+        full = await SqlAlchemyReviewRepository(session).get(listed[0].id)
+    assert full is not None and full.raw_output == "salida cruda " * 1000
+
+
+async def test_status_counts_are_of_the_requested_run_only_in_one_grouped_query(
+    engine: AsyncEngine, session_factory: async_sessionmaker
+) -> None:
+    change = await _create_change(session_factory, head_sha="1" * 40)
+    await _record(session_factory, change, "claude", 1, ok=False)
+    await _record(session_factory, change, "codex", 1, ok=False)
+    await _record(session_factory, change, "claude", 2, ok=True)
+    await _record(session_factory, change, "codex", 2, ok=False)
+
+    with _statements(engine) as seen:
+        async with session_factory() as session:
+            counts = await SqlAlchemyReviewRepository(session).status_counts(change.id, run=2)
+
+    assert counts == {ReviewStatus.COMPLETED: 1, ReviewStatus.FAILED: 1}
+    (statement,) = [s for s in seen if "FROM reviews" in s]
+    assert "GROUP BY" in statement
+
+
+async def test_status_counts_of_a_run_without_reviews_are_empty(
+    session_factory: async_sessionmaker,
+) -> None:
+    change = await _create_change(session_factory, head_sha="2" * 40)
+    await _record(session_factory, change, "claude", 1, ok=True)
+
+    async with session_factory() as session:
+        assert await SqlAlchemyReviewRepository(session).status_counts(change.id, run=3) == {}

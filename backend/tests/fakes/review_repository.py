@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from uuid import UUID
 
 from duelo.application.read_models import AgentStats
@@ -16,6 +17,8 @@ class FakeReviewRepository:
         self._project_of_change: dict[UUID, UUID] = {}
         self._events = events
         self.persisted_events: list[ReviewCompleted | ReviewFailed | ReviewReused] = []
+        self.list_for_change_calls = 0
+        self.status_counts_calls: list[tuple[UUID, int]] = []
 
     def register_change(self, change_id: UUID, project_id: UUID) -> None:
         """El repositorio de changes avisa de a qué proyecto pertenece cada change: hace falta
@@ -40,8 +43,19 @@ class FakeReviewRepository:
         return next((r for r in self._by_natural_key.values() if r.id == review_id), None)
 
     async def list_for_change(self, change_id: UUID) -> list[Review]:
+        self.list_for_change_calls += 1
         rows = [r for r in self._by_natural_key.values() if r.change_id == change_id]
         return sorted(rows, key=lambda r: (r.created_at, r.agent, r.run))
+
+    async def status_counts(self, change_id: UUID, run: int) -> dict[ReviewStatus, int]:
+        self.status_counts_calls.append((change_id, run))
+        return dict(
+            Counter(
+                r.status
+                for r in self._by_natural_key.values()
+                if r.change_id == change_id and r.run == run
+            )
+        )
 
     async def agent_stats(self, *, project_id: UUID | None) -> list[AgentStats]:
         stats: list[AgentStats] = []
