@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Busy } from "../../components/Busy";
 import { Modal } from "../../components/Modal";
 import { TokenField } from "../../components/TokenField";
@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
 import { ApiError, type ProjectRef } from "../../lib/api";
 import { apiErrorMessage } from "../../lib/apiErrorMessage";
+import type { FormError } from "../../lib/formError";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 import { isAbsolutePath } from "../../lib/localPath";
 
@@ -20,29 +21,47 @@ const ADD_FAILURES = {
   422: "La ruta no es un repositorio git válido. Comprueba que existe y que contiene una carpeta .git.",
 } as const;
 
+type Field = "path" | "token";
+
+function failedField(error: unknown): Field | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.status === 401) return "token";
+  if (error.status === 409 || error.status === 422) return "path";
+  return null;
+}
+
 /** Asks for the absolute path of a local git repository and registers it through the API. */
 export function AddProjectDialog({ onClose, onAdded }: Props) {
   const source = useDataSource();
   const [token] = useIngestToken();
   const [path, setPath] = useState("");
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError<Field> | null>(null);
   const pathId = useId();
   const tokenId = useId();
   const hintId = useId();
+  const errorId = useId();
+  const pathRef = useRef<HTMLInputElement>(null);
+  const tokenRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (error?.field === "path") pathRef.current?.focus();
+    if (error?.field === "token") tokenRef.current?.focus();
+  }, [error]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending) return;
     const value = path.trim();
     if (!isAbsolutePath(value)) {
-      setError(
-        "Escribe la ruta absoluta del repositorio (empieza por / o por una unidad como C:\\).",
-      );
+      setError({
+        text: "Escribe la ruta absoluta del repositorio (empieza por / o por una unidad como C:\\).",
+        field: "path",
+      });
       return;
     }
     if (!token.trim()) {
-      setError("Introduce el token de ingesta.");
+      setError({ text: "Introduce el token de ingesta.", field: "token" });
       return;
     }
     setSending(true);
@@ -51,7 +70,10 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
       onAdded(await source.addProject(value, token.trim()));
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) clearIngestToken();
-      setError(apiErrorMessage(e, ADD_FAILURES, "añadir el proyecto"));
+      setError({
+        text: apiErrorMessage(e, ADD_FAILURES, "añadir el proyecto"),
+        field: failedField(e),
+      });
       setSending(false);
     }
   }
@@ -72,15 +94,21 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
           autoComplete="off"
           spellCheck={false}
           placeholder="/home/usuario/proyectos/mi-repo"
-          aria-describedby={hintId}
+          ref={pathRef}
+          aria-invalid={error?.field === "path" ? true : undefined}
+          aria-describedby={error?.field === "path" ? `${hintId} ${errorId}` : hintId}
           data-autofocus
           value={path}
           onChange={(e) => setPath(e.target.value)}
         />
-        <TokenField id={tokenId} />
+        <TokenField
+          id={tokenId}
+          ref={tokenRef}
+          errorId={error?.field === "token" ? errorId : undefined}
+        />
         {error && (
-          <p className="notice" role="alert">
-            {error}
+          <p className="notice" role="alert" id={errorId}>
+            {error.text}
           </p>
         )}
         <div className="modal-actions">

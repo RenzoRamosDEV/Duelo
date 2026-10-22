@@ -187,6 +187,116 @@ describe("add project dialog", () => {
   });
 });
 
+/** Ids an element points to through `aria-describedby`. */
+const describedBy = (element: HTMLElement) =>
+  (element.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+
+const invalidInputs = (container: HTMLElement) =>
+  container.querySelectorAll('input[aria-invalid="true"]');
+
+describe("add project dialog: errors tied to their field", () => {
+  const fill = async (dialog: HTMLElement, path: string, token: string) => {
+    if (path) await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), path);
+    if (token) await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), token);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
+  };
+  const failing = (status: number) =>
+    projectSource([], {
+      addProject: vi.fn(async () => {
+        throw new ApiError("raw", status);
+      }),
+    });
+
+  it("marks nothing when it opens", async () => {
+    renderApp(projectSource([]));
+    const dialog = await openFromEntry();
+    expect(invalidInputs(dialog)).toHaveLength(0);
+    expect(describedBy(within(dialog).getByLabelText("Token de ingesta"))).toEqual([]);
+  });
+
+  it("marks, describes and focuses the token when the API answers 401", async () => {
+    renderApp(failing(401));
+    const dialog = await openFromEntry();
+    await fill(dialog, "/home/me/repo", "malo");
+    const alert = await within(dialog).findByRole("alert");
+    const token = within(dialog).getByLabelText("Token de ingesta");
+    expect(token).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(token)).toContain(alert.id);
+    expect(token).toHaveFocus();
+    expect(within(dialog).getByLabelText("Ruta del repositorio")).not.toHaveAttribute(
+      "aria-invalid",
+    );
+  });
+
+  it("marks the path with its hint and the error, focuses it and sends nothing", async () => {
+    const source = projectSource([]);
+    renderApp(source);
+    const dialog = await openFromEntry();
+    await fill(dialog, "mi/repo", "tok");
+    const alert = await within(dialog).findByRole("alert");
+    const path = within(dialog).getByLabelText("Ruta del repositorio");
+    const hint = within(dialog).getByText("post-commit").closest("p")!;
+    expect(alert.id).not.toBe("");
+    expect(path).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(path)).toEqual([hint.id, alert.id]);
+    expect(path).toHaveFocus();
+    expect(within(dialog).getByLabelText("Token de ingesta")).not.toHaveAttribute("aria-invalid");
+    expect(source.addProject).not.toHaveBeenCalled();
+  });
+
+  it("marks the token when it is missing", async () => {
+    renderApp(projectSource([]));
+    const dialog = await openFromEntry();
+    await fill(dialog, "/home/me/repo", "");
+    const alert = await within(dialog).findByRole("alert");
+    const token = within(dialog).getByLabelText("Token de ingesta");
+    expect(token).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(token)).toEqual([alert.id]);
+    expect(token).toHaveFocus();
+    expect(invalidInputs(dialog)).toHaveLength(1);
+  });
+
+  it.each([409, 422])("marks the path, not the token, on %i", async (status) => {
+    renderApp(failing(status));
+    const dialog = await openFromEntry();
+    await fill(dialog, "/home/me/repo", "tok");
+    const alert = await within(dialog).findByRole("alert");
+    const path = within(dialog).getByLabelText("Ruta del repositorio");
+    expect(path).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(path)).toContain(alert.id);
+    expect(path).toHaveFocus();
+    expect(within(dialog).getByLabelText("Token de ingesta")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it.each([404, 500])("marks no field on %i", async (status) => {
+    renderApp(failing(status));
+    const dialog = await openFromEntry();
+    await fill(dialog, "/home/me/repo", "tok");
+    const alert = await within(dialog).findByRole("alert");
+    expect(invalidInputs(dialog)).toHaveLength(0);
+    const path = within(dialog).getByLabelText("Ruta del repositorio");
+    expect(describedBy(path)).not.toContain(alert.id);
+    expect(describedBy(within(dialog).getByLabelText("Token de ingesta"))).toEqual([]);
+  });
+
+  it("drops the error and the marks while it sends again", async () => {
+    const addProject = vi
+      .fn<DataSource["addProject"]>()
+      .mockRejectedValueOnce(new ApiError("raw", 409))
+      .mockImplementationOnce(() => new Promise(() => {}));
+    renderApp(projectSource([], { addProject }));
+    const dialog = await openFromEntry();
+    await fill(dialog, "/home/me/repo", "tok");
+    await within(dialog).findByRole("alert");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
+    await within(dialog).findByRole("button", { name: "Añadiendo…" });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    expect(invalidInputs(dialog)).toHaveLength(0);
+    const path = within(dialog).getByLabelText("Ruta del repositorio");
+    expect(describedBy(path)).toHaveLength(1);
+  });
+});
+
 describe("project list after a change", () => {
   it("asks for the projects again right after adding one", async () => {
     const source = projectSource([]);
@@ -361,6 +471,64 @@ describe("project settings", () => {
     setIngestToken("tok");
     await userEvent.click(await screen.findByRole("button", { name: /Sincronizar PRs/ }));
     expect((await within(row("acme/widgets")).findByRole("alert")).textContent).toBe(text);
+  });
+
+  const openRemove = async () => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Quitar proyecto acme/widgets" }),
+    );
+    return screen.findByRole("dialog");
+  };
+
+  it("marks, describes and focuses the dialog's token when it is missing", async () => {
+    renderApp(projectSource([github]), "/settings");
+    const dialog = await openRemove();
+    expect(invalidInputs(dialog)).toHaveLength(0);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
+    const alert = await within(dialog).findByRole("alert");
+    const token = within(dialog).getByLabelText("Token de ingesta");
+    expect(alert.id).not.toBe("");
+    expect(token).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(token)).toEqual([alert.id]);
+    expect(token).toHaveFocus();
+  });
+
+  it("marks, describes and focuses the dialog's token on 401", async () => {
+    const removeProject = vi.fn().mockRejectedValue(new ApiError("x", 401));
+    renderApp(projectSource([github], { removeProject }), "/settings");
+    setIngestToken("tok");
+    const dialog = await openRemove();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
+    const alert = await within(dialog).findByRole("alert");
+    const token = within(dialog).getByLabelText("Token de ingesta");
+    expect(token).toHaveAttribute("aria-invalid", "true");
+    expect(describedBy(token)).toEqual([alert.id]);
+    expect(token).toHaveFocus();
+  });
+
+  it.each([404, 409])("marks no field when removing fails with %i", async (status) => {
+    const removeProject = vi.fn().mockRejectedValue(new ApiError("raw", status));
+    renderApp(projectSource([github], { removeProject }), "/settings");
+    setIngestToken("tok");
+    const dialog = await openRemove();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
+    await within(dialog).findByRole("alert");
+    expect(document.querySelectorAll("[aria-invalid]")).toHaveLength(0);
+    expect(describedBy(within(dialog).getByLabelText("Token de ingesta"))).toEqual([]);
+  });
+
+  it("does not mark the section's token for a row message", async () => {
+    const syncPrs = vi.fn().mockRejectedValue(new ApiError("x", 401));
+    renderApp(projectSource([github], { syncPrs }), "/settings");
+    const button = await screen.findByRole("button", { name: /Sincronizar PRs/ });
+    await userEvent.click(button);
+    await within(row("acme/widgets")).findByRole("alert");
+    setIngestToken("tok");
+    await userEvent.click(button);
+    await waitFor(() => expect(getIngestToken()).toBe(""));
+    const token = screen.getByLabelText("Token de ingesta");
+    expect(token).not.toHaveAttribute("aria-invalid");
+    expect(token).not.toHaveAttribute("aria-describedby");
   });
 
   it("shows why the hooks could not be removed, keeps the project and lets you retry", async () => {

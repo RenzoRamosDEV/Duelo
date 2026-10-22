@@ -320,6 +320,42 @@ describe("retry review", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(text);
   });
 
+  it("marks, describes and focuses the token when it is missing", async () => {
+    renderWith({ change: async () => failed() }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    expect(tokenField()).not.toHaveAttribute("aria-invalid");
+    await userEvent.click(retryButton());
+    const alert = await screen.findByRole("alert");
+    expect(alert.id).not.toBe("");
+    expect(tokenField()).toHaveAttribute("aria-invalid", "true");
+    expect(tokenField()).toHaveAttribute("aria-describedby", alert.id);
+    expect(tokenField()).toHaveFocus();
+  });
+
+  it("marks the emptied token and focuses it on 401", async () => {
+    const retry = vi.fn<DataSource["retry"]>().mockRejectedValue(new ApiError("x", 401));
+    renderWith({ change: async () => failed(), retry }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    await userEvent.type(tokenField(), "malo");
+    await userEvent.click(retryButton());
+    const alert = await screen.findByRole("alert");
+    expect(tokenField()).toHaveValue("");
+    expect(tokenField()).toHaveAttribute("aria-invalid", "true");
+    expect(tokenField()).toHaveAttribute("aria-describedby", alert.id);
+    expect(tokenField()).toHaveFocus();
+  });
+
+  it.each([503, 404, null])("marks no field on a %s failure", async (status) => {
+    const retry = vi.fn<DataSource["retry"]>().mockRejectedValue(new ApiError("raw", status));
+    renderWith({ change: async () => failed(), retry }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    await userEvent.type(tokenField(), "tok");
+    await userEvent.click(retryButton());
+    await screen.findByRole("alert");
+    expect(document.querySelectorAll("[aria-invalid]")).toHaveLength(0);
+    expect(tokenField()).not.toHaveAttribute("aria-describedby");
+  });
+
   it("allows a single request at a time", async () => {
     let release: (value: { changeId: string; run: number }) => void = () => {};
     const retry = vi.fn<DataSource["retry"]>(

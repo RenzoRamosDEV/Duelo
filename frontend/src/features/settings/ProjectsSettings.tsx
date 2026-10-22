@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { AsyncBoundary } from "../../components/AsyncBoundary";
 import { Busy } from "../../components/Busy";
 import { Modal } from "../../components/Modal";
@@ -10,6 +10,7 @@ import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
 import { ApiError, type ProjectRef } from "../../lib/api";
 import { apiErrorMessage } from "../../lib/apiErrorMessage";
+import type { FormError } from "../../lib/formError";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 import { useProjects } from "../projects/ProjectsContext";
 
@@ -39,14 +40,20 @@ function RemoveDialog({
   const source = useDataSource();
   const [token] = useIngestToken();
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError<"token"> | null>(null);
   const tokenId = useId();
+  const errorId = useId();
+  const tokenRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (error?.field === "token") tokenRef.current?.focus();
+  }, [error]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending) return;
     if (!token.trim()) {
-      setError(MISSING_TOKEN);
+      setError({ text: MISSING_TOKEN, field: "token" });
       return;
     }
     setSending(true);
@@ -55,14 +62,17 @@ function RemoveDialog({
       await source.removeProject(project.slug, token.trim());
       onRemoved();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) clearIngestToken();
+      const rejected = e instanceof ApiError && e.status === 401;
+      if (rejected) clearIngestToken();
       // 409: no se pudieron quitar los hooks y el proyecto se conserva. El servidor dice qué
       // revisar (permisos de .git/hooks), así que su mensaje se muestra tal cual.
-      setError(
-        e instanceof ApiError && e.status === 409
-          ? `${e.message} El proyecto se conserva: puedes repetir la baja.`
-          : apiErrorMessage(e, PROJECT_FAILURES, "quitar el proyecto"),
-      );
+      setError({
+        text:
+          e instanceof ApiError && e.status === 409
+            ? `${e.message} El proyecto se conserva: puedes repetir la baja.`
+            : apiErrorMessage(e, PROJECT_FAILURES, "quitar el proyecto"),
+        field: rejected ? "token" : null,
+      });
       setSending(false);
     }
   }
@@ -76,10 +86,14 @@ function RemoveDialog({
           {project.hooksInstalled ? " y se desinstalarán sus hooks de git" : ""}. Los archivos de tu
           repositorio no se tocan. Esta acción no se puede deshacer.
         </p>
-        <TokenField id={tokenId} />
+        <TokenField
+          id={tokenId}
+          ref={tokenRef}
+          errorId={error?.field === "token" ? errorId : undefined}
+        />
         {error && (
-          <p className="notice" role="alert">
-            {error}
+          <p className="notice" role="alert" id={errorId}>
+            {error.text}
           </p>
         )}
         <div className="modal-actions">

@@ -1,10 +1,11 @@
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Busy } from "../../components/Busy";
 import { TokenField } from "../../components/TokenField";
 import { MetalButton } from "../../components/fx/MetalButton";
 import { useDataSource } from "../../data/source";
 import { ApiError } from "../../lib/api";
 import { apiErrorMessage } from "../../lib/apiErrorMessage";
+import type { FormError } from "../../lib/formError";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 
 interface Props {
@@ -26,15 +27,21 @@ export function RetryReview({ changeId, onSettled }: Props) {
   const source = useDataSource();
   const [token] = useIngestToken();
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError<"token"> | null>(null);
   const tokenId = useId();
+  const errorId = useId();
+  const tokenRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (error?.field === "token") tokenRef.current?.focus();
+  }, [error]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending) return;
     const value = token.trim();
     if (!value) {
-      setError("Introduce el token de ingesta para reintentar.");
+      setError({ text: "Introduce el token de ingesta para reintentar.", field: "token" });
       return;
     }
     setSending(true);
@@ -46,8 +53,12 @@ export function RetryReview({ changeId, onSettled }: Props) {
       if (e instanceof ApiError && e.status === 409) {
         onSettled("Esta review ya no se puede reintentar: su estado cambió.");
       } else {
-        if (e instanceof ApiError && e.status === 401) clearIngestToken();
-        setError(apiErrorMessage(e, RETRY_FAILURES, "reintentar"));
+        const rejected = e instanceof ApiError && e.status === 401;
+        if (rejected) clearIngestToken();
+        setError({
+          text: apiErrorMessage(e, RETRY_FAILURES, "reintentar"),
+          field: rejected ? "token" : null,
+        });
       }
     } finally {
       setSending(false);
@@ -56,13 +67,17 @@ export function RetryReview({ changeId, onSettled }: Props) {
 
   return (
     <form className="retry" onSubmit={submit}>
-      <TokenField id={tokenId} />
+      <TokenField
+        id={tokenId}
+        ref={tokenRef}
+        errorId={error?.field === "token" ? errorId : undefined}
+      />
       <MetalButton type="submit" disabled={sending}>
         {sending ? <Busy activity="retry" label="Reintentando…" inline /> : "Reintentar review"}
       </MetalButton>
       {error && (
-        <p className="notice" role="alert">
-          {error}
+        <p className="notice" role="alert" id={errorId}>
+          {error.text}
         </p>
       )}
     </form>
