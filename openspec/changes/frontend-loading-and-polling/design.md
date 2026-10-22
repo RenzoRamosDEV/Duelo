@@ -139,6 +139,46 @@ explícitos (plazo justo antes/después, `equals` igual/distinto, uno/ninguno `p
 reintento de la promesa compartida). Si se quiere mutación en el frontend, merece su propio change
 y un ADR.
 
+## Decisiones tomadas al implementar
+
+Decisiones del apply, en modo autónomo, eligiendo la opción mínima:
+
+- **Fuente de ejemplo: no se mueve (5.3 descartada).** La línea base (0.1) da `grep -c acme` = 0
+  en `index-*.js` con `VITE_API_URL`: la condición `apiUrl ? createHttpSource(...) :
+  createMockSource()` es constante en el build y Rollup ya elimina la fuente y los datos de
+  ejemplo. `mockSource.ts` y `lazySource` solo separarían los datos en el build de demostración,
+  que no tiene objetivo de tamaño (YAGNI). Sin `VITE_API_URL` los datos siguen en `index-*.js`.
+- **Refresco igual: ni siquiera se llama a `setState`.** Con `setState(prev => prev)` React vuelve
+  a ejecutar el componente antes de hacer *bail-out*, y el contador de renders de 2.2 lo detecta.
+  `useAsync` compara con el estado mostrado (`latest.current`) y no encola nada si `equals` dice
+  que es igual.
+- **`ChangeRow` con comparador por valor.** Con la API real cada refresco trae objetos nuevos (JSON),
+  así que un `React.memo` por referencia volvería a dibujar todas las filas en cuanto cambia una.
+  El comparador usa `sameValue` sobre `change` y referencia sobre `slug` y `agentNames`. El fake
+  del canal de `livePolling.test.tsx` devuelve copias para reproducirlo.
+- **`Suspense` del shell con `key={pathname}`.** React Router navega dentro de una transición, y
+  React mantiene la página anterior en vez de mostrar el *fallback* de un `Suspense` ya visible. La
+  clave por ruta hace que cada página tenga su propio límite y «Cargando…» aparezca al llegar
+  desde la barra superior (test de `Shell.test.tsx`). Las páginas ya se montaban de nuevo al
+  cambiar de ruta, así que no se pierde estado.
+- **Tests de efectos sin red en `src/features/fxOffline.test.tsx`.** Los `vi.mock` que hacen
+  fallar los cuatro `import()` afectan a todo el fichero; ponerlos en `fx.test.tsx` habría roto
+  sus tests, que necesitan los efectos reales. La versión estática de `HeroImageFx` es una `<img>`
+  equivalente a la del componente (sin `data-variant`).
+- **`hasWebGL` separa la prueba de la liberación.** `probe()` crea el contexto dentro del `try`;
+  `loseContext()` va fuera, para que un fake o un contexto sin `getExtension` no convierta la
+  respuesta en `false`. Los fakes de `HeroImage.test.tsx` y `MetalButton.test.tsx` añaden
+  `getExtension` como un contexto real.
+- **Agentes compartidos sin señal.** La promesa de `health()` se comparte entre montajes, así que
+  no se le pasa la señal de ninguno: cancelarla por uno dejaría sin datos a los demás.
+- **Tests con temporizadores falsos y rutas diferidas.** `livePolling.test.tsx` y
+  `orbsPolling.test.tsx` importan `ChangeDetailPage` de forma estática para que el `import()` no
+  dependa de E/S real mientras el reloj es falso. Los tests del orbe y de las páginas diferidas
+  usan `vi.resetModules()` cuando necesitan ver el estado «aún no cargado».
+- **Medida del objetivo de 107 kB.** El chunk `index-*.js` queda en 86,73 kB gzip. Contando los
+  cinco chunks compartidos que `index.html` precarga, el arranque suma 109,40 kB. Se documenta en
+  tasks.md (6.1) sin más cambios.
+
 ## Risks / Trade-offs
 
 - [Los tests que esperan el orbe o una página diferida de forma síncrona fallan] → pasan a
