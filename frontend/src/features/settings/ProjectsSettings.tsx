@@ -8,6 +8,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
 import { ApiError, type ProjectRef } from "../../lib/api";
+import { apiErrorMessage } from "../../lib/apiErrorMessage";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 import { useProjects } from "../projects/ProjectsContext";
 
@@ -18,19 +19,7 @@ interface Message {
 
 const MISSING_TOKEN = "Introduce el token de ingesta.";
 
-function failureMessage(error: unknown, action: string): string {
-  if (!(error instanceof ApiError)) return "Ocurrió un error inesperado.";
-  switch (error.status) {
-    case 401:
-      return "Token de ingesta no válido.";
-    case 404:
-      return "El proyecto ya no existe.";
-    case null:
-      return error.message;
-    default:
-      return `No se pudo ${action}: ${error.message}`;
-  }
-}
+const PROJECT_FAILURES = { 404: "El proyecto ya no existe." } as const;
 
 function syncText({ synced, created }: { synced: number; created: number }): string {
   const prs = `${synced} ${synced === 1 ? "PR sincronizada" : "PRs sincronizadas"}`;
@@ -88,7 +77,7 @@ function RemoveDialog({
       setError(
         e instanceof ApiError && e.status === 409
           ? `${e.message} El proyecto se conserva: puedes repetir la baja.`
-          : failureMessage(e, "quitar el proyecto"),
+          : apiErrorMessage(e, PROJECT_FAILURES, "quitar el proyecto"),
       );
       setSending(false);
     }
@@ -281,7 +270,10 @@ export function ProjectsSettings({ available }: { available: readonly string[] |
       });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) clearIngestToken();
-      say(project.slug, { tone: "error", text: failureMessage(e, "sincronizar las PRs") });
+      say(project.slug, {
+        tone: "error",
+        text: apiErrorMessage(e, PROJECT_FAILURES, "sincronizar las PRs"),
+      });
     } finally {
       setSyncing(null);
     }
@@ -308,7 +300,7 @@ export function ProjectsSettings({ available }: { available: readonly string[] |
         text:
           e instanceof ApiError && e.status === 422
             ? `Selección no válida: ${e.message}`
-            : failureMessage(e, "guardar los agentes"),
+            : apiErrorMessage(e, PROJECT_FAILURES, "guardar los agentes"),
       });
     } finally {
       setSavingAgents(null);

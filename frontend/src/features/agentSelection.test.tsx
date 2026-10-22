@@ -108,4 +108,22 @@ describe("agent selection in settings", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Token de ingesta no válido.");
   });
+
+  it.each([
+    [422, "Selección no válida: raw"],
+    [404, "El proyecto ya no existe."],
+    [500, "No se pudo guardar los agentes: raw"],
+  ])("shows the exact text of today when saving fails with %i (golden)", async (status, text) => {
+    renderSettings(
+      agentSource({
+        setAgents: vi.fn(async () => {
+          throw new ApiError("raw", status);
+        }),
+      }),
+    );
+    const group = await picker();
+    await userEvent.click(group.getByRole("checkbox", { name: "Codex" }));
+    await userEvent.click(group.getByRole("button", { name: /Guardar agentes/ }));
+    expect((await screen.findByRole("alert")).textContent).toBe(text);
+  });
 });

@@ -4,6 +4,7 @@ import { Modal } from "../../components/Modal";
 import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
 import { ApiError, type ProjectRef } from "../../lib/api";
+import { apiErrorMessage } from "../../lib/apiErrorMessage";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 import { isAbsolutePath } from "../../lib/localPath";
 
@@ -12,23 +13,11 @@ interface Props {
   onAdded: (project: ProjectRef) => void;
 }
 
-function failureMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "Ocurrió un error inesperado.";
-  switch (error.status) {
-    case 404:
-      return "Esta función está desactivada en la API: arranca con LOCAL_PROJECTS_ENABLED=true.";
-    case 409:
-      return "Este proyecto ya está añadido.";
-    case 422:
-      return "La ruta no es un repositorio git válido. Comprueba que existe y que contiene una carpeta .git.";
-    case 401:
-      return "Token de ingesta no válido.";
-    case null:
-      return error.message;
-    default:
-      return `No se pudo añadir el proyecto: ${error.message}`;
-  }
-}
+const ADD_FAILURES = {
+  404: "Esta función está desactivada en la API: arranca con LOCAL_PROJECTS_ENABLED=true.",
+  409: "Este proyecto ya está añadido.",
+  422: "La ruta no es un repositorio git válido. Comprueba que existe y que contiene una carpeta .git.",
+} as const;
 
 /** Asks for the absolute path of a local git repository and registers it through the API. */
 export function AddProjectDialog({ onClose, onAdded }: Props) {
@@ -61,7 +50,7 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
       onAdded(await source.addProject(value, token.trim()));
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) clearIngestToken();
-      setError(failureMessage(e));
+      setError(apiErrorMessage(e, ADD_FAILURES, "añadir el proyecto"));
       setSending(false);
     }
   }

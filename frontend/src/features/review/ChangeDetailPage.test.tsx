@@ -306,6 +306,20 @@ describe("retry review", () => {
     expect(retry).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    [404, "Change no encontrado."],
+    [503, "El orquestador no está disponible. Inténtalo de nuevo en unos minutos."],
+    [401, "Token de ingesta no válido."],
+    [500, "No se pudo reintentar: raw"],
+  ])("shows the exact text of today for a %i (golden)", async (status, text) => {
+    const retry = vi.fn<DataSource["retry"]>().mockRejectedValue(new ApiError("raw", status));
+    renderWith({ change: async () => failed(), retry }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    await userEvent.type(tokenField(), "tok");
+    await userEvent.click(retryButton());
+    expect((await screen.findByRole("alert")).textContent).toBe(text);
+  });
+
   it("allows a single request at a time", async () => {
     let release: (value: { changeId: string; run: number }) => void = () => {};
     const retry = vi.fn<DataSource["retry"]>(

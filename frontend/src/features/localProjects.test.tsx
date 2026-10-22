@@ -154,6 +154,30 @@ describe("add project dialog", () => {
     expect(getIngestToken()).toBe(status === 401 ? "" : "tok");
   });
 
+  it.each([
+    [404, "Esta función está desactivada en la API: arranca con LOCAL_PROJECTS_ENABLED=true."],
+    [409, "Este proyecto ya está añadido."],
+    [
+      422,
+      "La ruta no es un repositorio git válido. Comprueba que existe y que contiene una carpeta .git.",
+    ],
+    [401, "Token de ingesta no válido."],
+    [500, "No se pudo añadir el proyecto: raw"],
+    [null, "raw"],
+  ])("shows the exact text of today for an API %s (golden)", async (status, text) => {
+    const source = projectSource([], {
+      addProject: vi.fn(async () => {
+        throw new ApiError("raw", status);
+      }),
+    });
+    renderApp(source);
+    const dialog = await openFromEntry();
+    await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
+    await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(text);
+  });
+
   it("is offered from the empty state too", async () => {
     renderApp(projectSource([]));
     expect(await screen.findByText("Aún no hay proyectos vigilados.")).toBeInTheDocument();
@@ -309,6 +333,34 @@ describe("project settings", () => {
     await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
     await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("ya no existe");
+  });
+
+  it.each([
+    [404, "El proyecto ya no existe."],
+    [401, "Token de ingesta no válido."],
+    [500, "No se pudo quitar el proyecto: raw"],
+  ])("shows the exact text of today when removing fails with %i (golden)", async (status, text) => {
+    const removeProject = vi.fn().mockRejectedValue(new ApiError("raw", status));
+    renderApp(projectSource([github], { removeProject }), "/settings");
+    setIngestToken("tok");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Quitar proyecto acme/widgets" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(text);
+  });
+
+  it.each([
+    [503, "No se pudo sincronizar las PRs: `gh` no está instalado."],
+    [404, "El proyecto ya no existe."],
+    [500, "No se pudo sincronizar las PRs: `gh` no está instalado."],
+  ])("shows the exact text of today when a sync fails with %i (golden)", async (status, text) => {
+    const syncPrs = vi.fn().mockRejectedValue(new ApiError("`gh` no está instalado.", status));
+    renderApp(projectSource([github], { syncPrs }), "/settings");
+    setIngestToken("tok");
+    await userEvent.click(await screen.findByRole("button", { name: /Sincronizar PRs/ }));
+    expect((await within(row("acme/widgets")).findByRole("alert")).textContent).toBe(text);
   });
 
   it("shows why the hooks could not be removed, keeps the project and lets you retry", async () => {

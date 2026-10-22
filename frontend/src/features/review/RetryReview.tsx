@@ -3,6 +3,7 @@ import { Busy } from "../../components/Busy";
 import { MetalButton } from "../../components/fx/MetalButton";
 import { useDataSource } from "../../data/source";
 import { ApiError } from "../../lib/api";
+import { apiErrorMessage } from "../../lib/apiErrorMessage";
 import { clearIngestToken, useIngestToken } from "../../lib/ingestToken";
 
 interface Props {
@@ -11,21 +12,10 @@ interface Props {
   onSettled: (message: string) => void;
 }
 
-function failureMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "Ocurrió un error inesperado.";
-  switch (error.status) {
-    case 401:
-      return "Token de ingesta no válido.";
-    case 404:
-      return "Change no encontrado.";
-    case 503:
-      return "El orquestador no está disponible. Inténtalo de nuevo en unos minutos.";
-    case null:
-      return error.message;
-    default:
-      return `No se pudo reintentar: ${error.message}`;
-  }
-}
+const RETRY_FAILURES = {
+  404: "Change no encontrado.",
+  503: "El orquestador no está disponible. Inténtalo de nuevo en unos minutos.",
+} as const;
 
 /**
  * Retry form for a change whose review failed. The token is typed by the user and kept in memory
@@ -56,7 +46,7 @@ export function RetryReview({ changeId, onSettled }: Props) {
         onSettled("Esta review ya no se puede reintentar: su estado cambió.");
       } else {
         if (e instanceof ApiError && e.status === 401) clearIngestToken();
-        setError(failureMessage(e));
+        setError(apiErrorMessage(e, RETRY_FAILURES, "reintentar"));
       }
     } finally {
       setSending(false);
