@@ -599,3 +599,34 @@ describe("silent reload after a retry", () => {
     await waitFor(() => expect(screen.getByRole("table", { name: "Diff" })).toBe(table));
   });
 });
+
+describe("retry note per change", () => {
+  it("does not carry the note of change A over to change B", async () => {
+    const a = makeChange({
+      id: "a",
+      title: "cambio A",
+      kind: "commit",
+      reviewStatus: "failed",
+      run: 1,
+      commitState: "reverted",
+      revertedBy: { id: "b", sha: "bbbbbbb1234" },
+      reviews: [makeReview({ status: "failed" })],
+    });
+    const b = makeChange({ id: "b", title: "cambio B", reviewStatus: "completed" });
+    renderWith(
+      {
+        change: async (id) => (id === "a" ? a : b),
+        retry: async () => ({ changeId: "a", run: 2 }),
+      },
+      "/p/demo/changes/a",
+    );
+    await screen.findByRole("heading", { name: "cambio A" });
+    await userEvent.type(screen.getByLabelText("Token de ingesta"), "tok");
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar review" }));
+    expect(await screen.findByText("Reintento en marcha (run 2).")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: "bbbbbbb" }));
+    expect(await screen.findByRole("heading", { name: "cambio B" })).toBeInTheDocument();
+    expect(screen.queryByText("Reintento en marcha (run 2).")).toBeNull();
+  });
+});

@@ -34,7 +34,9 @@ function NotFoundPage() {
 function ProjectRoute() {
   const route = parseProjectPath(useParams()["*"]);
   if (route.kind === "channel") return <ChannelPage key={route.slug} slug={route.slug} />;
-  if (route.kind === "change") return <ChangeDetailPage slug={route.slug} id={route.id} />;
+  if (route.kind === "change") {
+    return <ChangeDetailPage key={route.id} slug={route.slug} id={route.id} />;
+  }
   return <NotFoundPage />;
 }
 
