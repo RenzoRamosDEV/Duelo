@@ -1,4 +1,5 @@
-import { type OrbState, ThinkingOrb } from "thinking-orbs";
+import { Suspense, lazy } from "react";
+import type { OrbState } from "thinking-orbs";
 import { useResolvedTheme } from "../lib/theme";
 import { useReducedMotion } from "../lib/useReducedMotion";
 
@@ -15,6 +16,11 @@ export const ACTIVITY_STATE: Record<Activity, OrbState> = {
 
 const ORB_SIZE = 20;
 
+const PLACEHOLDER = "…";
+
+// Loaded on demand so the first paint does not wait for the orb's code.
+const ThinkingOrb = lazy(() => import("thinking-orbs").then((m) => ({ default: m.ThinkingOrb })));
+
 interface Props {
   activity: Activity;
   /** Visible text; it is also what assistive technology announces (the orb is decorative). */
@@ -27,7 +33,7 @@ interface Props {
 /**
  * Loading / in-progress indicator: a 20 px `thinking-orb` next to a text label. The orb sits in a
  * fixed 20 px slot, so showing or hiding it never moves the layout. Under reduced motion no canvas
- * is mounted: a static "…" takes its place.
+ * is mounted: a static "…" takes its place, as it does while the orb's code is still loading.
  */
 export function Busy({ activity, label, inline = false, className = "" }: Props) {
   const reduced = useReducedMotion();
@@ -37,9 +43,11 @@ export function Busy({ activity, label, inline = false, className = "" }: Props)
     <>
       <span className="busy-orb" aria-hidden="true" data-activity={activity}>
         {reduced ? (
-          "…"
+          PLACEHOLDER
         ) : (
-          <ThinkingOrb state={ACTIVITY_STATE[activity]} size={ORB_SIZE} theme={theme} />
+          <Suspense fallback={PLACEHOLDER}>
+            <ThinkingOrb state={ACTIVITY_STATE[activity]} size={ORB_SIZE} theme={theme} />
+          </Suspense>
         )}
       </span>
       <span>{label}</span>

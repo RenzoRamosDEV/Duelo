@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,10 +29,14 @@ function renderApp(overrides: Partial<DataSource>, path: string) {
 }
 
 /** The orb drawn next to a label: its state, and that it is the 20 px dark one. */
-function orbNear(label: string | RegExp) {
+async function orbNear(label: string | RegExp) {
   const busy = screen.getByText(label).closest(".busy");
-  const orb = busy?.querySelector("canvas[data-orb]") ?? null;
-  expect(orb, `no orb next to ${label}`).not.toBeNull();
+  // The orb's code is loaded on demand: the static "…" holds its slot until it arrives.
+  const orb = await waitFor(() => {
+    const found = busy?.querySelector("canvas[data-orb]") ?? null;
+    expect(found, `no orb next to ${label}`).not.toBeNull();
+    return found;
+  });
   expect(orb).toHaveAttribute("data-size", "20");
   expect(orb).toHaveAttribute("data-theme", "dark");
   return orb?.getAttribute("data-state");
@@ -54,26 +58,26 @@ afterEach(() => vi.restoreAllMocks());
 describe("loads show an orb of their own state", () => {
   it("channel, detail and statistics are searching", async () => {
     const { unmount } = renderApp({ changes: never }, "/p/demo");
-    expect(orbNear("Cargando cambios…")).toBe("searching");
+    expect(await orbNear("Cargando cambios…")).toBe("searching");
     unmount();
 
     const detail = renderApp({ change: never }, "/p/demo/changes/c1");
-    expect(orbNear("Cargando change…")).toBe("searching");
+    expect(await orbNear("Cargando change…")).toBe("searching");
     detail.unmount();
 
     renderApp({ agentStats: never }, "/stats");
-    expect(orbNear("Cargando estadísticas…")).toBe("searching");
+    expect(await orbNear("Cargando estadísticas…")).toBe("searching");
   });
 
   it("the project picker is searching", async () => {
     renderApp({ projects: never }, "/");
-    expect(orbNear("Cargando proyectos…")).toBe("searching");
+    expect(await orbNear("Cargando proyectos…")).toBe("searching");
   });
 
   it("the diagnostics and the project list in Settings use their own states", async () => {
     renderApp({ health: never, projects: never }, "/settings");
-    expect(orbNear("Comprobando dependencias…")).toBe("connecting");
-    expect(orbNear("Cargando proyectos…")).toBe("searching");
+    expect(await orbNear("Comprobando dependencias…")).toBe("connecting");
+    expect(await orbNear("Cargando proyectos…")).toBe("searching");
   });
 
   it("refreshing the diagnostics brings the connecting orb back", async () => {
@@ -84,12 +88,12 @@ describe("loads show an orb of their own state", () => {
     expect(screen.queryByText("Comprobando dependencias…")).toBeNull();
     hang = true;
     await userEvent.click(screen.getByRole("button", { name: "Actualizar" }));
-    expect(orbNear("Comprobando dependencias…")).toBe("connecting");
+    expect(await orbNear("Comprobando dependencias…")).toBe("connecting");
   });
 
   it("a change page waiting for its detail is searching", async () => {
     renderApp({ change: never }, "/p/demo/changes/c1");
-    expect(orbNear("Cargando change…")).toBe("searching");
+    expect(await orbNear("Cargando change…")).toBe("searching");
   });
 });
 
@@ -105,7 +109,7 @@ describe("actions in progress show an orb inside their disabled button", () => {
     const button = screen.getByRole("button", { name: "Cargando…" });
     expect(button).toBeDisabled();
     expect(within(button).getByText("Cargando…").closest(".busy")).not.toBeNull();
-    expect(orbNear("Cargando…")).toBe("working");
+    expect(await orbNear("Cargando…")).toBe("working");
   });
 
   it("«Reintentar review» is solving", async () => {
@@ -120,7 +124,7 @@ describe("actions in progress show an orb inside their disabled button", () => {
     renderApp({ change: async () => failed, retry: never }, "/p/demo/changes/d1");
     await userEvent.click(await screen.findByRole("button", { name: "Reintentar review" }));
     expect(screen.getByRole("button", { name: "Reintentando…" })).toBeDisabled();
-    expect(orbNear("Reintentando…")).toBe("solving");
+    expect(await orbNear("Reintentando…")).toBe("solving");
   });
 
   it("adding a project is connecting", async () => {
@@ -131,7 +135,7 @@ describe("actions in progress show an orb inside their disabled button", () => {
     await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
     await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
     expect(within(dialog).getByRole("button", { name: "Añadiendo…" })).toBeDisabled();
-    expect(orbNear("Añadiendo…")).toBe("connecting");
+    expect(await orbNear("Añadiendo…")).toBe("connecting");
   });
 
   it("syncing PRs and removing a project are connecting", async () => {
@@ -142,13 +146,13 @@ describe("actions in progress show an orb inside their disabled button", () => {
     );
     await userEvent.click(await screen.findByRole("button", { name: /Sincronizar PRs/ }));
     expect(screen.getByRole("button", { name: "Sincronizando…" })).toBeDisabled();
-    expect(orbNear("Sincronizando…")).toBe("connecting");
+    expect(await orbNear("Sincronizando…")).toBe("connecting");
 
     await userEvent.click(screen.getByRole("button", { name: "Quitar proyecto acme/widgets" }));
     const dialog = await screen.findByRole("dialog", { name: "Quitar acme/widgets" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
     expect(within(dialog).getByRole("button", { name: "Quitando…" })).toBeDisabled();
-    expect(orbNear("Quitando…")).toBe("connecting");
+    expect(await orbNear("Quitando…")).toBe("connecting");
   });
 });
 
@@ -168,8 +172,8 @@ describe("agents the change is still waiting for", () => {
       "/p/demo/changes/p1",
     );
     expect(await screen.findByText("Agent_1 está revisando…")).toBeInTheDocument();
-    expect(orbNear("Agent_1 está revisando…")).toBe("working");
-    expect(orbNear("Agent_2 está revisando…")).toBe("working");
+    expect(await orbNear("Agent_1 está revisando…")).toBe("working");
+    expect(await orbNear("Agent_2 está revisando…")).toBe("working");
     expect(screen.getByRole("list", { name: "Agentes pendientes" })).toBeInTheDocument();
   });
 
@@ -229,7 +233,7 @@ describe("agents the change is still waiting for", () => {
       "/p/demo/changes/p1",
     );
     expect(await screen.findByText("Esperando a los agentes…")).toBeInTheDocument();
-    expect(orbNear("Esperando a los agentes…")).toBe("working");
+    expect(await orbNear("Esperando a los agentes…")).toBe("working");
     expect(screen.queryByText(/está revisando/)).toBeNull();
   });
 
