@@ -6,8 +6,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     react(),
-    // Installable app with an offline app shell. Only the build output is precached: there is no
-    // `runtimeCaching`, so API calls and anything from another origin always hit the network.
+    // Installable app with an offline app shell. Only the build output is precached, minus the
+    // on-demand effects and the big icons, which are cached on first use (same origin, hashed or
+    // static files only), so API calls and anything from another origin always hit the network.
     VitePWA({
       // The user decides when to reload (see `components/UpdatePrompt`); never mid-review.
       registerType: "prompt",
@@ -37,6 +38,25 @@ export default defineConfig({
       workbox: {
         // The app shell: build output plus the static icons copied from `public/`.
         globPatterns: ["**/*.{js,css,html,png,webp}"],
+        globIgnores: [
+          "**/HeroImageFx-*.js",
+          "**/MetalRing-*.js",
+          "**/BeamLayer-*.js",
+          "**/FluidThemeSwitch-*.js",
+          "**/pwa-*.png",
+        ],
+        runtimeCaching: [
+          {
+            // Serialised into the service worker: it cannot use anything defined outside it.
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin &&
+              /\/(assets\/(HeroImageFx|MetalRing|BeamLayer|FluidThemeSwitch)-[^/]+\.js|pwa-[^/]+\.png)$/.test(
+                url.pathname,
+              ),
+            handler: "CacheFirst",
+            options: { cacheName: "duelo-fx", expiration: { maxEntries: 16 } },
+          },
+        ],
         // SPA routes resolve on the client; `/api/` is excluded in case the API is ever same-origin.
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
