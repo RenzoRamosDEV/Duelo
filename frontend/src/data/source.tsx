@@ -171,9 +171,22 @@ export function useDataSource(): DataSource {
   return useContext(DataSourceContext);
 }
 
+/** One shared request per source; a failed one is forgotten so the next mount asks again. */
+const agentNamesBySource = new WeakMap<DataSource, Promise<string[]>>();
+
+function sharedAgentNames(source: DataSource): Promise<string[]> {
+  let names = agentNamesBySource.get(source);
+  if (!names) {
+    names = source.health().then((health) => health.agentNames);
+    agentNamesBySource.set(source, names);
+    names.catch(() => agentNamesBySource.delete(source));
+  }
+  return names;
+}
+
 /** Agents configured in the backend, or `null` while unknown (loading or the server fails). */
 export function useAgentNames(): string[] | null {
   const source = useDataSource();
-  const state = useAsync(useCallback(() => source.health(), [source]));
-  return state.status === "ready" ? state.data.agentNames : null;
+  const state = useAsync(useCallback(() => sharedAgentNames(source), [source]));
+  return state.status === "ready" ? state.data : null;
 }
