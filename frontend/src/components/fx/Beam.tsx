@@ -2,8 +2,13 @@ import { type ReactNode, Suspense, lazy } from "react";
 import { useResolvedTheme } from "../../lib/theme";
 import { useReducedMotion } from "../../lib/useReducedMotion";
 
-// libraries.dev `border-beam`: a separate chunk, fetched only once something is in progress.
-const BeamLayer = lazy(() => import("./BeamLayer"));
+// libraries.dev `border-beam`: a separate chunk, fetched only once something is in progress. It is
+// not precached: offline, before its first use, the content goes without a beam.
+const BeamLayer = lazy(() =>
+  import("./BeamLayer").catch(() => ({
+    default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  })),
+);
 
 /**
  * Amber glow that travels along the bottom edge of something that is still in progress (libraries.dev

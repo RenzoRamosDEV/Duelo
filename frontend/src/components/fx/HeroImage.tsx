@@ -4,8 +4,15 @@ import { useReducedMotion } from "../../lib/useReducedMotion";
 import { type Themed, pickTheme } from "../brand";
 import { hasWebGL } from "./webgl";
 
-// The WebGL effect (and `three`) is a separate chunk, fetched only when it can actually run.
-const HeroImageFx = lazy(() => import("./HeroImageFx"));
+// The WebGL effect (and `three`) is a separate chunk, fetched only when it can actually run. It is
+// not precached: offline, before its first use, the plain picture stays.
+const HeroImageFx = lazy(() =>
+  import("./HeroImageFx").catch(() => ({
+    default: ({ src, width, height }: { src: string; width: number; height: number }) => (
+      <img className="hero-img" src={src} alt="" width={width} height={height} decoding="async" />
+    ),
+  })),
+);
 
 const WIDTH = 240;
 const HEIGHT = 160;

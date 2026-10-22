@@ -3,8 +3,11 @@ import { useThemePreference } from "../lib/theme";
 import { useReducedMotion } from "../lib/useReducedMotion";
 import { THEME_OPTIONS, ThemeButton } from "./ThemeButton";
 
-// libraries.dev `liquid-gooey`: a separate chunk, so the header is usable before it arrives.
-const FluidThemeSwitch = lazy(() => import("./FluidThemeSwitch"));
+// libraries.dev `liquid-gooey`: a separate chunk, so the header is usable before it arrives. It is
+// not precached: offline, before its first use, the plain control stays.
+const FluidThemeSwitch = lazy(() =>
+  import("./FluidThemeSwitch").catch(() => ({ default: StaticThemeSwitch })),
+);
 
 function StaticThemeSwitch({ compact }: { compact: boolean }) {
   const [preference, setPreference] = useThemePreference();

@@ -1,11 +1,16 @@
-import { type ComponentProps, Suspense, lazy } from "react";
+import { type ComponentProps, type ReactNode, Suspense, lazy } from "react";
 import { useResolvedTheme } from "../../lib/theme";
 import { useReducedMotion } from "../../lib/useReducedMotion";
 import { Button } from "../ui/Button";
 import { hasWebGL } from "./webgl";
 
-// `metal-fx` (and its shader) is a separate chunk, fetched only where WebGL2 can run it.
-const MetalRing = lazy(() => import("./MetalRing"));
+// `metal-fx` (and its shader) is a separate chunk, fetched only where WebGL2 can run it. It is not
+// precached: offline, before its first use, the button goes without its ring.
+const MetalRing = lazy(() =>
+  import("./MetalRing").catch(() => ({
+    default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  })),
+);
 
 /**
  * A `Button` with a liquid-metal ring (libraries.dev `metal-fx`). It is only for the few actions
