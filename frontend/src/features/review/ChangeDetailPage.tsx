@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AsyncBoundary } from "../../components/AsyncBoundary";
 import { CopyButton } from "../../components/CopyButton";
@@ -14,6 +14,7 @@ import { useAgentNames, useDataSource } from "../../data/source";
 import type { Change, Review } from "../../data/types";
 import { UNNAMED_FILE, diffFiles, diffSquares, parseDiff } from "../../lib/diff";
 import { sameValue } from "../../lib/equal";
+import type { Liveness } from "../../lib/liveness";
 import { usePollMs } from "../../lib/polling";
 import { projectPath } from "../../lib/projectPath";
 import { AGGREGATE_LABEL, AGGREGATE_TONE, isRetryable } from "../../lib/reviewStatus";
@@ -63,7 +64,11 @@ export function ChangeDetailPage({ slug, id }: { slug: string; id: string }) {
     },
   );
   const [note, setNote] = useState<string | null>(null);
-  const reload = state.retry;
+  const { refresh } = state;
+  const onRetried = (message: string) => {
+    setNote(message);
+    refresh();
+  };
 
   return (
     <AsyncBoundary
@@ -77,172 +82,205 @@ export function ChangeDetailPage({ slug, id }: { slug: string; id: string }) {
         </div>
       }
     >
-      {(change) => {
-        const url = safeHttpUrl(change.url);
-        // Only the current run counts; a retry keeps the earlier runs' reviews, shown collapsed.
-        const { current: reviews, previous } = splitRuns(change.reviews ?? [], change.run);
-        const rows = parseDiff(change.diff);
-        const files = diffFiles(rows);
-        const anchored = new Set(files.map((f) => f.rowId));
-        const totalAdd = files.reduce((n, f) => n + f.additions, 0);
-        const totalDel = files.reduce((n, f) => n + f.deletions, 0);
-        return (
-          <div className="page">
-            <div className="detail-head">
-              <nav className="crumbs" aria-label="Migas">
-                <Link to="/">Proyectos</Link> / <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
-                <span className="mono" aria-current="page">
-                  {shortSha(change.sha)}
-                </span>
-              </nav>
-              <h1>{change.title}</h1>
-              <UndoneBanner change={change} slug={slug} />
-              {change.reviewStatus && (
-                <p className="row status-line">
-                  <span className="status-pill" data-tone={AGGREGATE_TONE[change.reviewStatus]}>
-                    <StatusIcon status={change.reviewStatus} />
-                    {AGGREGATE_LABEL[change.reviewStatus]}
-                  </span>
-                  {change.run !== undefined && <span className="muted">Run {change.run}</span>}
-                  <span className="muted">
-                    por {change.author}
-                    {change.ref && (
-                      <>
-                        {" en "}
-                        <span className="mono">{change.ref}</span>
-                      </>
-                    )}
-                  </span>
-                </p>
+      {(change) => (
+        <ChangeDetail
+          change={change}
+          slug={slug}
+          agentNames={agentNames}
+          liveness={state.liveness}
+          note={note}
+          onRetried={onRetried}
+        />
+      )}
+    </AsyncBoundary>
+  );
+}
+
+/** The diff parsed once per diff text, with its files and totals. */
+function useParsedDiff(text: string) {
+  return useMemo(() => {
+    const rows = parseDiff(text);
+    const files = diffFiles(rows);
+    return {
+      rows,
+      files,
+      anchored: new Set(files.map((f) => f.rowId)),
+      totalAdd: files.reduce((n, f) => n + f.additions, 0),
+      totalDel: files.reduce((n, f) => n + f.deletions, 0),
+    };
+  }, [text]);
+}
+
+function ChangeDetail({
+  change,
+  slug,
+  agentNames,
+  liveness,
+  note,
+  onRetried,
+}: {
+  change: Change;
+  slug: string;
+  agentNames: readonly string[] | null;
+  liveness: Liveness;
+  note: string | null;
+  onRetried: (message: string) => void;
+}) {
+  const url = safeHttpUrl(change.url);
+  // Only the current run counts; a retry keeps the earlier runs' reviews, shown collapsed.
+  const { current: reviews, previous } = useMemo(
+    () => splitRuns(change.reviews ?? [], change.run),
+    [change.reviews, change.run],
+  );
+  const { rows, files, anchored, totalAdd, totalDel } = useParsedDiff(change.diff);
+  return (
+    <div className="page">
+      <div className="detail-head">
+        <nav className="crumbs" aria-label="Migas">
+          <Link to="/">Proyectos</Link> / <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
+          <span className="mono" aria-current="page">
+            {shortSha(change.sha)}
+          </span>
+        </nav>
+        <h1>{change.title}</h1>
+        <UndoneBanner change={change} slug={slug} />
+        {change.reviewStatus && (
+          <p className="row status-line">
+            <span className="status-pill" data-tone={AGGREGATE_TONE[change.reviewStatus]}>
+              <StatusIcon status={change.reviewStatus} />
+              {AGGREGATE_LABEL[change.reviewStatus]}
+            </span>
+            {change.run !== undefined && <span className="muted">Run {change.run}</span>}
+            <span className="muted">
+              por {change.author}
+              {change.ref && (
+                <>
+                  {" en "}
+                  <span className="mono">{change.ref}</span>
+                </>
               )}
-              <PendingAgents change={change} agentNames={agentNames} />
-              {inProgress(change) && <UpdatedAgo liveness={state.liveness} />}
-              <div className="actions">
-                {url && (
-                  <a className="btn" href={url} target="_blank" rel="noopener noreferrer">
-                    Abrir en GitHub
-                    <ExternalIcon size={14} />
-                  </a>
-                )}
-                <CopyButton label="Copiar SHA" value={change.sha} />
-                {change.ref && <CopyButton label="Copiar rama" value={change.ref} />}
+            </span>
+          </p>
+        )}
+        <PendingAgents change={change} agentNames={agentNames} />
+        {inProgress(change) && <UpdatedAgo liveness={liveness} />}
+        <div className="actions">
+          {url && (
+            <a className="btn" href={url} target="_blank" rel="noopener noreferrer">
+              Abrir en GitHub
+              <ExternalIcon size={14} />
+            </a>
+          )}
+          <CopyButton label="Copiar SHA" value={change.sha} />
+          {change.ref && <CopyButton label="Copiar rama" value={change.ref} />}
+        </div>
+      </div>
+      {note && (
+        <output className="notice success" aria-live="polite">
+          {note}
+        </output>
+      )}
+      {isRetryable(change.reviewStatus) && (
+        <RetryReview changeId={change.id} onSettled={onRetried} />
+      )}
+      <div className="stack">
+        <Beam active={inProgress(change)}>
+          <section className="box" aria-labelledby="thread-title">
+            <h2 className="box-title" id="thread-title">
+              Revisión de los agentes
+            </h2>
+            <div className="box-body">
+              {reviews.length === 0 && !inProgress(change) && (
+                <p className="muted">Aún no hay respuestas de los agentes.</p>
+              )}
+              <div className="reviews">
+                {byAgent(reviews).map((r) => (
+                  <ReviewCard key={r.id} review={r} showFindings={false} sha={change.sha} />
+                ))}
               </div>
-            </div>
-            {note && (
-              <output className="notice success" aria-live="polite">
-                {note}
-              </output>
-            )}
-            {isRetryable(change.reviewStatus) && (
-              <RetryReview
-                changeId={change.id}
-                onSettled={(message) => {
-                  setNote(message);
-                  reload();
-                }}
-              />
-            )}
-            <div className="stack">
-              <Beam active={inProgress(change)}>
-                <section className="box" aria-labelledby="thread-title">
-                  <h2 className="box-title" id="thread-title">
-                    Revisión de los agentes
-                  </h2>
-                  <div className="box-body">
-                    {reviews.length === 0 && !inProgress(change) && (
-                      <p className="muted">Aún no hay respuestas de los agentes.</p>
-                    )}
-                    <div className="reviews">
-                      {byAgent(reviews).map((r) => (
-                        <ReviewCard key={r.id} review={r} showFindings={false} sha={change.sha} />
-                      ))}
-                    </div>
-                    <FindingsPanel reviews={reviews} />
-                    {previous.map((p) => (
-                      <details key={p.run} className="previous-run">
-                        <summary>
-                          Run {p.run} (anterior) · {p.reviews.length}{" "}
-                          {p.reviews.length === 1 ? "review" : "reviews"}
-                        </summary>
-                        <div className="reviews">
-                          {byAgent(p.reviews).map((r) => (
-                            <ReviewCard key={r.id} review={r} sha={change.sha} />
-                          ))}
-                        </div>
-                      </details>
+              <FindingsPanel reviews={reviews} />
+              {previous.map((p) => (
+                <details key={p.run} className="previous-run">
+                  <summary>
+                    Run {p.run} (anterior) · {p.reviews.length}{" "}
+                    {p.reviews.length === 1 ? "review" : "reviews"}
+                  </summary>
+                  <div className="reviews">
+                    {byAgent(p.reviews).map((r) => (
+                      <ReviewCard key={r.id} review={r} sha={change.sha} />
                     ))}
                   </div>
-                </section>
-              </Beam>
-              <section className="box" aria-labelledby="files-title">
-                <h2 className="box-title" id="files-title">
-                  Archivos cambiados
-                  {files.length > 0 && (
-                    <span className="box-sub">
-                      <span className="add-count">+{totalAdd}</span>{" "}
-                      <span className="del-count">−{totalDel}</span>
-                    </span>
-                  )}
-                </h2>
-                {change.truncated && (
-                  <p className="notice flat" role="note">
-                    El diff está truncado: solo se muestra una parte de los cambios.
-                  </p>
-                )}
-                {files.some((f) => f.name !== UNNAMED_FILE) && (
-                  <nav className="diff-files" aria-label="Archivos del diff">
-                    <h3>
-                      {files.length} {files.length === 1 ? "archivo" : "archivos"}
-                    </h3>
-                    <ul>
-                      {files.map((f) => (
-                        <li key={f.rowId}>
-                          <FileIcon size={14} />
-                          <a href={`#${fileAnchor(f.rowId)}`} className="mono">
-                            {f.name}
-                          </a>{" "}
-                          <span className="file-stat">
-                            <span className="add-count">+{f.additions}</span>{" "}
-                            <span className="del-count">−{f.deletions}</span>
-                            <Squares additions={f.additions} deletions={f.deletions} />
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
-                )}
-                <div className="diff-scroll">
-                  <table className="diff" aria-label="Diff">
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr
-                          key={row.id}
-                          id={anchored.has(row.id) ? fileAnchor(row.id) : undefined}
-                          className={`diff-row ${row.kind}${row.kind === "header" ? (row.file ? " file" : " hunk") : ""}`}
-                        >
-                          <td className="ln" aria-hidden="true">
-                            {row.oldNo ?? ""}
-                          </td>
-                          <td className="ln" aria-hidden="true">
-                            {row.newNo ?? ""}
-                          </td>
-                          <td className="code">
-                            {row.kind === "header" ? (
-                              <strong>{row.file ?? row.text.replace(/^@@\s*/, "")}</strong>
-                            ) : (
-                              row.text
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                </details>
+              ))}
             </div>
+          </section>
+        </Beam>
+        <section className="box" aria-labelledby="files-title">
+          <h2 className="box-title" id="files-title">
+            Archivos cambiados
+            {files.length > 0 && (
+              <span className="box-sub">
+                <span className="add-count">+{totalAdd}</span>{" "}
+                <span className="del-count">−{totalDel}</span>
+              </span>
+            )}
+          </h2>
+          {change.truncated && (
+            <p className="notice flat" role="note">
+              El diff está truncado: solo se muestra una parte de los cambios.
+            </p>
+          )}
+          {files.some((f) => f.name !== UNNAMED_FILE) && (
+            <nav className="diff-files" aria-label="Archivos del diff">
+              <h3>
+                {files.length} {files.length === 1 ? "archivo" : "archivos"}
+              </h3>
+              <ul>
+                {files.map((f) => (
+                  <li key={f.rowId}>
+                    <FileIcon size={14} />
+                    <a href={`#${fileAnchor(f.rowId)}`} className="mono">
+                      {f.name}
+                    </a>{" "}
+                    <span className="file-stat">
+                      <span className="add-count">+{f.additions}</span>{" "}
+                      <span className="del-count">−{f.deletions}</span>
+                      <Squares additions={f.additions} deletions={f.deletions} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+          <div className="diff-scroll">
+            <table className="diff" aria-label="Diff">
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    id={anchored.has(row.id) ? fileAnchor(row.id) : undefined}
+                    className={`diff-row ${row.kind}${row.kind === "header" ? (row.file ? " file" : " hunk") : ""}`}
+                  >
+                    <td className="ln" aria-hidden="true">
+                      {row.oldNo ?? ""}
+                    </td>
+                    <td className="ln" aria-hidden="true">
+                      {row.newNo ?? ""}
+                    </td>
+                    <td className="code">
+                      {row.kind === "header" ? (
+                        <strong>{row.file ?? row.text.replace(/^@@\s*/, "")}</strong>
+                      ) : (
+                        row.text
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        );
-      }}
-    </AsyncBoundary>
+        </section>
+      </div>
+    </div>
   );
 }

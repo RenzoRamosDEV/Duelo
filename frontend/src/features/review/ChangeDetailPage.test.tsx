@@ -4,9 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Change, ReviewAggregate } from "../../data/types";
 import { ApiError, type DataSource } from "../../lib/api";
+import * as diff from "../../lib/diff";
 import { clearIngestToken, getIngestToken } from "../../lib/ingestToken";
 import { makeChange, makeFinding, makeReview } from "../../test/fixtures";
 import { renderApp } from "../../test/render";
+import * as findingsPanel from "./FindingsPanel";
+
+// Spies that keep the real behaviour: they count how often the page parses the diff and what
+// `reviews` the findings panel receives.
+vi.mock("../../lib/diff", async (importOriginal) => {
+  const actual = await importOriginal<typeof diff>();
+  return { ...actual, parseDiff: vi.fn(actual.parseDiff) };
+});
+vi.mock("./FindingsPanel", async (importOriginal) => {
+  const actual = await importOriginal<typeof findingsPanel>();
+  return { ...actual, FindingsPanel: vi.fn(actual.FindingsPanel) };
+});
 
 const NOW = new Date("2026-10-09T12:00:00Z");
 
@@ -487,5 +500,102 @@ describe("change detail as a conversation", () => {
     const pill = document.querySelector(".status-pill") as HTMLElement;
     expect(pill).toHaveAttribute("data-tone", "success");
     expect(within(pill).getByRole("img", { name: "Completada" })).toBeInTheDocument();
+  });
+});
+
+describe("memoised detail", () => {
+  const path = "/p/demo/changes/d1";
+  const failed = (overrides: Partial<Change> = {}) =>
+    makeChange({
+      id: "d1",
+      title: "detalle",
+      reviewStatus: "failed",
+      run: 1,
+      diff: "@@ a.py\n+uno",
+      reviews: [makeReview({ id: "r1", status: "failed" })],
+      ...overrides,
+    });
+  const parseDiff = vi.mocked(diff.parseDiff);
+  const panel = vi.mocked(findingsPanel.FindingsPanel);
+
+  async function retryOnce() {
+    await userEvent.type(screen.getByLabelText("Token de ingesta"), "tok");
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar review" }));
+  }
+
+  it("parses the diff once and keeps the reviews while the data stays the same", async () => {
+    const change = vi.fn<DataSource["change"]>(async () => failed());
+    const retry = vi.fn<DataSource["retry"]>().mockRejectedValue(new ApiError("x", 409));
+    renderWith({ change, retry }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    parseDiff.mockClear();
+    panel.mockClear();
+
+    await retryOnce();
+    expect(await screen.findByText(/ya no se puede reintentar/)).toBeInTheDocument();
+    await waitFor(() => expect(change).toHaveBeenCalledTimes(2));
+    expect(parseDiff).not.toHaveBeenCalled();
+    const received = panel.mock.calls.map(([props]) => props.reviews);
+    expect(new Set(received).size).toBeLessThanOrEqual(1);
+  });
+
+  it("parses again when the diff changes", async () => {
+    let current = failed();
+    const retry = vi.fn<DataSource["retry"]>(async () => {
+      current = failed({ reviewStatus: "pending", run: 2, reviews: [], diff: "@@ b.py\n+dos" });
+      return { changeId: "d1", run: 2 };
+    });
+    renderWith({ change: async () => current, retry }, path);
+    await screen.findByRole("heading", { name: "detalle" });
+    parseDiff.mockClear();
+
+    await retryOnce();
+    expect(await screen.findByText("Pendiente")).toBeInTheDocument();
+    expect(parseDiff).toHaveBeenCalledTimes(1);
+    expect(parseDiff).toHaveBeenCalledWith("@@ b.py\n+dos");
+  });
+});
+
+describe("silent reload after a retry", () => {
+  const path = "/p/demo/changes/d1";
+  const failed = makeChange({
+    id: "d1",
+    title: "detalle",
+    reviewStatus: "failed",
+    run: 1,
+    diff: "@@ a.py\n+uno",
+    reviews: [makeReview({ agent: "claude", status: "completed", summary: "resumen previo" })],
+  });
+
+  it.each([
+    ["accepted (202)", async () => ({ changeId: "d1", run: 2 })],
+    [
+      "in conflict (409)",
+      async () => {
+        throw new ApiError("x", 409);
+      },
+    ],
+  ] as const)("keeps the diff and the reviews on screen when %s", async (_, retry) => {
+    let release: (change: Change) => void = () => {};
+    const change = vi
+      .fn<DataSource["change"]>()
+      .mockResolvedValueOnce(failed)
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      );
+    renderWith({ change, retry }, path);
+    const table = await screen.findByRole("table", { name: "Diff" });
+    await userEvent.type(screen.getByLabelText("Token de ingesta"), "tok");
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar review" }));
+    await waitFor(() => expect(change).toHaveBeenCalledTimes(2));
+
+    expect(screen.queryByText("Cargando change…")).toBeNull();
+    expect(screen.getByRole("table", { name: "Diff" })).toBe(table);
+    expect(screen.getByText("resumen previo")).toBeInTheDocument();
+    release(failed);
+    await waitFor(() => expect(screen.getByRole("table", { name: "Diff" })).toBe(table));
   });
 });
