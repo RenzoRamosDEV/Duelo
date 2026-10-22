@@ -2,6 +2,7 @@ import { type FormEvent, useId, useState } from "react";
 import { AsyncBoundary } from "../../components/AsyncBoundary";
 import { Busy } from "../../components/Busy";
 import { Modal } from "../../components/Modal";
+import { TokenField } from "../../components/TokenField";
 import { MetalButton } from "../../components/fx/MetalButton";
 import { agentLabel } from "../../components/ui/AgentAvatar";
 import { Badge } from "../../components/ui/Badge";
@@ -24,23 +25,6 @@ const PROJECT_FAILURES = { 404: "El proyecto ya no existe." } as const;
 function syncText({ synced, created }: { synced: number; created: number }): string {
   const prs = `${synced} ${synced === 1 ? "PR sincronizada" : "PRs sincronizadas"}`;
   return `${prs} (${created} ${created === 1 ? "nueva" : "nuevas"}).`;
-}
-
-function TokenField({ id }: { id: string }) {
-  const [token, setToken] = useIngestToken();
-  return (
-    <>
-      <label htmlFor={id}>Token de ingesta</label>
-      <input
-        id={id}
-        className="search"
-        type="password"
-        autoComplete="off"
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-      />
-    </>
-  );
 }
 
 function RemoveDialog({

@@ -1,6 +1,7 @@
 import { type FormEvent, useId, useState } from "react";
 import { Busy } from "../../components/Busy";
 import { Modal } from "../../components/Modal";
+import { TokenField } from "../../components/TokenField";
 import { Button } from "../../components/ui/Button";
 import { useDataSource } from "../../data/source";
 import { ApiError, type ProjectRef } from "../../lib/api";
@@ -22,7 +23,7 @@ const ADD_FAILURES = {
 /** Asks for the absolute path of a local git repository and registers it through the API. */
 export function AddProjectDialog({ onClose, onAdded }: Props) {
   const source = useDataSource();
-  const [token, setToken] = useIngestToken();
+  const [token] = useIngestToken();
   const [path, setPath] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,15 +77,7 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
           value={path}
           onChange={(e) => setPath(e.target.value)}
         />
-        <label htmlFor={tokenId}>Token de ingesta</label>
-        <input
-          id={tokenId}
-          className="search"
-          type="password"
-          autoComplete="off"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
+        <TokenField id={tokenId} />
         {error && (
           <p className="notice" role="alert">
             {error}

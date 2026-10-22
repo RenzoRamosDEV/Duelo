@@ -1,5 +1,6 @@
 import { type FormEvent, useId, useState } from "react";
 import { Busy } from "../../components/Busy";
+import { TokenField } from "../../components/TokenField";
 import { MetalButton } from "../../components/fx/MetalButton";
 import { useDataSource } from "../../data/source";
 import { ApiError } from "../../lib/api";
@@ -23,7 +24,7 @@ const RETRY_FAILURES = {
  */
 export function RetryReview({ changeId, onSettled }: Props) {
   const source = useDataSource();
-  const [token, setToken] = useIngestToken();
+  const [token] = useIngestToken();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tokenId = useId();
@@ -55,15 +56,7 @@ export function RetryReview({ changeId, onSettled }: Props) {
 
   return (
     <form className="retry" onSubmit={submit}>
-      <label htmlFor={tokenId}>Token de ingesta</label>
-      <input
-        id={tokenId}
-        className="search"
-        type="password"
-        autoComplete="off"
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-      />
+      <TokenField id={tokenId} />
       <MetalButton type="submit" disabled={sending}>
         {sending ? <Busy activity="retry" label="Reintentando…" inline /> : "Reintentar review"}
       </MetalButton>
