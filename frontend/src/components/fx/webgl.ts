@@ -5,19 +5,22 @@ const cached = new Map<1 | 2, boolean>();
 export function hasWebGL(version: 1 | 2 = 1): boolean {
   const known = cached.get(version);
   if (known !== undefined) return known;
-  let ok = false;
+  const gl = probe(version);
+  // Browsers cap live WebGL contexts; the probe gives its slot back to the real effects.
+  gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  cached.set(version, gl !== null);
+  return gl !== null;
+}
+
+function probe(version: 1 | 2): WebGLRenderingContext | WebGL2RenderingContext | null {
   try {
     const canvas = document.createElement("canvas");
-    ok = Boolean(
-      version === 2
-        ? canvas.getContext("webgl2")
-        : (canvas.getContext("webgl2") ?? canvas.getContext("webgl")),
-    );
+    return version === 2
+      ? canvas.getContext("webgl2")
+      : (canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
   } catch {
-    ok = false;
+    return null;
   }
-  cached.set(version, ok);
-  return ok;
 }
 
 /** Test hook: forget the cached answers. */

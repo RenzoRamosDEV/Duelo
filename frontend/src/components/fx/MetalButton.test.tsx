@@ -26,7 +26,9 @@ function setReducedMotion(reduced: boolean) {
 
 /** Makes `canvas.getContext("webgl2")` answer, as a browser with a GPU would. */
 function withWebGL2() {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => ({})) as never);
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => ({
+    getExtension: () => null,
+  })) as never);
 }
 
 beforeEach(resetWebGLForTests);

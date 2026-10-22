@@ -24,7 +24,9 @@ function setReducedMotion(reduced: boolean) {
 }
 
 function withWebGL() {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => ({})) as never);
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => ({
+    getExtension: () => null,
+  })) as never);
 }
 
 beforeEach(resetWebGLForTests);
