@@ -6,10 +6,19 @@ import App from "../App";
 import { DataSourceProvider } from "../data/source";
 import type { Change, ReviewAggregate } from "../data/types";
 import type { DataSource } from "../lib/api";
-import { PollingProvider } from "../lib/polling";
+import * as commitState from "../lib/commitState";
+import { DEFAULT_POLL_MS, IDLE_FACTOR, PollingProvider } from "../lib/polling";
 import { makeChange, makeReview, makeSource } from "../test/fixtures";
 
+// Every channel row works out its undone notice once per render: a spy on it counts row renders.
+vi.mock("../lib/commitState", async (importOriginal) => {
+  const actual = await importOriginal<typeof commitState>();
+  return { ...actual, undoneNotice: vi.fn(actual.undoneNotice) };
+});
+
 const POLL_MS = 1000;
+/** The channel's period when nothing in it is still being reviewed. */
+const IDLE_MS = POLL_MS * IDLE_FACTOR;
 
 function renderApp(source: DataSource, path: string) {
   return render(
@@ -33,17 +42,20 @@ function setVisibility(state: "visible" | "hidden") {
   document.dispatchEvent(new Event("visibilitychange"));
 }
 
-const change = (n: number): Change =>
-  makeChange({ id: `c${n}`, title: `cambio-${n}`, reviewStatus: "completed" });
+const change = (n: number, reviewStatus: ReviewAggregate = "completed"): Change =>
+  makeChange({ id: `c${n}`, title: `cambio-${n}`, reviewStatus });
 
-/** Channel source over a mutable list, newest first, with keyset pagination like the API. */
+/**
+ * Channel source over a mutable list, newest first, with keyset pagination like the API. Every
+ * answer is a fresh copy, as a JSON response would be.
+ */
 function channelSource(getData: () => Change[], pageSize = 2) {
   return makeSource({
     projects: async () => [{ slug: "demo", name: "demo" }],
     changes: vi.fn(async (_slug: string, query = {}) => {
       const all = getData().filter((c) => !query.q || c.title.includes(query.q));
       const start = query.cursor ? all.findIndex((c) => c.id === query.cursor) + 1 : 0;
-      const items = all.slice(start, start + pageSize);
+      const items = all.slice(start, start + pageSize).map((c) => ({ ...c }));
       const more = start + items.length < all.length;
       return { items, nextCursor: more ? items[items.length - 1].id : null };
     }),
@@ -77,7 +89,7 @@ describe("live channel", () => {
     expect(titles()).toEqual(["cambio-1"]);
 
     data = [change(2), ...data];
-    await tick(POLL_MS);
+    await tick(IDLE_MS);
     expect(titles()).toEqual(["cambio-2", "cambio-1"]);
     expect(screen.queryByText("Cargando cambios…")).toBeNull();
     expect(screen.getByText("Actualizado ahora")).toBeInTheDocument();
@@ -101,7 +113,7 @@ describe("live channel", () => {
 
     // A new change pushes cambio-3 out of the refreshed first page: nothing may be lost or repeated.
     data = [change(5), ...data];
-    await tick(POLL_MS);
+    await tick(IDLE_MS);
     expect(titles()).toEqual(["cambio-5", "cambio-4", "cambio-3", "cambio-2", "cambio-1"]);
     expect(screen.getByRole("searchbox")).toHaveValue("cambio");
     expect(screen.getByRole("button", { name: "Commits" })).toHaveAttribute("aria-pressed", "true");
@@ -113,7 +125,7 @@ describe("live channel", () => {
     renderApp(source, "/p/demo");
     await tick(0);
     const link = screen.getByRole("link", { name: "cambio-1" });
-    await tick(3 * POLL_MS);
+    await tick(3 * IDLE_MS);
     expect(source.changes).toHaveBeenCalledTimes(4);
     // Same DOM node: the list was not re-created by the refreshes.
     expect(screen.getByRole("link", { name: "cambio-1" })).toBe(link);
@@ -141,12 +153,12 @@ describe("live channel", () => {
     renderApp(source, "/p/demo");
     await tick(0);
     vi.mocked(source.changes).mockRejectedValueOnce(new Error("down"));
-    await tick(POLL_MS);
+    await tick(IDLE_MS);
     expect(titles()).toEqual(["cambio-1"]);
     expect(screen.getByText(/No se pudo actualizar/)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
 
-    await tick(POLL_MS);
+    await tick(IDLE_MS);
     expect(screen.queryByText(/No se pudo actualizar/)).toBeNull();
   });
 });
@@ -201,5 +213,90 @@ describe("live change detail", () => {
     renderApp(source, "/p/demo/changes/c1");
     await tick(10 * POLL_MS);
     expect(source.change).toHaveBeenCalledTimes(1);
+  });
+});
+
+const firstPageCalls = (source: DataSource) =>
+  vi.mocked(source.changes).mock.calls.filter(([, query]) => !query?.cursor).length;
+
+describe("quiet channel", () => {
+  it("polls a channel with nothing in review every 30 s in production", () => {
+    expect(DEFAULT_POLL_MS * IDLE_FACTOR).toBe(30_000);
+  });
+
+  it("asks at most twice in the equivalent of a minute and never redraws a row", async () => {
+    const data = Array.from({ length: 50 }, (_, i) => change(50 - i));
+    const source = channelSource(() => data, 50);
+    renderApp(source, "/p/demo");
+    await tick(0);
+    expect(titles()).toHaveLength(50);
+    const rowRenders = vi.mocked(commitState.undoneNotice);
+    rowRenders.mockClear();
+
+    await tick(12 * POLL_MS);
+    expect(source.changes).toHaveBeenCalledTimes(3);
+    expect(rowRenders).not.toHaveBeenCalled();
+  });
+
+  it("redraws only the row whose change is different", async () => {
+    let data = [change(3), change(2), change(1)];
+    const source = channelSource(() => data, 50);
+    renderApp(source, "/p/demo");
+    await tick(0);
+    const rowRenders = vi.mocked(commitState.undoneNotice);
+    rowRenders.mockClear();
+
+    data = [change(3), { ...change(2), title: "cambio-2 editado" }, change(1)];
+    await tick(IDLE_MS);
+    expect(screen.getByText("cambio-2 editado")).toBeInTheDocument();
+    expect(rowRenders).toHaveBeenCalledTimes(1);
+    expect(rowRenders).toHaveBeenCalledWith(expect.objectContaining({ id: "c2" }));
+  });
+});
+
+describe("channel with a review in progress", () => {
+  it("polls every base period while an item runs and slows down once none does", async () => {
+    let data = [change(1, "running")];
+    const source = channelSource(() => data);
+    renderApp(source, "/p/demo");
+    await tick(0);
+    await tick(2 * POLL_MS);
+    expect(source.changes).toHaveBeenCalledTimes(3);
+
+    data = [change(1)];
+    await tick(POLL_MS);
+    expect(source.changes).toHaveBeenCalledTimes(4);
+    await tick(IDLE_MS - 1);
+    expect(source.changes).toHaveBeenCalledTimes(4);
+    await tick(1);
+    expect(source.changes).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps the short period for a pending item loaded with «Cargar más»", async () => {
+    const user = userEvent.setup({ delay: null });
+    const data = [change(3), change(2), change(1, "pending")];
+    const source = channelSource(() => data);
+    renderApp(source, "/p/demo");
+    await tick(0);
+    await user.click(screen.getByRole("button", { name: "Cargar más" }));
+    await tick(0);
+    expect(titles()).toEqual(["cambio-3", "cambio-2", "cambio-1"]);
+    const before = firstPageCalls(source);
+
+    await tick(2 * POLL_MS);
+    expect(firstPageCalls(source)).toBe(before + 2);
+  });
+
+  it.each([
+    ["in review", "running"],
+    ["quiet", "completed"],
+  ] as const)("refreshes as soon as the tab is shown again when %s", async (_, status) => {
+    const source = channelSource(() => [change(1, status)]);
+    renderApp(source, "/p/demo");
+    await tick(0);
+    setVisibility("hidden");
+    setVisibility("visible");
+    await tick(0);
+    expect(source.changes).toHaveBeenCalledTimes(2);
   });
 });

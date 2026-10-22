@@ -1,11 +1,12 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDataSource } from "../../data/source";
 import type { Change, ChangeKind } from "../../data/types";
 import type { ChangePage } from "../../lib/api";
 import { type StateFilter, statusesFor } from "../../lib/channelQuery";
 import { sameValue } from "../../lib/equal";
 import { mergeUnique } from "../../lib/pagination";
-import { usePollMs } from "../../lib/polling";
+import { isWaiting } from "../../lib/pending";
+import { IDLE_FACTOR, usePollMs } from "../../lib/polling";
 import { type AsyncResult, type AsyncState, useAsync } from "../../lib/useAsync";
 
 /** A first page tagged with the query it answers, so a stale page is never shown for a new one. */
@@ -39,7 +40,9 @@ export interface ChannelFilters {
  */
 export function useChannel(slug: string, { kind, state, q }: ChannelFilters) {
   const source = useDataSource();
-  const pollMs = usePollMs();
+  const basePollMs = usePollMs();
+  const [reviewing, setReviewing] = useState(true);
+  const pollMs = reviewing ? basePollMs : basePollMs * IDLE_FACTOR;
   const key = JSON.stringify([slug, kind, state, q]);
   const tagged = useAsync(
     useCallback(
@@ -78,6 +81,10 @@ export function useChannel(slug: string, { kind, state, q }: ChannelFilters) {
     shown.current = { key, items };
   }
   const cursor = base ? (active ? active.cursor : base.nextCursor) : null;
+  const anyWaiting = items.some((c) => isWaiting(c.reviewStatus));
+  useEffect(() => {
+    if (base) setReviewing(anyWaiting);
+  }, [base, anyWaiting]);
 
   async function loadMore() {
     if (!base || !cursor) return;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { memo, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { AgentChecks } from "../../components/AgentChecks";
 import { AsyncBoundary } from "../../components/AsyncBoundary";
@@ -18,6 +18,7 @@ import { agentList } from "../../lib/agents";
 import { ApiError } from "../../lib/api";
 import type { StateFilter } from "../../lib/channelQuery";
 import { undoneCounts, undoneNotice } from "../../lib/commitState";
+import { sameValue } from "../../lib/equal";
 import { ingestCommand } from "../../lib/ingestHint";
 import { useNow } from "../../lib/now";
 import { isWaiting } from "../../lib/pending";
@@ -61,15 +62,18 @@ function Age({ iso }: { iso: string | undefined }) {
  * here: the answers of each agent live on the detail page. A commit that is no longer on its
  * branch (or was reverted) is shown in amber, with its state said in words in the row.
  */
-function ChangeRow({
-  change,
-  slug,
-  agentNames,
-}: {
+interface ChangeRowProps {
   change: Change;
   slug: string;
   agentNames: readonly string[] | null;
-}) {
+}
+
+// Every refresh parses fresh objects, so the change is compared by value: a poll that changes one
+// change redraws only its row.
+const sameRow = (a: ChangeRowProps, b: ChangeRowProps) =>
+  a.slug === b.slug && a.agentNames === b.agentNames && sameValue(a.change, b.change);
+
+const ChangeRow = memo(function ChangeRow({ change, slug, agentNames }: ChangeRowProps) {
   const KindIcon = change.kind === "pr" ? PullRequestIcon : CommitIcon;
   const undone = undoneNotice(change);
   return (
@@ -109,7 +113,7 @@ function ChangeRow({
       </Beam>
     </li>
   );
-}
+}, sameRow);
 
 function EmptyChannel({ slug, agents }: { slug: string; agents: string }) {
   const command = ingestCommand(slug, import.meta.env.VITE_API_URL);

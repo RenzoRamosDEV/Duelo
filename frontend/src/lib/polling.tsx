@@ -3,6 +3,9 @@ import { type ReactNode, createContext, useContext } from "react";
 /** How often the live pages refresh in the background (ms). */
 export const DEFAULT_POLL_MS = 5000;
 
+/** A channel with nothing in review refreshes this many times slower (30 s in production). */
+export const IDLE_FACTOR = 6;
+
 const PollingContext = createContext(0);
 
 /**
