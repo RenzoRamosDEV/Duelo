@@ -7,6 +7,8 @@ import type { Change, Health } from "../data/types";
 import type { DataSource } from "../lib/api";
 import { PollingProvider } from "../lib/polling";
 import { makeChange, makeReview, makeSource } from "../test/fixtures";
+// Loaded up front: under fake timers the page's on-demand import must not wait for real I/O.
+import "./review/ChangeDetailPage";
 
 vi.mock("thinking-orbs", () => ({
   ThinkingOrb: (props: { state: string }) => <canvas data-orb data-state={props.state} />,

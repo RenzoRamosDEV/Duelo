@@ -56,6 +56,7 @@ describe("settings diagnostics", () => {
       },
       "/settings",
     );
+    await screen.findByRole("heading", { name: "Ajustes" });
     expect(await within(projectsSection()).findByText("acme/widgets")).toBeInTheDocument();
     expect(within(projectsSection()).getByText("demo")).toBeInTheDocument();
     expect(await screen.findByText("Correcto")).toBeInTheDocument();

@@ -1,14 +1,23 @@
+import { lazy } from "react";
 import { Link, Route, Routes, useParams } from "react-router";
 import { EmptyState } from "./components/EmptyState";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { HERO } from "./components/brand";
 import { ChannelPage } from "./features/channel/ChannelPage";
 import { ProjectPicker } from "./features/projects/ProjectPicker";
-import { ChangeDetailPage } from "./features/review/ChangeDetailPage";
-import { SettingsPage } from "./features/settings/SettingsPage";
-import { StatsPage } from "./features/stats/StatsPage";
 import { Shell } from "./layout/Shell";
 import { parseProjectPath } from "./lib/projectPath";
+
+// Loaded on first visit: the entry page and the channel stay in the initial bundle.
+const ChangeDetailPage = lazy(() =>
+  import("./features/review/ChangeDetailPage").then((m) => ({ default: m.ChangeDetailPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+const StatsPage = lazy(() =>
+  import("./features/stats/StatsPage").then((m) => ({ default: m.StatsPage })),
+);
 
 function NotFoundPage() {
   return (

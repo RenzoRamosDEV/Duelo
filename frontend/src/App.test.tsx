@@ -48,9 +48,9 @@ describe("navigation", () => {
     renderAt("/");
     const nav = screen.getByRole("navigation", { name: "Principal" });
     await userEvent.click(within(nav).getByRole("link", { name: "Estadísticas" }));
-    expect(screen.getByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
     await userEvent.click(within(nav).getByRole("link", { name: "Ajustes" }));
-    expect(screen.getByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
   });
 });
 
@@ -164,7 +164,7 @@ describe("other screens", () => {
 
   it("renders settings", async () => {
     renderAt("/settings");
-    expect(screen.getByText("Voto ciego")).toBeInTheDocument();
+    expect(await screen.findByText("Voto ciego")).toBeInTheDocument();
     expect(await screen.findByText("Postgres")).toBeInTheDocument();
   });
 });

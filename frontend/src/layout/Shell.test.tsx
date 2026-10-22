@@ -126,3 +126,43 @@ describe("app frame", () => {
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
   });
 });
+
+describe("pages loaded on demand", () => {
+  /** Mounts a freshly imported app, so no page's code has been loaded by an earlier test. */
+  async function renderFresh(path: string) {
+    vi.resetModules();
+    const { default: FreshApp } = await import("../App");
+    const { DataSourceProvider: FreshProvider } = await import("../data/source");
+    return render(
+      <FreshProvider
+        source={makeSource({ projects: async () => [{ slug: "duelo", name: "duelo" }] })}
+      >
+        <MemoryRouter initialEntries={[path]}>
+          <FreshApp />
+        </MemoryRouter>
+      </FreshProvider>,
+    );
+  }
+
+  it("keeps the top bar and says «Cargando…» on a first visit to Estadísticas", async () => {
+    await renderFresh("/stats");
+    expect(screen.getByRole("link", { name: "Duelo" })).toBeInTheDocument();
+    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
+    expect(screen.queryByText("Cargando…")).toBeNull();
+  });
+
+  it("says «Cargando…» when Estadísticas is first reached from the top bar", async () => {
+    await renderFresh("/");
+    await screen.findByRole("heading", { name: "Proyectos" });
+    await userEvent.click(screen.getByRole("link", { name: "Estadísticas" }));
+    expect(screen.getByRole("link", { name: "Duelo" })).toBeInTheDocument();
+    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
+  });
+
+  it.each(["/", "/p/duelo"])("shows %s without waiting for code", async (path) => {
+    await renderFresh(path);
+    expect(screen.queryByText("Cargando…")).toBeNull();
+  });
+});

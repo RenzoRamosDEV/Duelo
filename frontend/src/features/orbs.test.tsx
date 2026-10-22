@@ -30,7 +30,7 @@ function renderApp(overrides: Partial<DataSource>, path: string) {
 
 /** The orb drawn next to a label: its state, and that it is the 20 px dark one. */
 async function orbNear(label: string | RegExp) {
-  const busy = screen.getByText(label).closest(".busy");
+  const busy = (await screen.findByText(label)).closest(".busy");
   // The orb's code is loaded on demand: the static "…" holds its slot until it arrives.
   const orb = await waitFor(() => {
     const found = busy?.querySelector("canvas[data-orb]") ?? null;

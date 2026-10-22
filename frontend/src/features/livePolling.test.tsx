@@ -9,6 +9,8 @@ import type { DataSource } from "../lib/api";
 import * as commitState from "../lib/commitState";
 import { DEFAULT_POLL_MS, IDLE_FACTOR, PROJECTS_FACTOR, PollingProvider } from "../lib/polling";
 import { makeChange, makeReview, makeSource } from "../test/fixtures";
+// Loaded up front: under fake timers the page's on-demand import must not wait for real I/O.
+import "./review/ChangeDetailPage";
 
 // Every channel row works out its undone notice once per render: a spy on it counts row renders.
 vi.mock("../lib/commitState", async (importOriginal) => {
