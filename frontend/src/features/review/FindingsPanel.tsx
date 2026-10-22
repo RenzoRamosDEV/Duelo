@@ -44,7 +44,7 @@ export function FindingsPanel({ reviews }: { reviews: Review[] }) {
     <section className="findings" aria-labelledby="findings-title">
       <div className="findings-head">
         <div className="findings-title">
-          <h2 id="findings-title">Hallazgos</h2>
+          <h3 id="findings-title">Hallazgos</h3>
           <span className="count" aria-label={`${total} en total`}>
             {total}
           </span>
@@ -76,7 +76,7 @@ export function FindingsPanel({ reviews }: { reviews: Review[] }) {
       </div>
       {visible.map((group) => (
         <div key={group.file ?? "no-file"} className="finding-group">
-          <h3 className={group.file ? "mono" : undefined}>{group.file ?? "Sin archivo"}</h3>
+          <h4 className={group.file ? "mono" : undefined}>{group.file ?? "Sin archivo"}</h4>
           <ul className="finding-list">
             {group.findings.map((f) => (
               <li key={f.key}>

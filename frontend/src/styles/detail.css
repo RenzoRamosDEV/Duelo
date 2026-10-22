@@ -61,8 +61,8 @@
   margin-bottom: 4px;
 }
 
-.findings > h2,
-.findings-head h2 {
+.findings > h3,
+.findings-head h3 {
   margin: 0;
   font-size: 14px;
 }
@@ -124,8 +124,11 @@
   margin-top: 14px;
 }
 
-.finding-group h3 {
+/* base.css only styles h1–h3, so the weight and line height of the old h3 are set here. */
+.finding-group h4 {
   margin: 0 0 8px;
+  font-weight: 600;
+  line-height: 1.25;
   color: var(--fg-muted);
   font-size: 13px;
   overflow-wrap: anywhere;

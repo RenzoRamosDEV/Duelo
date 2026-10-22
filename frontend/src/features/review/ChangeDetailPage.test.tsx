@@ -67,7 +67,7 @@ describe("change detail", () => {
   it("groups findings by file, most severe first, with the agent", async () => {
     renderWith({ change: async () => detail }, "/p/demo/changes/d1");
     const panel = await screen.findByRole("region", { name: "Hallazgos" });
-    expect(within(panel).getAllByRole("heading", { level: 3 })).toHaveLength(1);
+    expect(within(panel).getAllByRole("heading", { level: 4 })).toHaveLength(1);
     const items = within(panel).getAllByRole("listitem");
     expect(items[0]).toHaveTextContent("Crítico");
     expect(items[0]).toHaveTextContent("Codex");
@@ -95,8 +95,13 @@ describe("change detail", () => {
       "/p/demo/changes/d1",
     );
     const panel = await screen.findByRole("region", { name: "Hallazgos" });
-    const headings = within(panel).getAllByRole("heading", { level: 3 });
+    const headings = within(panel).getAllByRole("heading", { level: 4 });
     expect(headings.map((h) => h.textContent)).toEqual(["x.py", "Sin archivo"]);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Revisión de los agentes" }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByRole("heading", { level: 3 })).toHaveTextContent("Hallazgos");
+
     expect(panel).not.toHaveTextContent("N/A");
     expect(panel).not.toHaveTextContent("L0");
     expect(panel).toHaveTextContent("L3");

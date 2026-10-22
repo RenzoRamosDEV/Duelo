@@ -70,7 +70,7 @@ describe("FindingsPanel", () => {
     const user = userEvent.setup();
     render(<FindingsPanel reviews={reviews()} />);
     await user.click(screen.getByRole("button", { name: /^Riesgo/ }));
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    expect(screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual([
       "b.py",
     ]);
   });
@@ -86,9 +86,16 @@ describe("FindingsPanel", () => {
     expect(screen.getByText("detalle uno")).toBeInTheDocument();
   });
 
+  it("titles the panel one level below its section and each group one level below", () => {
+    render(<FindingsPanel reviews={reviews()} />);
+    expect(screen.getByRole("heading", { name: "Hallazgos" })).toHaveProperty("tagName", "H3");
+    expect(screen.getByRole("heading", { name: "a.py" })).toHaveProperty("tagName", "H4");
+    expect(screen.getByRole("heading", { name: "Sin archivo" })).toHaveProperty("tagName", "H4");
+  });
+
   it("groups by file and puts the unlocated findings last, under «Sin archivo»", () => {
     render(<FindingsPanel reviews={reviews()} />);
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    expect(screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual([
       "a.py",
       "b.py",
       "Sin archivo",
