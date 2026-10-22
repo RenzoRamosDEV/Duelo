@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useDataSource } from "../../data/source";
 import type { ProjectRef } from "../../lib/api";
 import { sameValue } from "../../lib/equal";
-import { usePollMs } from "../../lib/polling";
+import { PROJECTS_FACTOR, usePollMs } from "../../lib/polling";
 import { projectPath } from "../../lib/projectPath";
 import { type AsyncResult, type AsyncState, useAsync } from "../../lib/useAsync";
 import { AddProjectDialog } from "./AddProjectDialog";
@@ -25,7 +25,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const projects = useAsync(
     useCallback((signal: AbortSignal) => source.projects({ signal }), [source]),
     {
-      pollMs: usePollMs(),
+      pollMs: usePollMs() * PROJECTS_FACTOR,
       equals: (a: ProjectRef[], b: ProjectRef[]) => sameValue(a, b),
     },
   );

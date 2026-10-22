@@ -7,7 +7,7 @@ import { DataSourceProvider } from "../data/source";
 import type { Change, ReviewAggregate } from "../data/types";
 import type { DataSource } from "../lib/api";
 import * as commitState from "../lib/commitState";
-import { DEFAULT_POLL_MS, IDLE_FACTOR, PollingProvider } from "../lib/polling";
+import { DEFAULT_POLL_MS, IDLE_FACTOR, PROJECTS_FACTOR, PollingProvider } from "../lib/polling";
 import { makeChange, makeReview, makeSource } from "../test/fixtures";
 
 // Every channel row works out its undone notice once per render: a spy on it counts row renders.
@@ -172,9 +172,27 @@ describe("live project picker", () => {
     expect(screen.queryByRole("link", { name: /nuevo/ })).toBeNull();
 
     projects = [...projects, { slug: "me/nuevo", name: "me/nuevo" }];
-    await tick(POLL_MS);
+    await tick(PROJECTS_FACTOR * POLL_MS);
     expect(screen.getByRole("link", { name: /me\/nuevo/ })).toBeInTheDocument();
     expect(screen.queryByText("Cargando proyectos…")).toBeNull();
+  });
+});
+
+describe("projects every minute", () => {
+  it("polls the projects every 60 s in production", () => {
+    expect(DEFAULT_POLL_MS * PROJECTS_FACTOR).toBe(60_000);
+  });
+
+  it("asks for the projects once more after 12 periods and not before", async () => {
+    const projects = vi.fn(async () => [{ slug: "demo", name: "demo" }]);
+    renderApp(makeSource({ projects }), "/");
+    await tick(0);
+    expect(projects).toHaveBeenCalledTimes(1);
+
+    await tick(11 * POLL_MS);
+    expect(projects).toHaveBeenCalledTimes(1);
+    await tick(POLL_MS);
+    expect(projects).toHaveBeenCalledTimes(2);
   });
 });
 

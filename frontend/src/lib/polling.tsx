@@ -6,6 +6,9 @@ export const DEFAULT_POLL_MS = 5000;
 /** A channel with nothing in review refreshes this many times slower (30 s in production). */
 export const IDLE_FACTOR = 6;
 
+/** The project list refreshes this many times slower (60 s in production). */
+export const PROJECTS_FACTOR = 12;
+
 const PollingContext = createContext(0);
 
 /**

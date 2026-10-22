@@ -68,6 +68,18 @@ describe("agent selection in settings", () => {
     expect((await picker()).getByRole("checkbox", { name: "Claude" })).not.toBeChecked();
   });
 
+  it("asks for the projects again right after saving the agents", async () => {
+    const source = agentSource();
+    const projects = vi.spyOn(source, "projects");
+    renderSettings(source);
+    const group = await picker();
+    await userEvent.click(group.getByRole("checkbox", { name: "Claude" }));
+    const before = projects.mock.calls.length;
+    await userEvent.click(group.getByRole("button", { name: /Guardar agentes/ }));
+    await screen.findByText(/Agentes guardados: Codex/);
+    expect(projects).toHaveBeenCalledTimes(before + 1);
+  });
+
   it("does not let you save with every agent unchecked", async () => {
     const source = agentSource();
     renderSettings(source);

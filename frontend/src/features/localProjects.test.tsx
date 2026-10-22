@@ -163,6 +163,34 @@ describe("add project dialog", () => {
   });
 });
 
+describe("project list after a change", () => {
+  it("asks for the projects again right after adding one", async () => {
+    const source = projectSource([]);
+    const projects = vi.spyOn(source, "projects");
+    renderApp(source);
+    const dialog = await openFromEntry();
+    await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/w");
+    await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
+    const before = projects.mock.calls.length;
+    await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
+    await waitFor(() => expect(projects).toHaveBeenCalledTimes(before + 1));
+  });
+
+  it("asks for the projects again right after removing one", async () => {
+    const source = projectSource([NEW_PROJECT]);
+    const projects = vi.spyOn(source, "projects");
+    renderApp(source, "/settings");
+    setIngestToken("tok");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Quitar proyecto acme/widgets" }),
+    );
+    const before = projects.mock.calls.length;
+    const confirm = await screen.findByRole("dialog");
+    await userEvent.click(within(confirm).getByRole("button", { name: "Quitar proyecto" }));
+    await waitFor(() => expect(projects).toHaveBeenCalledTimes(before + 1));
+  });
+});
+
 describe("project settings", () => {
   const github: ProjectRef = { ...NEW_PROJECT, github: true };
   const plain: ProjectRef = {
