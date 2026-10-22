@@ -38,50 +38,54 @@ function StatsTable({ stats }: { stats: AgentStat[] }) {
   const [sort, setSort] = useState<Sort | null>(null);
   const rows = sort ? sortRows(stats, sort.key, sort.direction) : stats;
   return (
-    <table className="stats">
-      <thead>
-        <tr>
-          {COLUMNS.map((c) => (
-            <th
-              key={c.key}
-              scope="col"
-              aria-sort={sort?.key === c.key ? sort.direction : undefined}
-            >
-              <button
-                type="button"
-                className="sort-button"
-                onClick={() => setSort((current) => nextSort(current, c.key))}
+    <div className="table-scroll">
+      <table className="stats">
+        <thead>
+          <tr>
+            {COLUMNS.map((c) => (
+              <th
+                key={c.key}
+                scope="col"
+                aria-sort={sort?.key === c.key ? sort.direction : undefined}
               >
-                {c.label}
-              </button>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((s) => (
-          <tr key={s.agent}>
-            <th scope="row">
-              <span className="agent-cell">
-                <AgentAvatar agent={s.agent} size={20} />
-                {agentLabel(s.agent)}
-              </span>
-            </th>
-            <td>{s.total}</td>
-            <td>{s.completed}</td>
-            <td>
-              {s.failed}
-              <Meter percent={ratio(s.failed, maxFailures)} tone="danger" />
-            </td>
-            <td>
-              {formatDuration(s.avgDurationMs)}
-              {s.avgDurationMs !== null && <Meter percent={ratio(s.avgDurationMs, maxDuration)} />}
-            </td>
-            <td>{formatScore(s.avgScore)}</td>
+                <button
+                  type="button"
+                  className="sort-button"
+                  onClick={() => setSort((current) => nextSort(current, c.key))}
+                >
+                  {c.label}
+                </button>
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((s) => (
+            <tr key={s.agent}>
+              <th scope="row">
+                <span className="agent-cell">
+                  <AgentAvatar agent={s.agent} size={20} />
+                  {agentLabel(s.agent)}
+                </span>
+              </th>
+              <td>{s.total}</td>
+              <td>{s.completed}</td>
+              <td>
+                {s.failed}
+                <Meter percent={ratio(s.failed, maxFailures)} tone="danger" />
+              </td>
+              <td>
+                {formatDuration(s.avgDurationMs)}
+                {s.avgDurationMs !== null && (
+                  <Meter percent={ratio(s.avgDurationMs, maxDuration)} />
+                )}
+              </td>
+              <td>{formatScore(s.avgScore)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

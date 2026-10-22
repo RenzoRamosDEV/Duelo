@@ -67,4 +67,10 @@
     flex: 1;
     justify-content: center;
   }
+
+  table.stats th,
+  table.stats td {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
 }

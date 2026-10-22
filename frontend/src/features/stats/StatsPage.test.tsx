@@ -86,6 +86,12 @@ describe("real stats", () => {
     expect(screen.getByRole("row", { name: /Codex/ })).toHaveTextContent("9");
   });
 
+  it("puts the table inside its own horizontal scroll container", async () => {
+    renderWith({ agentStats: async () => [stat({})] }, "/stats");
+    const table = await screen.findByRole("table");
+    expect(table.parentElement).toHaveClass("table-scroll");
+  });
+
   it("shows the empty state", async () => {
     renderWith({ agentStats: async () => [] }, "/stats");
     expect(await screen.findByText("Aún no hay reviews registradas.")).toBeInTheDocument();
