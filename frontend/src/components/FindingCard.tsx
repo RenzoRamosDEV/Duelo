@@ -50,7 +50,7 @@ function LocationChip({ text, label }: { text: string; label: string }) {
       >
         {result === "ok" ? <CheckCircleIcon size={13} /> : <CopyIcon size={13} />}
       </button>
-      <output className="sr-only">
+      <output className="visually-hidden">
         {result === "ok" ? "Copiado" : result === "fail" ? "No se pudo copiar" : ""}
       </output>
     </span>

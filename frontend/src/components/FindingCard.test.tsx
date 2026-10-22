@@ -38,6 +38,13 @@ describe("FindingCard", () => {
     expect(await screen.findByText("Copiado")).toBeInTheDocument();
   });
 
+  it("announces the copy result in a visually hidden live region", async () => {
+    const user = userEvent.setup();
+    render(<FindingCard id="f" finding={makeFinding({ file: "src/app.py", line: 42 })} />);
+    await user.click(screen.getByRole("button", { name: /Copiar ubicación/ }));
+    expect(await screen.findByText("Copiado")).toHaveClass("visually-hidden");
+  });
+
   it("shows only the file when there is no line", () => {
     render(<FindingCard id="f" finding={makeFinding({ file: "README.md", line: 0 })} />);
     expect(screen.getByText("README.md")).toBeInTheDocument();

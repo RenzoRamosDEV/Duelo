@@ -50,7 +50,7 @@ export function FindingsPanel({ reviews }: { reviews: Review[] }) {
           </span>
         </div>
         <fieldset className="severity-filter">
-          <legend className="sr-only">Filtrar hallazgos por severidad</legend>
+          <legend className="visually-hidden">Filtrar hallazgos por severidad</legend>
           <button
             type="button"
             className="sev-filter"

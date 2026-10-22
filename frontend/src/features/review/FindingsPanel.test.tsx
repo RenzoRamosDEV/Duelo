@@ -30,6 +30,11 @@ describe("FindingsPanel", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("hides the filter's legend visually but keeps it for assistive technology", () => {
+    render(<FindingsPanel reviews={reviews()} />);
+    expect(screen.getByText("Filtrar hallazgos por severidad")).toHaveClass("visually-hidden");
+  });
+
   it("counts the findings and each severity, most serious first", () => {
     render(<FindingsPanel reviews={reviews()} />);
     expect(screen.getByRole("heading", { name: "Hallazgos" })).toBeInTheDocument();
