@@ -1,11 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { memo } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 import { DataSourceProvider } from "../../data/source";
 import { ApiError, type DataSource, type ProjectRef, createHttpSource } from "../../lib/api";
 import { makeSource } from "../../test/fixtures";
+import { ProjectsProvider, useProjects } from "./ProjectsContext";
 
 const PROJECTS: ProjectRef[] = [
   {
@@ -118,5 +120,38 @@ describe("entry page without projects", () => {
     renderHome({ projects: async () => [] });
     expect(await screen.findByText("Aún no hay proyectos vigilados.")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Añadir proyecto" }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("projects context", () => {
+  it("does not re-render its consumers when the provider renders without new projects", async () => {
+    let renders = 0;
+    const Consumer = memo(function Consumer() {
+      const { projects, openAddProject } = useProjects();
+      renders += 1;
+      return (
+        <>
+          <output>{projects.status}</output>
+          <button type="button" onClick={openAddProject}>
+            abrir
+          </button>
+        </>
+      );
+    });
+    render(
+      <DataSourceProvider source={makeSource({ projects: async () => PROJECTS })}>
+        <MemoryRouter>
+          <ProjectsProvider>
+            <Consumer />
+          </ProjectsProvider>
+        </MemoryRouter>
+      </DataSourceProvider>,
+    );
+    expect(await screen.findByText("ready")).toBeInTheDocument();
+    const shown = renders;
+
+    await userEvent.click(screen.getByRole("button", { name: "abrir" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(renders).toBe(shown);
   });
 });

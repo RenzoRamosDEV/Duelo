@@ -30,10 +30,15 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     },
   );
   const [adding, setAdding] = useState(false);
-  const { refresh } = projects;
+  const { status, retry, refresh, liveness } = projects;
+  const data = projects.status === "ready" ? projects.data : undefined;
+  const error = projects.status === "error" ? projects.error : undefined;
 
   const openAddProject = useCallback(() => setAdding(true), []);
-  const value = useMemo(() => ({ projects, openAddProject }), [projects, openAddProject]);
+  // `useAsync` returns a new object on every render; its fields say when the list really changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the fields, not the wrapper
+  const stable = useMemo(() => projects, [status, data, error, retry, refresh, liveness]);
+  const value = useMemo(() => ({ projects: stable, openAddProject }), [stable, openAddProject]);
 
   return (
     <ProjectsContext.Provider value={value}>
