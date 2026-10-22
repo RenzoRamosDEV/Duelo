@@ -79,7 +79,7 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
   }
 
   return (
-    <Modal title="Añadir proyecto" onClose={onClose}>
+    <Modal title="Añadir proyecto" onClose={onClose} dismissible={!sending}>
       <form className="modal-form" onSubmit={submit}>
         <p className="muted" id={hintId}>
           Al añadirlo, Duelo instalará dos hooks de git en ese repositorio (<code>post-commit</code>{" "}
@@ -112,7 +112,9 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
           </p>
         )}
         <div className="modal-actions">
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose} disabled={sending}>
+            Cancelar
+          </Button>
           <Button type="submit" variant="primary" disabled={sending}>
             {sending ? <Busy activity="connect" label="Añadiendo…" inline /> : "Añadir"}
           </Button>

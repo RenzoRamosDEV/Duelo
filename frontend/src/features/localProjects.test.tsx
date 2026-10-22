@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -294,6 +294,79 @@ describe("add project dialog: errors tied to their field", () => {
     expect(invalidInputs(dialog)).toHaveLength(0);
     const path = within(dialog).getByLabelText("Ruta del repositorio");
     expect(describedBy(path)).toHaveLength(1);
+  });
+});
+
+/** A promise the test settles by hand, to hold a request in flight. */
+function pending<T>() {
+  let reject: (error: unknown) => void = () => {};
+  const promise = new Promise<T>((_, rej) => {
+    reject = rej;
+  });
+  return { promise, reject };
+}
+
+/** The native close request of a `<dialog>` (Escape handled by the browser). */
+const nativeCancel = (dialog: HTMLElement) =>
+  act(() => {
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+  });
+
+describe("dialogs with a request in flight", () => {
+  it("cannot be closed while the project is being removed, and can after a failure", async () => {
+    const request = pending<void>();
+    const removeProject = vi.fn(() => request.promise);
+    renderApp(projectSource([NEW_PROJECT], { removeProject }), "/settings");
+    setIngestToken("tok");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Quitar proyecto acme/widgets" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Quitar proyecto" }));
+    await within(dialog).findByRole("button", { name: "Quitando…" });
+
+    const cancel = within(dialog).getByRole("button", { name: "Cancelar" });
+    expect(cancel).toBeDisabled();
+    await userEvent.click(cancel);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await nativeCancel(dialog);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+
+    await act(async () => request.reject(new ApiError("raw", 500)));
+    await within(dialog).findByRole("alert");
+    expect(cancel).toBeEnabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("cannot be closed while the project is being added, and can after a failure", async () => {
+    const request = pending<ProjectRef>();
+    const addProject = vi.fn(() => request.promise);
+    renderApp(projectSource([], { addProject }));
+    const dialog = await openFromEntry();
+    await userEvent.type(within(dialog).getByLabelText("Ruta del repositorio"), "/home/me/repo");
+    await userEvent.type(within(dialog).getByLabelText("Token de ingesta"), "tok");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Añadir" }));
+    await within(dialog).findByRole("button", { name: "Añadiendo…" });
+
+    const cancel = within(dialog).getByRole("button", { name: "Cancelar" });
+    expect(cancel).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    await nativeCancel(dialog);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+
+    await act(async () => request.reject(new ApiError("raw", 500)));
+    await within(dialog).findByRole("alert");
+    expect(cancel).toBeEnabled();
+    await userEvent.click(cancel);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("closes through the native close request when nothing is in flight", async () => {
+    renderApp(projectSource([]));
+    const dialog = await openFromEntry();
+    await nativeCancel(dialog);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

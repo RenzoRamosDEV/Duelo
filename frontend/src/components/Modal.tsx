@@ -6,6 +6,8 @@ const FOCUSABLE =
 interface Props {
   title: string;
   onClose: () => void;
+  /** `false` while a request is in flight: Escape and the native close request do nothing. */
+  dismissible?: boolean;
   children: ReactNode;
 }
 
@@ -13,9 +15,9 @@ interface Props {
  * Accessible modal on the native `<dialog>`: opened with `showModal` when the browser has it (the
  * page behind becomes inert) and with the `open` attribute otherwise, labelled by its title,
  * focusing the `[data-autofocus]` element (or the first control) on open, keeping Tab inside,
- * closing on Escape and handing the focus back to whatever opened it.
+ * closing on Escape (unless it is not `dismissible`) and handing the focus back to whatever opened it.
  */
-export function Modal({ title, onClose, children }: Props) {
+export function Modal({ title, onClose, dismissible = true, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -41,7 +43,7 @@ export function Modal({ title, onClose, children }: Props) {
   function onKeyDown(event: React.KeyboardEvent<HTMLDialogElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
-      onClose();
+      if (dismissible) onClose();
       return;
     }
     if (event.key !== "Tab") return;
@@ -71,7 +73,7 @@ export function Modal({ title, onClose, children }: Props) {
       onKeyDown={onKeyDown}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (dismissible) onClose();
       }}
     >
       <h2 id={titleId}>{title}</h2>

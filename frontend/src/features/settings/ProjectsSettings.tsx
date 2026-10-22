@@ -78,7 +78,7 @@ function RemoveDialog({
   }
 
   return (
-    <Modal title={`Quitar ${project.name}`} onClose={onClose}>
+    <Modal title={`Quitar ${project.name}`} onClose={onClose} dismissible={!sending}>
       <form className="modal-form" onSubmit={submit}>
         <p>
           Se borrará <strong>todo el historial</strong> de este proyecto en Duelo (changes, reviews
@@ -97,7 +97,7 @@ function RemoveDialog({
           </p>
         )}
         <div className="modal-actions">
-          <Button onClick={onClose} data-autofocus>
+          <Button onClick={onClose} disabled={sending} data-autofocus>
             Cancelar
           </Button>
           <Button type="submit" variant="danger" disabled={sending}>
