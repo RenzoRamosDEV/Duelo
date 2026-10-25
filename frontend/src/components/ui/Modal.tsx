@@ -1,0 +1,80 @@
+import { type ReactNode, useEffect, useId, useRef } from "react";
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+interface Props {
+  title: string;
+  onClose: () => void;
+  /** `false` con una petición en vuelo: Escape y el cierre nativo no hacen nada. */
+  dismissible?: boolean;
+  children: ReactNode;
+}
+
+/**
+ * Modal accesible sobre el `<dialog>` nativo: se abre con `showModal` (la página de detrás queda
+ * inerte), se etiqueta por su título, enfoca `[data-autofocus]` (o el primer control), mantiene
+ * el Tab dentro, cierra con Escape si es `dismissible` y devuelve el foco a quien lo abrió.
+ */
+export function Modal({ title, onClose, dismissible = true, children }: Props) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!dialog.open) dialog.showModal();
+    const first =
+      dialog.querySelector<HTMLElement>("[data-autofocus]") ??
+      dialog.querySelector<HTMLElement>(FOCUSABLE);
+    first?.focus();
+    return () => {
+      if (dialog.open) dialog.close();
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLDialogElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (dismissible) onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    if (items.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const firstItem = items[0];
+    const lastItem = items[items.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === firstItem || !event.currentTarget.contains(active))) {
+      event.preventDefault();
+      lastItem.focus();
+    } else if (!event.shiftKey && (active === lastItem || !event.currentTarget.contains(active))) {
+      event.preventDefault();
+      firstItem.focus();
+    }
+  }
+
+  return (
+    <dialog
+      ref={ref}
+      className="modal"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onKeyDown={onKeyDown}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (dismissible) onClose();
+      }}
+    >
+      <h2 id={titleId} className="prompt">
+        {title}
+      </h2>
+      {children}
+    </dialog>
+  );
+}
