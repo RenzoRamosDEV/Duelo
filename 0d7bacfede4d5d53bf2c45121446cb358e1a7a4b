@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "0d7bacfede4d5d53bf2c45121446cb358e1a7a4b",
+  "kind": "commit",
+  "title": "style(frontend): barra lateral elevada con iconos, activo por barra y pie de conexión",
+  "run": 1,
+  "written_at": "2026-10-25T11:57:05.589644+00:00",
+  "reviews": [
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 6,
+      "summary": "Cambio sobre todo visual y bien hecho. Icon es decorativo, con aria-hidden. Loader ya existía. data-autofocus encaja con el `querySelector('[data-autofocus]')` de AppLayout. Reutilizar `sharedHealth` es correcto: `/health/dependencies` siempre devuelve 200, así que «degraded» y «offline» se distinguen bien. Lo que más pesa en la nota es un fallo funcional del nuevo indicador de conexión. La barra lateral de escritorio no se desmonta nunca y `useApiStatus` no sondea. Además, la promesa resuelta queda en caché a nivel de módulo, así que el estado se congela en el primer valor hasta recargar la página: «API conectada» aunque la API caiga después, o «Sin conexión» aunque se recupere. También hay detalles menores: el commit se etiqueta como `style` aunque añade un hook y lógica nueva, y no hay tests de frontend en el repositorio que cubran el mapeo de estados.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/services/source.ts",
+          "line": 39,
+          "message": "El estado de la conexión se congela en el primer valor. `useApiStatus` llama a `useAsync` sin `pollMs` y nunca usa `retry`/`refresh`. Además, `sharedHealth` guarda en `healthRequest` la promesa resuelta para siempre: solo se olvida si falla. La `.sidebar` de escritorio vive en AppLayout y no se desmonta al navegar. Resultado: (1) si la API cae después de la primera carga, el pie sigue mostrando «API conectada» con el punto verde; (2) si la primera petición falló, muestra «Sin conexión con la API» hasta recargar, aunque la API vuelva. Comprobado leyendo useAsync.ts (sin sondeo cuando pollMs=0) y source.ts:20-28. Arreglo: separa la caché del diagnóstico de la de los nombres de agentes. Por ejemplo, `useAsync(useCallback(() => source.health(), []), { pollMs: 30_000 })` en `useApiStatus`, o haz que el sondeo invalide `healthRequest`. Muestra «offline» solo si falla la carga inicial y, en los refrescos, usa `liveness.refreshFailed`."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/services/source.ts",
+          "line": 40,
+          "message": "En modo mock (`!apiUrl`), `useApiStatus` lanza igualmente `sharedHealth()` antes de devolver «mock», porque el hook tiene que llamarse siempre. No es un error, pero el comentario «no hace peticiones nuevas» solo es cierto porque comparte la petición con `useAgentNames`. Si ningún otro componente monta `useAgentNames`, esta es la que dispara la petición. Ajusta el comentario o pasa una carga que no haga nada cuando no hay apiUrl, por ejemplo `apiUrl ? sharedHealth() : Promise.resolve(null)`."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/layouts/SidebarNav.tsx",
+          "line": 20,
+          "message": "La lógica nueva (mapeo de Health/error/carga a cinco estados en `useApiStatus` y su texto/tono en `ConnectionStatus`) no tiene ningún test. No hay ficheros *.test.* en frontend/src. Propuesta: un test de `useApiStatus` con la fuente simulada (rechazo → «offline», `status: 'degraded'` → «degraded», sin apiUrl → «mock») y otro de SidebarNav que compruebe el texto visible «API conectada» o «Sin conexión con la API»."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/layouts/SidebarNav.tsx",
+          "line": 12,
+          "message": "El commit se titula `style(frontend)`, pero añade comportamiento observable: el hook `useApiStatus`, el indicador de conexión y el cambio de Ajustes al pie. Con Conventional Commits eso es `feat`, o bien dos commits: el estilo por un lado y el indicador por otro."
+        }
+      ],
+      "duration_ms": 35631,
+      "error": null,
+      "created_at": "2026-10-25T11:57:04.981990+00:00"
+    },
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El cambio visual es coherente, pero el nuevo indicador de conexión conserva indefinidamente el primer diagnóstico correcto y puede mostrar un estado obsoleto. Revisión limitada al diff: no fue posible consultar el contexto ni los tests del repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/services/source.ts",
+          "line": 22,
+          "message": "Visto solo en el diff: sharedHealth conserva para siempre la promesa cuando health() tiene éxito; únicamente la borra si falla. Si el diagnóstico devuelve «ok» y después la API deja de estar disponible, useApiStatus seguirá mostrando «API conectada», incluso al volver a montar la navegación, porque reutiliza aquel resultado. La caché antes servía para los nombres de agentes, pero ahora también determina un estado de conexión variable. Añade revalidación con caducidad o actualización periódica y publica el resultado entre los consumidores; comprueba con una prueba que, tras un diagnóstico correcto y una consulta posterior fallida, el indicador pasa a «Sin conexión con la API»."
+        }
+      ],
+      "duration_ms": 36206,
+      "error": null,
+      "created_at": "2026-10-25T11:57:05.546213+00:00"
+    }
+  ]
+}
