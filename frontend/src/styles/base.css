@@ -8,7 +8,7 @@
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
-  scrollbar-color: var(--fg-muted) var(--bg);
+  scrollbar-color: var(--border) var(--bg);
 }
 
 body {
@@ -24,9 +24,9 @@ body {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   margin: 0;
-  font-family: var(--font-mono);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   overflow-wrap: anywhere;
@@ -40,8 +40,9 @@ h2 {
   font-size: var(--text-h2);
 }
 
-h3 {
-  font-size: var(--text-body);
+h3,
+h4 {
+  font-size: var(--text-h3);
 }
 
 p,
@@ -61,11 +62,13 @@ ol {
 a {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: var(--fg-muted);
+  text-decoration-color: var(--fg-dim);
   text-underline-offset: 0.2em;
+  transition: color var(--transition);
 }
 
 a:hover {
+  color: var(--fg-accent);
   text-decoration-color: currentcolor;
 }
 
@@ -90,7 +93,7 @@ kbd,
 pre,
 samp {
   font-family: var(--font-mono);
-  font-size: 0.9375em;
+  font-size: 0.9em;
 }
 
 pre {
@@ -113,7 +116,7 @@ dialog {
 }
 
 ::selection {
-  background: var(--fg-primary);
+  background: var(--fg-accent);
   color: var(--on-accent);
 }
 
@@ -122,19 +125,38 @@ dialog {
   outline-offset: var(--focus-offset);
 }
 
-/* Prefijo de prompt en monospace, decorativo. */
+/* Prefijo de prompt: el acento del título. */
 .prompt::before {
   content: "$ ";
   font-family: var(--font-mono);
-  color: var(--fg-muted);
+  color: var(--fg-accent);
 }
 
 .mono {
   font-family: var(--font-mono);
 }
 
-.text-secondary {
+.text-muted {
   color: var(--fg-muted);
+}
+
+.text-dim {
+  color: var(--fg-dim);
+}
+
+.meta {
+  font-size: var(--text-meta);
+  color: var(--fg-muted);
+}
+
+/* Etiqueta de sección: 11 px, mayúsculas, espaciada, terciaria. */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-dim);
 }
 
 .visually-hidden {
@@ -156,9 +178,10 @@ dialog {
   left: var(--space-2);
   z-index: var(--z-toast);
   padding: var(--space-2) var(--space-3);
-  background: var(--fg-primary);
+  border-radius: var(--radius-sm);
+  background: var(--fg-accent);
   color: var(--on-accent);
-  font-family: var(--font-mono);
+  font-weight: var(--weight-medium);
   transform: translateY(-200%);
 }
 

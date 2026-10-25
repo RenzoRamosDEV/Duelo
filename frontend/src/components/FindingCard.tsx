@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Finding } from "../types";
 import { agentLabel } from "../utils/agents";
 import { copyText } from "../utils/clipboard";
-import { findingFile, findingLine, isDangerSeverity, severityLabel } from "../utils/findings";
+import { findingFile, findingLine, severityLabel, severityTone } from "../utils/findings";
 import { splitRecommendation } from "../utils/recommendation";
 import { AgentTag } from "./AgentTag";
 import { Collapsible, FINDING_LIMIT, isLong } from "./Collapsible";
@@ -53,7 +53,7 @@ export function FindingCard({
   agent?: string;
   showFile?: boolean;
 }) {
-  const danger = isDangerSeverity(finding.severity);
+  const tone = severityTone(finding.severity);
   const file = findingFile(finding);
   const line = findingLine(finding);
   const { body, recommendation } = splitRecommendation(finding.message);
@@ -61,9 +61,9 @@ export function FindingCard({
   // Bajo un encabezado que nombra el archivo solo queda la línea, y solo si hay archivo.
   const location = showFile ? where : file && line ? `L${line}` : undefined;
   return (
-    <div className="finding-card" data-danger={danger ? "" : undefined}>
+    <div className="finding-card" data-tone={tone}>
       <header className="finding-head">
-        <Badge tone={danger ? "alert" : "neutral"}>{severityLabel(finding.severity)}</Badge>
+        <Badge tone={tone}>{severityLabel(finding.severity)}</Badge>
         {location && <LocationChip text={location} label={showFile ? "ubicación" : "línea"} />}
         {agent && (
           <span className="finding-agent">

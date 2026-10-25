@@ -3,6 +3,7 @@ import { AsyncBoundary } from "../components/AsyncBoundary";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { PageHeader } from "../components/ui/PageHeader";
 import { useProjects } from "../hooks/useProjects";
 import { projectPath } from "../utils/paths";
 
@@ -11,10 +12,15 @@ export default function ProjectsPage() {
   const { projects, openAddProject } = useProjects();
   return (
     <div className="page">
-      <header className="page-head">
-        <h1 className="prompt cursor">Proyectos</h1>
-        <p className="page-lead">Elige el repositorio cuyos commits y PRs quieres ver.</p>
-      </header>
+      <PageHeader
+        title="Proyectos"
+        subtitle="Elige el repositorio cuyos commits y PRs quieres ver."
+        actions={
+          <Button variant="primary" onClick={openAddProject}>
+            Añadir proyecto
+          </Button>
+        }
+      />
       <AsyncBoundary state={projects} loadingLabel="Cargando proyectos…">
         {(list) =>
           list.length === 0 ? (
@@ -34,7 +40,7 @@ export default function ProjectsPage() {
                   <Link className="project-card" to={projectPath(p.slug)}>
                     <strong className="project-name">{p.name}</strong>
                     <span className="row">
-                      {p.github && <Badge tone="inverse">GitHub</Badge>}
+                      {p.github && <Badge>GitHub</Badge>}
                       {p.path && <Badge>Local</Badge>}
                       {p.hooksInstalled && <Badge tone="ok">Hooks</Badge>}
                     </span>

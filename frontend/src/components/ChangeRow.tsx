@@ -4,12 +4,13 @@ import type { Change } from "../types";
 import { undoneNotice } from "../utils/commitState";
 import { sameValue } from "../utils/equal";
 import { changePath } from "../utils/paths";
+import { AGGREGATE_LABEL, AGGREGATE_TONE } from "../utils/reviewStatus";
 import { shortSha } from "../utils/url";
 import { Age } from "./Age";
 import { AgentChecks } from "./AgentChecks";
-import { StatusMark } from "./StatusMark";
 import { UndoneLabel } from "./UndoneNotice";
 import { Badge } from "./ui/Badge";
+import { StatusIcon } from "./ui/StatusIcon";
 
 interface Props {
   change: Change;
@@ -35,7 +36,16 @@ export const ChangeRow = memo(function ChangeRow({ change, slug, agentNames }: P
       data-status={change.reviewStatus}
       data-undone={undone ? undone.state : undefined}
     >
-      <StatusMark status={change.reviewStatus} undone={undone} />
+      {undone ? (
+        <StatusIcon tone="warn" glyph="↶" label={undone.label} />
+      ) : change.reviewStatus ? (
+        <StatusIcon
+          tone={AGGREGATE_TONE[change.reviewStatus]}
+          label={AGGREGATE_LABEL[change.reviewStatus]}
+        />
+      ) : (
+        <StatusIcon tone="neutral" />
+      )}
       <div className="change-main">
         <Link className="change-link" to={changePath(slug, change.id)}>
           {change.title}

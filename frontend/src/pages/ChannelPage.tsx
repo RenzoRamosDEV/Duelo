@@ -6,7 +6,9 @@ import { CopyButton } from "../components/CopyButton";
 import { UpdatedAgo } from "../components/UpdatedAgo";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Kbd } from "../components/ui/Kbd";
 import { Notice } from "../components/ui/Notice";
+import { PageHeader } from "../components/ui/PageHeader";
 import { Segmented } from "../components/ui/Segmented";
 import { Skeleton } from "../components/ui/Skeleton";
 import { useChannel } from "../hooks/useChannel";
@@ -114,11 +116,9 @@ export default function ChannelPage() {
 
   return (
     <div className="page">
-      <header className="page-head">
-        <h1 className="prompt cursor">#{slug}</h1>
-        <p className="page-lead">Commits y PRs revisados por {agents}.</p>
+      <PageHeader title={`#${slug}`} subtitle={`Commits y PRs revisados por ${agents}.`}>
         <UpdatedAgo liveness={first.liveness} />
-      </header>
+      </PageHeader>
       <div className="toolbar">
         <div className="search-box">
           <label className="visually-hidden" htmlFor={searchId}>
@@ -133,8 +133,8 @@ export default function ChannelPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <span className="search-key" aria-hidden="true">
-            /
+          <span className="search-key">
+            <Kbd>/</Kbd>
           </span>
         </div>
         <Segmented label="Filtro" options={FILTERS} value={filter} onChange={setFilter} />
@@ -169,7 +169,7 @@ export default function ChannelPage() {
                 </ul>
               )}
               {moreState === "error" && (
-                <Notice tone="alert" role="alert">
+                <Notice tone="err" role="alert">
                   <p>No se pudieron cargar más cambios.</p>
                 </Notice>
               )}

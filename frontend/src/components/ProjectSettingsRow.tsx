@@ -38,7 +38,7 @@ export function ProjectSettingsRow({
         </div>
         <div className="row">
           {project.hooksInstalled !== undefined && (
-            <Badge tone={project.hooksInstalled ? "ok" : "alert"}>
+            <Badge tone={project.hooksInstalled ? "ok" : "warn"}>
               {project.hooksInstalled ? "Hooks instalados" : "Sin hooks"}
             </Badge>
           )}
@@ -74,7 +74,7 @@ export function ProjectSettingsRow({
       )}
       {message && (
         <Notice
-          tone={message.tone === "error" ? "alert" : "ok"}
+          tone={message.tone === "error" ? "err" : "ok"}
           role={message.tone === "error" ? "alert" : "status"}
         >
           <p>{message.text}</p>

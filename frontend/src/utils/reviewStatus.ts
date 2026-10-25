@@ -33,21 +33,20 @@ export const AGGREGATE_LABEL: Record<ReviewAggregate, string> = {
   completed: "Completada",
 };
 
-export type Tone = "neutral" | "ok" | "alert";
-
-export const AGGREGATE_TONE: Record<ReviewAggregate, Tone> = {
-  pending: "neutral",
-  running: "neutral",
-  partial_failed: "alert",
-  failed: "alert",
+/** Tono semántico de cada estado: en curso en ámbar, fallo en rojo, completado en verde. */
+export const AGGREGATE_TONE: Record<ReviewAggregate, "neutral" | "ok" | "warn" | "err"> = {
+  pending: "warn",
+  running: "warn",
+  partial_failed: "warn",
+  failed: "err",
   completed: "ok",
 };
 
-/** Glifo monospace que acompaña al texto del estado, para que no dependa solo del color. */
+/** Glifo que acompaña al texto del estado, para que no dependa solo del color. */
 export const AGGREGATE_GLYPH: Record<ReviewAggregate, string> = {
-  pending: "·",
-  running: "…",
-  partial_failed: "!",
+  pending: "●",
+  running: "●",
+  partial_failed: "✕",
   failed: "✕",
   completed: "✓",
 };

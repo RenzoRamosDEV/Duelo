@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader } from "./Loader";
 
-type Variant = "default" | "primary" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "md" | "sm";
 
 interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> {
@@ -14,7 +14,7 @@ interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> {
 }
 
 export function Button({
-  variant = "default",
+  variant = "secondary",
   size = "md",
   type = "button",
   busy = false,

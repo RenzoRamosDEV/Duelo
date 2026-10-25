@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Review } from "../types";
-import { groupFindings, isDangerSeverity, severityLabel, severityRank } from "../utils/findings";
+import { groupFindings, severityLabel, severityRank, severityTone } from "../utils/findings";
 import { FindingCard } from "./FindingCard";
 
 /** Cuántos hallazgos hay de cada severidad, la más grave primero. */
@@ -61,7 +61,7 @@ export function FindingsPanel({ reviews }: { reviews: Review[] }) {
               key={severity}
               type="button"
               className="sev-filter"
-              data-danger={isDangerSeverity(severity) ? "" : undefined}
+              data-tone={severityTone(severity)}
               aria-pressed={active === severity}
               onClick={() => setFilter(active === severity ? null : severity)}
             >

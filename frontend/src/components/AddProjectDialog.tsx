@@ -80,7 +80,7 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
   return (
     <Modal title="Añadir proyecto" onClose={onClose} dismissible={!sending}>
       <form className="modal-body" onSubmit={submit}>
-        <p className="text-secondary">
+        <p className="text-muted">
           Al añadirlo, Duelo instalará dos hooks de git en ese repositorio (<code>post-commit</code>{" "}
           y <code>pre-push</code>) para recibir cada commit y push. Se desinstalan quitando el
           proyecto en Ajustes.
@@ -104,7 +104,7 @@ export function AddProjectDialog({ onClose, onAdded }: Props) {
           error={error?.field === "token" ? error.text : undefined}
         />
         {error && error.field === null && (
-          <Notice tone="alert" role="alert">
+          <Notice tone="err" role="alert">
             <p>{error.text}</p>
           </Notice>
         )}

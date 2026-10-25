@@ -31,10 +31,17 @@ export function severityRank(severity: string): number {
 }
 
 const DANGER = new Set(["critical", "bug", "high"]);
+const WARNING = new Set(["risk", "medium"]);
+const INFO = new Set(["improvement", "low", "info"]);
 
-/** Solo lo que rompe va en el color de alerta; el resto se distingue por su etiqueta. */
-export function isDangerSeverity(severity: string): boolean {
-  return DANGER.has(severity.toLowerCase());
+export type SeverityTone = "err" | "warn" | "info" | "neutral";
+
+/** Rojo para lo que rompe, ámbar para lo que puede, azul para mejoras, neutro para el resto. */
+export function severityTone(severity: string): SeverityTone {
+  const name = severity.toLowerCase();
+  if (DANGER.has(name)) return "err";
+  if (WARNING.has(name)) return "warn";
+  return INFO.has(name) ? "info" : "neutral";
 }
 
 const SEVERITY_LABEL: Record<string, string> = {

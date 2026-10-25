@@ -5,6 +5,7 @@ import { ProjectsSettings } from "../components/ProjectsSettings";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { PageHeader } from "../components/ui/PageHeader";
 import { useAsync } from "../hooks/useAsync";
 import { useEffectsPreference } from "../hooks/useEffectsPreference";
 import { useDataSource } from "../services/source";
@@ -21,7 +22,7 @@ const dependencyLabel = (name: string) => DEPENDENCY_LABEL[name] ?? name;
 
 /** Los agentes configurados como etiquetas; un servidor que no los informa muestra un guion. */
 function AgentChips({ names }: { names: readonly string[] }) {
-  if (names.length === 0) return <span className="text-secondary">—</span>;
+  if (names.length === 0) return <span className="text-muted">—</span>;
   return (
     <ul className="row" aria-label="Agentes activos">
       {names.map((name) => (
@@ -38,7 +39,7 @@ function Diagnostics({ health }: { health: Health }) {
     <>
       <div className="setting">
         <span>Estado del servidor</span>
-        <Badge tone={health.status === "ok" ? "ok" : "alert"}>
+        <Badge tone={health.status === "ok" ? "ok" : "warn"}>
           {health.status === "ok" ? "Correcto" : "Degradado"}
         </Badge>
       </div>
@@ -46,11 +47,11 @@ function Diagnostics({ health }: { health: Health }) {
         <div className="setting" key={d.name}>
           <span>{dependencyLabel(d.name)}</span>
           <span className="row">
-            <Badge tone={d.status === "ok" ? "ok" : "alert"}>
+            <Badge tone={d.status === "ok" ? "ok" : "err"}>
               {d.status === "ok" ? "Disponible" : "No disponible"}
             </Badge>
-            <span className="text-secondary mono">{d.latencyMs} ms</span>
-            {d.reason && <span className="text-secondary">{REASON_LABEL[d.reason]}</span>}
+            <span className="meta mono">{d.latencyMs} ms</span>
+            {d.reason && <span className="text-muted">{REASON_LABEL[d.reason]}</span>}
           </span>
         </div>
       ))}
@@ -93,10 +94,7 @@ export default function SettingsPage() {
   const agentNames = health.status === "ready" ? health.data.agentNames : null;
   return (
     <div className="page">
-      <header className="page-head">
-        <h1 className="prompt cursor">Ajustes</h1>
-        <p className="page-lead">Pantalla, estado del servidor y proyectos vigilados.</p>
-      </header>
+      <PageHeader title="Ajustes" subtitle="Pantalla, estado del servidor y proyectos vigilados." />
       <Card title="Pantalla">
         <EffectsSetting />
       </Card>
@@ -107,11 +105,7 @@ export default function SettingsPage() {
         </div>
         <div className="setting">
           <span>Agentes activos</span>
-          {agentNames ? (
-            <AgentChips names={agentNames} />
-          ) : (
-            <span className="text-secondary">—</span>
-          )}
+          {agentNames ? <AgentChips names={agentNames} /> : <span className="text-muted">—</span>}
         </div>
       </Card>
       <ProjectsSettings available={agentNames} />

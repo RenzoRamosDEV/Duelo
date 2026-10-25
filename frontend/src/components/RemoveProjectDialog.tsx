@@ -75,7 +75,7 @@ export function RemoveProjectDialog({
           error={error?.field === "token" ? error.text : undefined}
         />
         {error && error.field === null && (
-          <Notice tone="alert" role="alert">
+          <Notice tone="err" role="alert">
             <p>{error.text}</p>
           </Notice>
         )}

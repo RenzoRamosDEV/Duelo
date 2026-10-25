@@ -10,9 +10,11 @@ import { ReviewCard } from "../components/ReviewCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { UndoneBanner } from "../components/UndoneNotice";
 import { UpdatedAgo } from "../components/UpdatedAgo";
+import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
-import { Notice } from "../components/ui/Notice";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Toast } from "../components/ui/Toast";
 import { useAsync } from "../hooks/useAsync";
 import { useAgentNames, useDataSource } from "../services/source";
 import type { Change, Review } from "../types";
@@ -47,6 +49,7 @@ export default function ChangeDetailPage() {
     setNote(message);
     refresh();
   };
+  const closeNote = useCallback(() => setNote(null), []);
 
   return (
     <AsyncBoundary
@@ -69,6 +72,7 @@ export default function ChangeDetailPage() {
           agentNames={agentNames}
           liveness={state.liveness}
           note={note}
+          onNoteClose={closeNote}
           onRetried={onRetried}
         />
       )}
@@ -82,6 +86,7 @@ function ChangeDetail({
   agentNames,
   liveness,
   note,
+  onNoteClose,
   onRetried,
 }: {
   change: Change;
@@ -89,6 +94,7 @@ function ChangeDetail({
   agentNames: readonly string[] | null;
   liveness: Liveness;
   note: string | null;
+  onNoteClose: () => void;
   onRetried: (message: string) => void;
 }) {
   const url = safeHttpUrl(change.url);
@@ -99,47 +105,63 @@ function ChangeDetail({
   );
   return (
     <div className="page">
-      <header className="page-head detail-head">
-        <nav className="crumbs" aria-label="Migas">
-          <Link to="/">Proyectos</Link> / <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
-          <span className="mono" aria-current="page">
-            {shortSha(change.sha)}
-          </span>
-        </nav>
-        <h1 className="prompt">{change.title}</h1>
-        <UndoneBanner change={change} slug={slug} />
-        {change.reviewStatus && (
-          <p className="row status-line">
-            <StatusBadge status={change.reviewStatus} />
-            {change.run !== undefined && <span className="text-secondary">Run {change.run}</span>}
-            <span className="text-secondary">
-              por {change.author}
-              {change.ref && (
-                <>
-                  {" en "}
-                  <span className="mono">{change.ref}</span>
-                </>
-              )}
+      <PageHeader
+        crumbs={
+          <>
+            <Link to="/">Proyectos</Link> / <Link to={projectPath(slug)}>#{slug}</Link> /{" "}
+            <span className="mono" aria-current="page">
+              {shortSha(change.sha)}
             </span>
-          </p>
-        )}
+          </>
+        }
+        title={change.title}
+        meta={
+          change.reviewStatus && (
+            <p className="row status-line">
+              <StatusBadge status={change.reviewStatus} />
+              <Badge>{change.kind === "pr" ? "PR" : "Commit"}</Badge>
+              <span className="meta">
+                <span className="mono">{shortSha(change.sha)}</span>
+                {change.ref && (
+                  <>
+                    <span className="sep" />
+                    <span className="mono">{change.ref}</span>
+                  </>
+                )}
+                <span className="sep" />
+                {change.author}
+                {change.run !== undefined && (
+                  <>
+                    <span className="sep" />
+                    Run {change.run}
+                  </>
+                )}
+              </span>
+            </p>
+          )
+        }
+        actions={
+          <>
+            {url && (
+              <a
+                className="button button-secondary"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Abrir en GitHub ↗
+              </a>
+            )}
+            <CopyButton label="Copiar SHA" value={change.sha} />
+            {change.ref && <CopyButton label="Copiar rama" value={change.ref} />}
+          </>
+        }
+      >
+        <UndoneBanner change={change} slug={slug} />
         <PendingAgents change={change} agentNames={agentNames} />
         {inProgress(change) && <UpdatedAgo liveness={liveness} />}
-        <div className="row">
-          {url && (
-            <a className="button" href={url} target="_blank" rel="noopener noreferrer">
-              Abrir en GitHub ↗
-            </a>
-          )}
-          <CopyButton label="Copiar SHA" value={change.sha} />
-          {change.ref && <CopyButton label="Copiar rama" value={change.ref} />}
-        </div>
-      </header>
-      {note && (
-        <Notice tone="ok">
-          <p>{note}</p>
-        </Notice>
-      )}
+      </PageHeader>
+      {note && <Toast message={note} onClose={onNoteClose} />}
       {isRetryable(change.reviewStatus) && (
         <RetryReview changeId={change.id} onSettled={onRetried} />
       )}
@@ -149,7 +171,7 @@ function ChangeDetail({
       >
         <div className="stack">
           {reviews.length === 0 && !inProgress(change) && (
-            <p className="text-secondary">Aún no hay respuestas de los agentes.</p>
+            <p className="text-muted">Aún no hay respuestas de los agentes.</p>
           )}
           {reviews.length > 0 && (
             <div className="reviews">

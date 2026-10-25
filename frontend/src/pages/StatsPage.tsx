@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { AgentTag } from "../components/AgentTag";
 import { AsyncBoundary } from "../components/AsyncBoundary";
 import { EmptyState } from "../components/ui/EmptyState";
+import { PageHeader } from "../components/ui/PageHeader";
 import { Table } from "../components/ui/Table";
 import { useAsync } from "../hooks/useAsync";
 import { useDataSource } from "../services/source";
@@ -146,12 +147,10 @@ export default function StatsPage() {
   );
   return (
     <div className="page">
-      <header className="page-head">
-        <h1 className="prompt cursor">Estadísticas</h1>
-        <p className="page-lead">
-          Reviews por agente: volumen, fallos y medias de duración y nota.
-        </p>
-      </header>
+      <PageHeader
+        title="Estadísticas"
+        subtitle="Reviews por agente: volumen, fallos y medias de duración y nota."
+      />
       <AsyncBoundary state={state} loadingLabel="Cargando estadísticas…">
         {(stats) =>
           stats.length === 0 ? (

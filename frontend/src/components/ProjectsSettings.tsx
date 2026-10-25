@@ -106,7 +106,7 @@ export function ProjectsSettings({ available }: { available: readonly string[] |
         <AsyncBoundary state={projects} loadingLabel="Cargando proyectos…">
           {(list) =>
             list.length === 0 ? (
-              <p className="text-secondary">Aún no hay proyectos vigilados.</p>
+              <p className="text-muted">Aún no hay proyectos vigilados.</p>
             ) : (
               <>
                 <div className="settings-token">

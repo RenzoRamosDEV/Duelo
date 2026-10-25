@@ -75,7 +75,7 @@ export function RetryReview({ changeId, onSettled }: Props) {
         Reintentar review
       </Button>
       {error && error.field === null && (
-        <Notice tone="alert" role="alert">
+        <Notice tone="err" role="alert">
           <p>{error.text}</p>
         </Notice>
       )}

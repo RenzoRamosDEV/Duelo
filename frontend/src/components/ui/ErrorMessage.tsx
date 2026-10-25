@@ -4,7 +4,7 @@ import { Notice } from "./Notice";
 /** Error recuperable: el mensaje y, si se puede, «Reintentar». */
 export function ErrorMessage({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <Notice tone="alert" role="alert">
+    <Notice tone="err" role="alert">
       <p>{message}</p>
       {onRetry && (
         <Button size="sm" onClick={onRetry}>
