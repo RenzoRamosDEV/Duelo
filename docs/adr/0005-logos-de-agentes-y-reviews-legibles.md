@@ -1,6 +1,6 @@
 # 0005. Logos de agentes y reviews legibles
 
-- Estado: Aceptada
+- Estado: Sin efecto desde [0008](0008-frontend-terminal-retro.md) (los logos como avatar se retiran; el formato legible de las reviews se conserva)
 - Fecha: 2026-10-10
 - Complementa a: [0003](0003-frontend-estetica-github-slack.md)
 

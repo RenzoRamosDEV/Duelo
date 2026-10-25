@@ -1,6 +1,6 @@
 # 0006. Logo de la aplicación según el tema
 
-- Estado: Aceptada
+- Estado: Sin efecto desde [0008](0008-frontend-terminal-retro.md) (no hay logo en la interfaz; los iconos de la PWA y favicons se conservan)
 - Fecha: 2026-10-10
 - Complementa a: [0003](0003-frontend-estetica-github-slack.md)
 

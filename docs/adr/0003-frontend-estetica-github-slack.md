@@ -1,6 +1,6 @@
 # 0003. Frontend con la estética de GitHub y Slack
 
-- Estado: Aceptada
+- Estado: Sustituida por [0008](0008-frontend-terminal-retro.md)
 - Fecha: 2026-10-10
 - Sustituye a: [0002](0002-frontend-tema-negro.md)
 

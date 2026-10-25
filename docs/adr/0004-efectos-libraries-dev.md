@@ -1,6 +1,6 @@
 # 0004. Efectos de libraries.dev en la interfaz
 
-- Estado: Aceptada
+- Estado: Sustituida por [0008](0008-frontend-terminal-retro.md)
 - Fecha: 2026-10-10
 - Complementa a: [0003](0003-frontend-estetica-github-slack.md)
 
