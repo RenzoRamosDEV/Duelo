@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "30c96f5a9c57aca3e0353f0f3d0c3a641de32f66",
+  "kind": "commit",
+  "title": "feat(frontend): componentes base, servicios, hooks y utilidades del front terminal",
+  "run": 1,
+  "written_at": "2026-10-25T11:24:39.064829+00:00",
+  "reviews": [
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "Base del front sólida y cuidada: todo el render pasa por React (sin HTML crudo), los enlaces del Markdown llevan `rel=\"noopener noreferrer\"`, el token de ingesta solo vive en memoria, las peticiones tienen timeout y distinguen cancelación de fallo, y `useAsync` aborta y descarta las respuestas viejas. No encontré bloqueantes. Hay dos bugs pequeños con camino real: el reloj compartido de `useNow` puede arrancar con una hora vieja, y el mock duplica un proyecto base si lo quitas y lo vuelves a añadir. Falta lógica sin tests (`useAsync`, `http.ts`, `mappers`, `mock`), pero el frontend aún no tiene runner de tests (`package.json` no tiene script ni dependencia de test), así que lo trato como mejora. El diff venía recortado a 60k caracteres, así que no he revisado `components.css` entero ni los ficheros que venían después.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/hooks/useNow.ts",
+          "line": 6,
+          "message": "`now` se calcula al cargar el módulo y solo avanza dentro del intervalo. Cuando el último suscriptor se desmonta, el timer se para y `now` se queda congelado. El siguiente componente que se suscriba (por ejemplo 30 min después) recibe esa fecha vieja y pinta «hace N min» con hasta 30 min de error hasta el siguiente tick, que llega 60 s después. Lo he comprobado leyendo `subscribe`, que no refresca `now` al rearrancar el timer. Arreglo: al crear el timer, refrescar antes `now`: `if (!timer) { now = new Date(); timer = setInterval(...) }`. useSyncExternalStore vuelve a leer el snapshot después de suscribirse, así que el valor nuevo se pinta."
+        },
+        {
+          "severity": "bug",
+          "file": "frontend/src/services/mock.ts",
+          "line": 105,
+          "message": "En el mock, quitar un proyecto base (por ejemplo `acme/widgets`, que entra en `removed`) y luego añadir una ruta cuyo `slugFromPath` dé el mismo slug (`/home/acme/widgets`) pasa el chequeo de 409. Después `removed.delete(slug)` resucita el proyecto base, y `added.push` mete otro. Resultado: `currentProjects()` devuelve el slug dos veces, lo que da claves duplicadas en React y un `removeProject` posterior que solo quita uno de los dos. Lo he comprobado leyendo `currentProjects`, `addProject`, `removeProject` y `utils/localPath.ts`. Arreglo: si el slug es de un proyecto base, hacer solo `removed.delete(slug)` y no meterlo en `added`; o bien no tocar `removed` y filtrar por separado base y añadidos."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/hooks/useAsync.ts",
+          "line": 31,
+          "message": "Hay lógica con ramas no triviales sin ningún test: aborto de la carga anterior, sondeo sin solapar y pausado con la pestaña oculta, `equals` que conserva la referencia y `refreshFailed`. Lo mismo pasa con `http.ts` (timeout frente a abort del llamador, `detail` de FastAPI, 204), con `mappers.ts` (`commit_state ?? \"active\"`, ids sintéticos de `toBrief`) y con `mock.ts` (paginación por cursor y reglas 401/409/422/503). Busqué ficheros `*.test.ts(x)` en `frontend/src` y no hay ninguno, y `package.json` no tiene script ni dependencia de test. Propuesta: añadir Vitest con Testing Library y, como mínimo: (1) un `useAsync` con fake timers que compruebe que una respuesta abortada no pisa a la nueva y que no hay refresco con `visibilityState=hidden`; (2) un `createHttpSource` con `fetch` simulado para el timeout (`ApiError` con status null), el abort del llamador (se relanza el `AbortError`) y `detail` como cadena o como lista."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/services/mock.ts",
+          "line": 72,
+          "message": "`Number(cursor)` con un cursor no numérico da `NaN`, y entonces `slice(NaN, NaN)` devuelve una página vacía con `nextCursor` a `null`. Falla en silencio en vez de rechazar como haría la API con un cursor inválido. Solo afecta al mock (visto en el diff). Arreglo: `const start = Number(cursor ?? 0); if (!Number.isInteger(start) || start < 0) throw new ApiError(\"Cursor no válido.\", 422);`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/Collapsible.tsx",
+          "line": 47,
+          "message": "`open` solo se inicializa desde `opened.has(id)` en el primer render. Si la misma instancia recibe otro `id` (React reutiliza el componente en la misma posición), arrastra el estado abierto o cerrado del texto anterior. Visto en el diff, sin comprobar los consumidores. Arreglo: que los llamadores pongan `key={id}`, o derivar `open` del `id` con un estado `{id, open}`."
+        }
+      ],
+      "duration_ms": 42753,
+      "error": null,
+      "created_at": "2026-10-25T11:24:37.971811+00:00"
+    },
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El fragmento visible contiene un fallo confirmado en el contrato de borrado del mock. Requiere cambios. La revisión queda limitada al diff mostrado, que está recortado; no se pudo consultar el contexto del repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/services/mock.ts",
+          "line": 55,
+          "message": "El borrado de un proyecto deja su historial accesible por identificador. Confirmado en el diff: removeProject(\"duelo\", \"token\") solo añade el slug a removed, pero find sigue recorriendo projects sin comprobar ese conjunto; después, change(\"c1\") devuelve el cambio eliminado y retry(\"c2\", \"token\") permite modificarlo. Aunque changes valida que el proyecto exista, estas dos operaciones no lo hacen. Filtra los proyectos eliminados dentro de find y añade una prueba que borre duelo y compruebe que change y retry responden con ApiError 404 para sus cambios."
+        }
+      ],
+      "duration_ms": 43817,
+      "error": null,
+      "created_at": "2026-10-25T11:24:39.024273+00:00"
+    }
+  ]
+}
