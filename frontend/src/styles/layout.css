@@ -8,13 +8,13 @@
 .topbar {
   position: sticky;
   top: 0;
-  z-index: var(--z-topbar);
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-height: 56px;
   padding: var(--space-2) var(--gutter);
-  background: var(--color-bg);
+  background: var(--bg);
   border-bottom: var(--border);
 }
 
@@ -23,15 +23,15 @@
   align-items: baseline;
   gap: var(--space-1);
   font-family: var(--font-mono);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .brand::before {
   content: "$ ";
-  color: var(--text-secondary);
+  color: var(--fg-muted);
 }
 
 .sidebar {
@@ -43,7 +43,7 @@
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-5) var(--gutter) var(--space-7);
+  padding: var(--space-5) var(--gutter) var(--space-6);
 }
 
 /* Navegación compartida por la barra lateral y el cajón. */
@@ -62,11 +62,11 @@
 .nav-title {
   margin: 0 0 var(--space-1);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-label);
   font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--fg-muted);
 }
 
 .nav-link {
@@ -86,17 +86,17 @@
   flex: none;
   width: 1ch;
   font-family: var(--font-mono);
-  color: var(--color-fg);
+  color: var(--fg-primary);
   visibility: hidden;
 }
 
 .nav-link:hover {
-  background: var(--color-surface);
+  background: var(--bg-elev);
 }
 
 .nav-link[aria-current="page"] {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--bg-elev);
+  border-color: var(--border);
   font-weight: var(--weight-medium);
 }
 
@@ -106,13 +106,13 @@
 
 .nav-link-mono {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-meta);
 }
 
 .nav-empty {
   padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-size: var(--text-meta);
+  color: var(--fg-muted);
 }
 
 /* Cajón móvil: un <dialog> modal con la misma navegación. */
@@ -128,11 +128,11 @@
   padding: 0;
   border: 0;
   border-right: var(--border);
-  background: var(--color-bg);
+  background: var(--bg);
 }
 
 .drawer::backdrop {
-  background: var(--color-backdrop);
+  background: var(--backdrop);
 }
 
 .drawer-panel {
@@ -174,12 +174,6 @@
   }
 
   .content {
-    padding: var(--space-6) var(--space-6) var(--space-7);
-  }
-}
-
-@media (min-width: 1280px) {
-  :root {
-    --sidebar-w: 272px;
+    padding: var(--space-6) var(--space-6) var(--space-6);
   }
 }

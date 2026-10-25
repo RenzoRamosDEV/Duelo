@@ -6,33 +6,32 @@
 }
 
 .stat-card {
-  --text-secondary: var(--color-fg-dim);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--color-surface);
+  background: var(--bg-elev);
 }
 
 .stat-card dt {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--fg-muted);
 }
 
 .stat-card dd {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
 }
 
 .stat-card[data-alert] dd {
-  color: var(--color-alert);
+  color: var(--warn);
 }
 
 .meter {
@@ -42,17 +41,17 @@
   height: 4px;
   margin-top: var(--space-1);
   margin-left: auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
 }
 
 .meter-fill {
   display: block;
   height: 100%;
-  background: var(--color-fg);
+  background: var(--fg-primary);
 }
 
 .meter[data-alert] .meter-fill {
-  background: var(--color-alert);
+  background: var(--warn);
 }
 
 @media (max-width: 767.98px) {

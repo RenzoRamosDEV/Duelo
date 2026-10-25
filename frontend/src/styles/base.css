@@ -8,16 +8,16 @@
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
-  scrollbar-color: var(--color-fg-muted) var(--color-bg);
+  scrollbar-color: var(--fg-muted) var(--bg);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--color-bg);
-  color: var(--color-fg);
+  background: var(--bg);
+  color: var(--fg-primary);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-body);
   line-height: var(--leading);
   -webkit-font-smoothing: antialiased;
 }
@@ -27,21 +27,21 @@ h2,
 h3 {
   margin: 0;
   font-family: var(--font-mono);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
 
 h1 {
-  font-size: var(--text-xl);
+  font-size: var(--text-h1);
 }
 
 h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-h2);
 }
 
 h3 {
-  font-size: var(--text-md);
+  font-size: var(--text-body);
 }
 
 p,
@@ -61,7 +61,7 @@ ol {
 a {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: var(--color-fg-muted);
+  text-decoration-color: var(--fg-muted);
   text-underline-offset: 0.2em;
 }
 
@@ -113,8 +113,8 @@ dialog {
 }
 
 ::selection {
-  background: var(--color-fg);
-  color: var(--color-on-fg);
+  background: var(--fg-primary);
+  color: var(--on-accent);
 }
 
 :focus-visible {
@@ -126,7 +126,7 @@ dialog {
 .prompt::before {
   content: "$ ";
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  color: var(--fg-muted);
 }
 
 .mono {
@@ -134,7 +134,7 @@ dialog {
 }
 
 .text-secondary {
-  color: var(--text-secondary);
+  color: var(--fg-muted);
 }
 
 .visually-hidden {
@@ -156,8 +156,8 @@ dialog {
   left: var(--space-2);
   z-index: var(--z-toast);
   padding: var(--space-2) var(--space-3);
-  background: var(--color-fg);
-  color: var(--color-on-fg);
+  background: var(--fg-primary);
+  color: var(--on-accent);
   font-family: var(--font-mono);
   transform: translateY(-200%);
 }

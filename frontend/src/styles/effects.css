@@ -6,7 +6,7 @@
   content: "▌";
   display: inline-block;
   margin-left: 0.15em;
-  color: var(--color-fg);
+  color: var(--fg-primary);
   animation: blink var(--blink-duration) steps(1, end) infinite;
 }
 
@@ -26,8 +26,8 @@ body::before {
     to bottom,
     transparent 0,
     transparent 2px,
-    var(--color-bg) 2px,
-    var(--color-bg) 3px
+    var(--bg) 2px,
+    var(--bg) 3px
   );
   opacity: var(--scanline-opacity);
 }
