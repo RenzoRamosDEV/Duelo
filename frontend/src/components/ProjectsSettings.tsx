@@ -12,7 +12,7 @@ import { RemoveProjectDialog } from "./RemoveProjectDialog";
 import { TokenField } from "./TokenField";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
-import { Notice } from "./ui/Notice";
+import { Toast } from "./ui/Toast";
 
 const MISSING_TOKEN = "Introduce el token de ingesta.";
 const PROJECT_FAILURES = { 404: "El proyecto ya no existe." } as const;
@@ -98,11 +98,6 @@ export function ProjectsSettings({ available }: { available: readonly string[] |
       }
     >
       <div className="stack">
-        {notice && (
-          <Notice tone="ok">
-            <p>{notice}</p>
-          </Notice>
-        )}
         <AsyncBoundary state={projects} loadingLabel="Cargando proyectos…">
           {(list) =>
             list.length === 0 ? (
@@ -132,6 +127,7 @@ export function ProjectsSettings({ available }: { available: readonly string[] |
           }
         </AsyncBoundary>
       </div>
+      {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
       {removing && (
         <RemoveProjectDialog
           project={removing}

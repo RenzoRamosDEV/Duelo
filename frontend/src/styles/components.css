@@ -604,6 +604,22 @@ html.no-effects .loader-cursor {
   background: var(--skeleton);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-row {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  html.no-effects .skeleton-row {
+    animation: none;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 /* Vacíos y avisos */
 .empty {
   display: flex;
