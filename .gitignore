@@ -38,3 +38,7 @@ htmlcov/
 # Mutation testing
 mutants/
 .mutmut-cache
+
+
+# APM dependencies
+apm_modules/

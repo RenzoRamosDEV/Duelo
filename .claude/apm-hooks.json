@@ -1,0 +1,15 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "echo '## SERENA INITIALIZATION\nA new session has started. You MUST immediately execute these steps before any other task:\n1. ToolSearch mcp__serena__initial_instructions and call it.\n2. Call mcp__serena__activate_project.\nPrefer Serena semantic tools over Bash/Read/Grep for source-code navigation; build/test/run/VCS commands and non-source-code file reads remain allowed per the allowed-fallback list in the Serena usage policy. When delegating source-exploration work to another agent via the Agent/Task tool, include this guidance and the allowed-fallback boundary in the delegation prompt.'",
+          "timeout": 15
+        }
+      ],
+      "_apm_source": "_local/ai-apm"
+    }
+  ]
+}
