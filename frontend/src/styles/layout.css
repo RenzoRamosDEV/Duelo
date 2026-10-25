@@ -11,11 +11,11 @@
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-height: 56px;
   padding: var(--space-2) var(--gutter);
-  background: var(--bg);
-  border-bottom: var(--border);
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
@@ -25,13 +25,18 @@
   font-family: var(--font-mono);
   font-size: var(--text-h2);
   font-weight: var(--weight-semibold);
+  color: var(--fg-primary);
   text-decoration: none;
   white-space: nowrap;
 }
 
+.brand:hover {
+  color: var(--fg-primary);
+}
+
 .brand::before {
   content: "$ ";
-  color: var(--fg-muted);
+  color: var(--fg-accent);
 }
 
 .sidebar {
@@ -49,6 +54,7 @@
 /* Navegación compartida por la barra lateral y el cajón. */
 .nav {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--space-5);
 }
@@ -56,52 +62,52 @@
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .nav-title {
-  margin: 0 0 var(--space-1);
-  font-family: var(--font-mono);
-  font-size: var(--text-label);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-3);
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-height: var(--control-h);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+  text-align: left;
   text-decoration: none;
   overflow-wrap: anywhere;
+  box-shadow: inset 2px 0 0 transparent;
+  transition: background-color var(--transition), color var(--transition), box-shadow
+    var(--transition);
 }
 
-.nav-link::before {
-  content: ">";
+.nav-link .icon {
   flex: none;
-  width: 1ch;
-  font-family: var(--font-mono);
-  color: var(--fg-primary);
-  visibility: hidden;
+  color: var(--fg-dim);
 }
 
 .nav-link:hover {
-  background: var(--bg-elev);
+  background: var(--bg-hover);
+  color: var(--fg-primary);
 }
 
 .nav-link[aria-current="page"] {
-  background: var(--bg-elev);
-  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--fg-primary);
   font-weight: var(--weight-medium);
+  box-shadow: inset 2px 0 0 var(--fg-accent);
 }
 
-.nav-link[aria-current="page"]::before {
-  visibility: visible;
+.nav-link[aria-current="page"] .icon {
+  color: var(--fg-accent);
 }
 
 .nav-link-mono {
@@ -109,10 +115,53 @@
   font-size: var(--text-meta);
 }
 
+.nav-action {
+  width: 100%;
+  color: var(--fg-dim);
+}
+
 .nav-empty {
-  padding: var(--space-2) var(--space-3);
+  padding: 0 var(--space-3);
+  font-size: var(--text-meta);
+  color: var(--fg-dim);
+}
+
+/* Pie: estado de la conexión y Ajustes. */
+.nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   font-size: var(--text-meta);
   color: var(--fg-muted);
+}
+
+.nav-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-dim);
+}
+
+.nav-status[data-tone="ok"] .nav-status-dot {
+  background: var(--ok);
+}
+
+.nav-status[data-tone="warn"] .nav-status-dot {
+  background: var(--warn);
+}
+
+.nav-status[data-tone="err"] .nav-status-dot {
+  background: var(--err);
 }
 
 /* Cajón móvil: un <dialog> modal con la misma navegación. */
@@ -127,8 +176,9 @@
   margin: 0;
   padding: 0;
   border: 0;
-  border-right: var(--border);
-  background: var(--bg);
+  border-right: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--fg-primary);
 }
 
 .drawer::backdrop {
@@ -168,12 +218,17 @@
     position: sticky;
     top: 0;
     height: 100dvh;
-    padding: var(--space-5) var(--space-4);
-    border-right: var(--border);
+    padding: var(--space-5) var(--space-3);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
     overflow-y: auto;
   }
 
+  .sidebar .brand {
+    padding: 0 var(--space-3);
+  }
+
   .content {
-    padding: var(--space-6) var(--space-6) var(--space-6);
+    padding: var(--space-6) var(--gutter) var(--space-6);
   }
 }

@@ -1,5 +1,7 @@
 import { Suspense, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
+import { Icon } from "../components/ui/Icon";
+import { Loader } from "../components/ui/Loader";
 import { ProjectsProvider } from "../hooks/useProjects";
 import { Brand } from "./Brand";
 import { SidebarNav } from "./SidebarNav";
@@ -47,6 +49,7 @@ export function AppLayout() {
             aria-haspopup="dialog"
             onClick={openDrawer}
           >
+            <Icon name="menu" size={18} />
             Menú
           </button>
           <Brand />
@@ -66,7 +69,13 @@ export function AppLayout() {
           <div className="drawer-panel">
             <div className="drawer-head">
               <Brand />
-              <button type="button" className="button button-ghost" onClick={closeDrawer}>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={closeDrawer}
+                data-autofocus
+              >
+                <Icon name="close" size={18} />
                 Cerrar
               </button>
             </div>
@@ -74,7 +83,7 @@ export function AppLayout() {
           </div>
         </dialog>
         <main id="main" className="content" tabIndex={-1}>
-          <Suspense key={pathname} fallback={<output>Cargando…</output>}>
+          <Suspense key={pathname} fallback={<Loader label="Cargando…" />}>
             <Outlet />
           </Suspense>
         </main>

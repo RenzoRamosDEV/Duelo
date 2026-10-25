@@ -1,5 +1,7 @@
 import { NavLink } from "react-router";
+import { Icon } from "../components/ui/Icon";
 import { useProjects } from "../hooks/useProjects";
+import { type ApiStatus, useApiStatus } from "../services/source";
 import { projectPath } from "../utils/paths";
 
 type Props = {
@@ -7,11 +9,23 @@ type Props = {
   onNavigate?: () => void;
 };
 
-const LINKS = [
-  { to: "/", label: "Proyectos", end: true },
-  { to: "/stats", label: "Estadísticas", end: false },
-  { to: "/settings", label: "Ajustes", end: false },
-];
+const STATUS: Record<ApiStatus, { text: string; tone: "ok" | "warn" | "err" | "neutral" }> = {
+  mock: { text: "Datos de ejemplo", tone: "neutral" },
+  loading: { text: "Conectando…", tone: "neutral" },
+  ok: { text: "API conectada", tone: "ok" },
+  degraded: { text: "API degradada", tone: "warn" },
+  offline: { text: "Sin conexión con la API", tone: "err" },
+};
+
+function ConnectionStatus() {
+  const status = STATUS[useApiStatus()];
+  return (
+    <output className="nav-status" data-tone={status.tone}>
+      <span className="nav-status-dot" aria-hidden="true" />
+      {status.text}
+    </output>
+  );
+}
 
 export function SidebarNav({ onNavigate }: Props) {
   const { projects, openAddProject } = useProjects();
@@ -19,16 +33,21 @@ export function SidebarNav({ onNavigate }: Props) {
   return (
     <nav className="nav" aria-label="Principal">
       <ul className="nav-group">
-        {LINKS.map((link) => (
-          <li key={link.to}>
-            <NavLink to={link.to} end={link.end} className="nav-link" onClick={onNavigate}>
-              {link.label}
-            </NavLink>
-          </li>
-        ))}
+        <li>
+          <NavLink to="/" end className="nav-link" onClick={onNavigate}>
+            <Icon name="folder" />
+            Proyectos
+          </NavLink>
+        </li>
+        <li>
+          <NavLink to="/stats" className="nav-link" onClick={onNavigate}>
+            <Icon name="chart" />
+            Estadísticas
+          </NavLink>
+        </li>
       </ul>
       <div className="nav-group">
-        <p className="nav-title">Proyectos vigilados</p>
+        <p className="label nav-title">Proyectos vigilados</p>
         {list && list.length === 0 && <p className="nav-empty">Ninguno todavía.</p>}
         {list && list.length > 0 && (
           <ul className="nav-group">
@@ -47,14 +66,22 @@ export function SidebarNav({ onNavigate }: Props) {
         )}
         <button
           type="button"
-          className="nav-link nav-link-mono nav-action"
+          className="nav-link nav-action"
           onClick={() => {
             onNavigate?.();
             openAddProject();
           }}
         >
-          + Añadir proyecto
+          <Icon name="plus" />
+          Añadir proyecto
         </button>
+      </div>
+      <div className="nav-foot">
+        <ConnectionStatus />
+        <NavLink to="/settings" className="nav-link" onClick={onNavigate}>
+          <Icon name="gear" />
+          Ajustes
+        </NavLink>
       </div>
     </nav>
   );
