@@ -43,6 +43,7 @@ export function AgentPicker({
           </label>
         ))}
         <Button
+          variant="primary"
           size="sm"
           onClick={() => onSave(chosen)}
           disabled={saving || !changed || chosen.length === 0}

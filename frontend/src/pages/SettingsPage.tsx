@@ -65,22 +65,25 @@ function EffectsSetting() {
   const hintId = useId();
   return (
     <div className="setting">
-      <span>
+      <span className="setting-label">
         <label htmlFor={id}>Efectos de pantalla</label>
-        <span className="field-hint" id={hintId}>
+        <span className="setting-hint" id={hintId}>
           Scanlines y cursor parpadeante. Se apagan también si tu sistema pide reducir el
           movimiento.
         </span>
       </span>
-      <label className="checkbox">
+      <label className="switch">
         <input
           id={id}
           type="checkbox"
+          role="switch"
+          aria-checked={enabled}
           checked={enabled}
           aria-describedby={hintId}
           onChange={(e) => setEnabled(e.target.checked)}
         />
-        {enabled ? "Activados" : "Desactivados"}
+        <span className="switch-track" aria-hidden="true" />
+        <span className="switch-text">{enabled ? "Activados" : "Desactivados"}</span>
       </label>
     </div>
   );
