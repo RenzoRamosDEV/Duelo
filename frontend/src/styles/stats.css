@@ -1,0 +1,62 @@
+/* Estadísticas: tarjetas de resumen y barras de la tabla. */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.stat-card {
+  --text-secondary: var(--color-fg-dim);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.stat-card dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.stat-card dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+
+.stat-card[data-alert] dd {
+  color: var(--color-alert);
+}
+
+.meter {
+  display: block;
+  width: 100%;
+  max-width: 120px;
+  height: 4px;
+  margin-top: var(--space-1);
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-fg);
+}
+
+.meter[data-alert] .meter-fill {
+  background: var(--color-alert);
+}
+
+@media (min-width: 768px) {
+  .stat-cards {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
