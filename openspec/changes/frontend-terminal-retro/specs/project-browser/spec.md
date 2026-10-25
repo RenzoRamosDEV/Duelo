@@ -27,6 +27,25 @@ Todo SHALL ser operable con teclado.
 
 ## MODIFIED Requirements
 
+### Requirement: Controles de la lista de changes
+La página del proyecto SHALL ofrecer búsqueda por título, autor, SHA o rama, filtro por tipo (todo, PR, commit), chips de estado de la review con el contador de lo **cargado** en cada uno (el de «Con fallos» con un punto rojo cuando hay alguno), una línea de resumen con el total cargado (con «+» cuando haya otra página) y los commits deshechos o revertidos, y «Cargar más». Con un filtro de estado activo solo su propio chip SHALL llevar número, porque lo cargado ya viene filtrado. SHALL conservar la búsqueda, los filtros y lo cargado en cada refresco automático.
+
+#### Scenario: Contadores de lo cargado
+- **WHEN** hay tres changes cargados y hay otra página
+- **THEN** la línea de resumen dice «3+ cambios cargados» y cada chip de estado lleva cuántos de los tres están en ese estado
+
+#### Scenario: Filtrar por tipo
+- **WHEN** el usuario elige «PRs»
+- **THEN** solo se listan las PRs y el filtro queda con `aria-pressed="true"`
+
+#### Scenario: Buscar
+- **WHEN** el usuario escribe parte de un título
+- **THEN** la lista muestra solo los changes que coinciden
+
+#### Scenario: Filtro de estado activo
+- **WHEN** el usuario elige «Con fallos»
+- **THEN** solo ese chip muestra un número y los demás no inventan un cero
+
 ### Requirement: Check por agente en cada fila
 Cada fila SHALL mostrar un chip por agente esperado (los de `agent_names` del diagnóstico y los que
 ya tengan review; si no se conocen, solo los que tengan review) con la etiqueta de texto del agente
