@@ -1,19 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { AsyncBoundary } from "../components/AsyncBoundary";
+import { ChangeSummary } from "../components/ChangeSummary";
 import { CopyButton } from "../components/CopyButton";
-import { DiffView } from "../components/DiffView";
+import { DiffView, useParsedDiff } from "../components/DiffView";
 import { FindingsPanel } from "../components/FindingsPanel";
 import { PendingAgents } from "../components/PendingAgents";
-import { RetryReview } from "../components/RetryReview";
 import { ReviewCard } from "../components/ReviewCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { UndoneBanner } from "../components/UndoneNotice";
 import { UpdatedAgo } from "../components/UpdatedAgo";
 import { Badge } from "../components/ui/Badge";
-import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
 import { PageHeader } from "../components/ui/PageHeader";
+import { TabPanel, Tabs } from "../components/ui/Tabs";
 import { Toast } from "../components/ui/Toast";
 import { useAsync } from "../hooks/useAsync";
 import { useAgentNames, useDataSource } from "../services/source";
@@ -22,16 +22,22 @@ import { sameValue } from "../utils/equal";
 import { plural } from "../utils/format";
 import type { Liveness } from "../utils/liveness";
 import { parseProjectPath, projectPath } from "../utils/paths";
+import { pendingAgents } from "../utils/pending";
 import { POLL_MS } from "../utils/polling";
 import { isRetryable, isWaiting } from "../utils/reviewStatus";
 import { splitRuns } from "../utils/runs";
 import { safeHttpUrl, shortSha } from "../utils/url";
+
+type Tab = "reviews" | "findings" | "diff";
 
 /** Un change cuyas reviews aún se producen sigue refrescándose; uno terminado no. */
 const inProgress = (change: Change) => isWaiting(change.reviewStatus);
 
 /** Reviews en orden estable (por agente), las envíe la API como las envíe. */
 const byAgent = (reviews: Review[]) => [...reviews].sort((a, b) => a.agent.localeCompare(b.agent));
+
+const countFindings = (reviews: Review[]) =>
+  reviews.reduce((n, review) => n + (review.findings?.length ?? 0), 0);
 
 export default function ChangeDetailPage() {
   const route = parseProjectPath(useParams()["*"]);
@@ -98,11 +104,21 @@ function ChangeDetail({
   onRetried: (message: string) => void;
 }) {
   const url = safeHttpUrl(change.url);
+  const [tab, setTab] = useState<Tab>("reviews");
   // Solo cuenta la run actual; un reintento conserva las reviews anteriores, plegadas.
   const { current: reviews, previous } = useMemo(
     () => splitRuns(change.reviews ?? [], change.run),
     [change.reviews, change.run],
   );
+  const current = byAgent(reviews);
+  const pending = pendingAgents(change, agentNames);
+  const { files } = useParsedDiff(change.diff);
+  const findingsCount = countFindings(reviews);
+  const tabs = [
+    { value: "reviews" as const, label: "Reviews", count: current.length },
+    { value: "findings" as const, label: "Hallazgos", count: findingsCount },
+    { value: "diff" as const, label: "Diff", count: files.length },
+  ];
   return (
     <div className="page">
       <PageHeader
@@ -116,29 +132,27 @@ function ChangeDetail({
         }
         title={change.title}
         meta={
-          change.reviewStatus && (
-            <p className="row status-line">
-              <StatusBadge status={change.reviewStatus} />
-              <Badge>{change.kind === "pr" ? "PR" : "Commit"}</Badge>
-              <span className="meta">
-                <span className="mono">{shortSha(change.sha)}</span>
-                {change.ref && (
-                  <>
-                    <span className="sep" />
-                    <span className="mono">{change.ref}</span>
-                  </>
-                )}
-                <span className="sep" />
-                {change.author}
-                {change.run !== undefined && (
-                  <>
-                    <span className="sep" />
-                    Run {change.run}
-                  </>
-                )}
-              </span>
-            </p>
-          )
+          <p className="row status-line">
+            {change.reviewStatus && <StatusBadge status={change.reviewStatus} />}
+            <Badge>{change.kind === "pr" ? "PR" : "Commit"}</Badge>
+            <span className="meta">
+              <span className="mono">{shortSha(change.sha)}</span>
+              {change.ref && (
+                <>
+                  <span className="sep" />
+                  <span className="mono">{change.ref}</span>
+                </>
+              )}
+              <span className="sep" />
+              {change.author}
+              {change.run !== undefined && (
+                <>
+                  <span className="sep" />
+                  Run {change.run}
+                </>
+              )}
+            </span>
+          </p>
         }
         actions={
           <>
@@ -162,40 +176,68 @@ function ChangeDetail({
         {inProgress(change) && <UpdatedAgo liveness={liveness} />}
       </PageHeader>
       {note && <Toast message={note} onClose={onNoteClose} />}
-      {isRetryable(change.reviewStatus) && (
-        <RetryReview changeId={change.id} onSettled={onRetried} />
-      )}
-      <Card
-        title="Revisión de los agentes"
-        className={inProgress(change) ? "card-live" : undefined}
-      >
-        <div className="stack">
-          {reviews.length === 0 && !inProgress(change) && (
-            <p className="text-muted">Aún no hay respuestas de los agentes.</p>
-          )}
-          {reviews.length > 0 && (
-            <div className="reviews">
-              {byAgent(reviews).map((r) => (
-                <ReviewCard key={r.id} review={r} showFindings={false} sha={change.sha} />
-              ))}
-            </div>
-          )}
-          <FindingsPanel reviews={reviews} />
-          {previous.map((p) => (
-            <details key={p.run} className="previous-run">
-              <summary>
-                Run {p.run} (anterior) · {plural(p.reviews.length, "review", "reviews")}
-              </summary>
-              <div className="reviews">
-                {byAgent(p.reviews).map((r) => (
-                  <ReviewCard key={r.id} review={r} sha={change.sha} />
+      <div className="detail-grid">
+        <section className="detail-main" aria-label="Revisión del change">
+          <Tabs
+            label="Secciones del change"
+            tabs={tabs}
+            value={tab}
+            onChange={setTab}
+            idPrefix="change"
+          />
+          {tab === "reviews" && (
+            <TabPanel idPrefix="change" value="reviews">
+              <div className="stack">
+                {current.length === 0 && !inProgress(change) && (
+                  <p className="text-muted">Aún no hay respuestas de los agentes.</p>
+                )}
+                {current.length > 0 && (
+                  <div className="reviews">
+                    {current.map((r) => (
+                      <ReviewCard key={r.id} review={r} showFindings={false} sha={change.sha} />
+                    ))}
+                  </div>
+                )}
+                {previous.map((p) => (
+                  <details key={p.run} className="previous-run">
+                    <summary>
+                      Run {p.run} (anterior) · {plural(p.reviews.length, "review", "reviews")}
+                    </summary>
+                    <div className="reviews">
+                      {byAgent(p.reviews).map((r) => (
+                        <ReviewCard key={r.id} review={r} sha={change.sha} />
+                      ))}
+                    </div>
+                  </details>
                 ))}
               </div>
-            </details>
-          ))}
-        </div>
-      </Card>
-      <DiffView diff={change.diff} truncated={change.truncated} />
+            </TabPanel>
+          )}
+          {tab === "findings" && (
+            <TabPanel idPrefix="change" value="findings">
+              {findingsCount === 0 ? (
+                <p className="text-muted">Sin hallazgos en la run actual.</p>
+              ) : (
+                <FindingsPanel reviews={reviews} />
+              )}
+            </TabPanel>
+          )}
+          {tab === "diff" && (
+            <TabPanel idPrefix="change" value="diff">
+              <DiffView diff={change.diff} truncated={change.truncated} />
+            </TabPanel>
+          )}
+        </section>
+        <aside className="detail-side">
+          <ChangeSummary
+            change={change}
+            reviews={current}
+            pending={pending}
+            retryable={isRetryable(change.reviewStatus)}
+            onRetried={onRetried}
+          />
+        </aside>
+      </div>
     </div>
   );
 }

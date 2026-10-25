@@ -195,6 +195,16 @@
   overflow-x: auto;
 }
 
+@media (max-width: 767.98px) {
+  .toolbar .segmented,
+  .list-head .segmented {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+}
+
 @media (min-width: 768px) {
   .toolbar {
     flex-direction: row;
