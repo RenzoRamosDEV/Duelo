@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "9971a19000ad501e32c6ff4cb211534aefeaf397",
+  "kind": "commit",
+  "title": "docs(frontend): proponer el frontend estilo terminal retro (ADR 0008)",
+  "run": 1,
+  "written_at": "2026-10-25T11:12:02.042029+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "El cambio documenta de forma coherente la nueva dirección visual, actualiza los ADR afectados y define requisitos y tareas de implementación. La retirada futura de tests está justificada explícitamente y reconoce sus consecuencias. Revisado solo el diff: no modifica código ejecutable ni demuestra defectos que requieran cambios.",
+      "findings": [],
+      "duration_ms": 11386,
+      "error": null,
+      "created_at": "2026-10-25T11:11:11.694210+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "Cambio solo de documentación: ADR 0008, los nuevos estados de los ADR 0003 a 0006 y el change de OpenSpec `frontend-terminal-retro`. Es coherente con su título, y todos los requisitos que el delta marca como MODIFIED o REMOVED existen con ese mismo nombre en `openspec/specs`, así que los deltas aplicarán. Al compararlo con las specs vigentes quedan requisitos sin tocar que contradicen la nueva decisión: el avatar de iniciales en «Nombre de agente fiel» y los cuadrados rojos del diff en «Detalle como conversación», cuando la paleta ya no tiene rojo. También hay pequeñas incoherencias internas entre la propuesta, el delta y el diseño. No hay nada bloqueante. Quitar los tests de frontend es una decisión explícita del propietario, recogida y mitigada en el ADR, así que no la cuento como defecto, aunque deja la paridad funcional sin red automática.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "openspec/changes/frontend-terminal-retro/specs/frontend-shell/spec.md",
+          "line": 0,
+          "message": "El delta no toca dos requisitos vigentes de `openspec/specs/frontend-shell/spec.md` que contradicen la nueva estética. (1) «Nombre de agente fiel» (línea 331): exige «un avatar de iniciales neutro» y su escenario espera «un avatar \"A1\"». El ADR 0008 retira los avatares y pide identificar a los agentes con una etiqueta de texto monospace. (2) «Detalle como conversación» (línea 570): su escenario exige «cuatro cuadrados verdes y uno rojo», y la nueva paleta no tiene rojo, solo un color de alerta (ámbar). Lo he comprobado leyendo la spec vigente. Si se archiva el change tal cual, quedarán requisitos imposibles de cumplir. Arreglo: añadir ambos en `## MODIFIED Requirements`, con la etiqueta `[agent_1]` en lugar del avatar y la barra con ámbar o con verde apagado para las líneas borradas."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/proposal.md",
+          "line": 46,
+          "message": "La propuesta pone «Ajustes en cajas» entre los requisitos que «se modifican», pero el delta lo elimina (REMOVED) y añade uno nuevo, «Secciones de Ajustes». Además, la lista de lo que «se añaden» omite «Secciones de Ajustes». Visto en el diff. Arreglo: mover «Ajustes en cajas» a la lista de retirados y añadir «Secciones de Ajustes» a la de añadidos, o bien convertir el delta en un MODIFIED con el mismo nombre."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/design.md",
+          "line": 47,
+          "message": "Los contrastes que da el diseño no coinciden con la fórmula WCAG. Calculando las luminancias relativas, `#1f9d1f` sobre `#0a0a0a` da unos 5,6:1 (no 5,4:1) y sobre `#0f3b0f` unos 3,6:1 (no 3,9:1). La conclusión no cambia: falla AA sobre la superficie, y el token `--fg-dim` ya lo resuelve. Arreglo: corregir las cifras para que la pasada final de la tarea 4.1 no parta de datos erróneos."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/tasks.md",
+          "line": 5,
+          "message": "Este mismo commit crea el ADR 0008 y actualiza los estados de 0003 a 0006, pero la tarea 1.1 sigue marcada como `[ ]`. Visto en el diff. Arreglo: marcarla como `[x]` en este commit o en el siguiente."
+        }
+      ],
+      "duration_ms": 56113,
+      "error": null,
+      "created_at": "2026-10-25T11:12:01.980549+00:00"
+    }
+  ]
+}
