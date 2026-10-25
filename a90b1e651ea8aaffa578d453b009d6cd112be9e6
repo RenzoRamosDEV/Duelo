@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "a90b1e651ea8aaffa578d453b009d6cd112be9e6",
+  "kind": "commit",
+  "title": "style(frontend): canal con barra fija, chips de estado con contador y filas sin cajas",
+  "run": 1,
+  "written_at": "2026-10-25T12:00:13.270976+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones demostrables en el diff: los cambios son coherentes con el rediseño anunciado. No pude acceder al contexto del repositorio; queda sin verificar si Age admite createdAt ausente, ahora que se renderiza sin la condición anterior.",
+      "findings": [],
+      "duration_ms": 19069,
+      "error": null,
+      "created_at": "2026-10-25T11:59:30.340809+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 5,
+      "summary": "El cambio rehace el canal con una barra de herramientas fija, chips de estado con contador y filas en grid sin cajas. La parte visual está bien: todos los tokens CSS que usa existen en tokens.css, `Age` ya devuelve null cuando no hay fecha (así que quitar la guarda de `createdAt` no rompe nada) y `Segmented` ya acepta `count` y `alert`. Lo que más pesa en la nota es un fallo funcional de los contadores. Se calculan sobre `items`, pero `items` ya viene filtrado por estado desde `useChannel`. Al elegir un chip, los demás marcan 0 y «Todos» muestra solo lo filtrado. Además, ya no se cumple la parte de la spec vigente que pide el desglose por estado en la cabecera con «+». No he encontrado tests del frontend en el repositorio, así que no puedo confirmar si algún test fijaba el texto anterior de la cabecera.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 107,
+          "message": "Los contadores de los chips se calculan sobre `items` (`stateCounts(items)` y `count: items.length`), pero `items` sale de `useChannel(slug, { state: stateFilter, ... })` (líneas 85-89), es decir, ya viene filtrado por estado. Por ejemplo, con 3 fallidos y 10 completados, al pulsar «Con fallos» los chips pasan a «Todos 3 · En curso 0 · Con fallos 3 · Completados 0». Los números cambian según el chip elegido y dan a entender que no hay completados. Lo he comprobado leyendo la llamada a `useChannel` y el cálculo de `stateOptions`. Arreglo: mostrar los contadores solo cuando `stateFilter === \"all\"`. Si hay filtro, mostrar solo el contador del chip activo o guardar los últimos contadores sin filtrar en un `useRef`/estado. Hay que añadir un test que elija «Con fallos» y compruebe que los demás chips no dicen 0 cuando hay cambios de otros estados."
+        },
+        {
+          "severity": "risk",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 117,
+          "message": "La spec vigente (openspec/specs/project-browser/spec.md:54-58) exige que la cabecera cuente lo cargado por estado, con «+» si hay otra página: «3+ cambios seguido del desglose por estado». Con este cambio la cabecera dice «3+ cambios cargados» sin desglose, y los chips muestran el desglose sin «+» aunque `hasMore` sea true. Así parece un total exacto cuando solo es lo cargado. La delta del change (openspec/changes/frontend-terminal-retro/specs/project-browser/spec.md) no modifica ese requisito. Arreglo: añadir a la delta un MODIFIED de «Controles de la lista de changes» que describa los chips con contador. Además, poner «+» en `count` cuando `hasMore` (por ejemplo, dejar que `count` acepte `string`) o explicar en la cabecera que los contadores son de lo cargado."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 44,
+          "message": "La lógica nueva de `stateCounts`, `stateOptions` (con `alert` solo en «Con fallos» cuando hay alguno) y `summary` no tiene tests. No he encontrado ningún `*.test.tsx` del frontend en el repositorio. Propuesta: un test de integración de ChannelPage con datos simulados de los tres estados más `hasMore`. Debe comprobar el nombre accesible de cada chip (`getByRole('button', { name: /Con fallos/ })` con su contador), que el punto de alerta aparece solo con fallos, y el texto «N+ cambios cargados · 1 deshecho»."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/channel.css",
+          "line": 4,
+          "message": "`top: 56px` copia a mano el `min-height: 56px` de `.topbar` (layout.css:15). Como es un mínimo, si la cabecera móvil crece (texto grande, zoom), la barra fija queda tapada por debajo, porque las dos usan el mismo `--z-sticky` y la cabecera va antes en el DOM. Arreglo: definir `--topbar-h: 56px` en tokens.css, usarlo en `.topbar { min-height }` y en `.toolbar { top }`, o fijar `height` en lugar de `min-height`."
+        }
+      ],
+      "duration_ms": 61938,
+      "error": null,
+      "created_at": "2026-10-25T12:00:13.215995+00:00"
+    }
+  ]
+}
