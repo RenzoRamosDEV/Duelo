@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "cbb46c0c2eb4edfaa47dbba25c0973dd94ba815a",
+  "kind": "commit",
+  "title": "style(frontend): tokens con jerarquía por tono y migración de todas las hojas",
+  "run": 1,
+  "written_at": "2026-10-25T11:49:24.235968+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "La migración introduce una regresión confirmada: cambia el contrato de --border y deja sin borde los elementos que aún lo consumen como declaración completa. Revisión limitada al diff; no fue posible leer el repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/styles/tokens.css",
+          "line": 23,
+          "message": "Visto solo en el diff: --border pasa de «1px solid var(--color-border)» a un color, pero layout.css conserva «border-bottom: var(--border)» en .topbar y «border-right: var(--border)» en .drawer. Al sustituir la variable, ambos shorthand reciben únicamente #1e4a1e y restablecen border-style a none, por lo que desaparecen los separadores. Las declaraciones nuevas «1px solid var(--border)» sí funcionan, pero no evitan esta regresión en los consumidores anteriores. Actualiza también esos consumidores a «border-bottom: 1px solid var(--border)» y «border-right: 1px solid var(--border)» y comprueba ambos separadores en la interfaz."
+        }
+      ],
+      "duration_ms": 34624,
+      "error": null,
+      "created_at": "2026-10-25T11:49:23.687866+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 5,
+      "summary": "La migración de tokens es casi toda mecánica y coherente: no queda ninguna referencia a los tokens antiguos (`--color-*`, `--text-secondary`, `--text-sm`, `--space-7`, `--z-topbar`…) en `frontend/src`, y las clases `.text-secondary` que usan los TSX siguen existiendo. Pero hay una regresión visual confirmada: `--border` antes era el atajo completo `1px solid …` y ahora es solo un color. Tres reglas de `layout.css` que no se tocaron siguen usándolo como atajo, así que la barra superior, el cajón y la barra lateral pierden su borde. Además, varios tokens de la «jerarquía por tono» que anuncia el título (`--fg-dim`, `--fg-accent` como acento, `--err`, `--info`, `--text-h3`, `--text-kpi`, `--tracking-label`, `--radius-sm`, `--border-hi`) están definidos pero ninguna hoja los usa: todo el texto secundario y terciario se queda en `--fg-muted`. El cambio a controles de 36 px en escritorio y la eliminación de los 272 px de la barra lateral a partir de 1280 px parecen intencionados por el rediseño (commit a34b05c/ADR 0008), aunque no los he contrastado con el ADR.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/styles/layout.css",
+          "line": 18,
+          "message": "`--border` ha cambiado de significado en `tokens.css`: antes valía `1px solid var(--color-border)` y ahora vale `#1e4a1e`. Tres reglas lo siguen usando como atajo completo: `.topbar { border-bottom: var(--border); }` (layout.css:18), `.drawer { border-right: var(--border); }` (layout.css:130) y `.sidebar { border-right: var(--border); }` (layout.css:172, sin cambios en este diff). Ahora `border-bottom: #1e4a1e` fija solo el color; el estilo vuelve a `none` y el borde desaparece. Esa es la separación entre la barra superior y el contenido en móvil, la del cajón y la de la barra lateral en escritorio. Lo he comprobado buscando `var(--border)` en el repositorio: todos los demás usos ya llevan `1px solid` delante. Arreglo: escribir `border-bottom: 1px solid var(--border);` en layout.css:18 y `border-right: 1px solid var(--border);` en layout.css:130 y :172."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/styles/tokens.css",
+          "line": 19,
+          "message": "El título promete «tokens con jerarquía por tono», pero la jerarquía se queda en los tokens y no llega a las hojas. Buscando en `frontend/src`, `--fg-dim`, `--err`, `--info`, `--err-bg`, `--info-bg`, `--border-hi`, `--text-h3`, `--text-kpi`, `--tracking-label` y `--radius-sm` no se usan en ninguna parte, y `--fg-accent` solo se usa en `--focus-ring` y `--ok`. Las hojas mandan a `--fg-muted` todo lo que los propios comentarios del fichero asignan a `--fg-dim`: el SHA, los títulos de sección (`.section-label`, `.nav-title`), los placeholders (`.input::placeholder`) y el `$` del prompt, que según el comentario de `--fg-accent` debería ir en acento (`.prompt::before`, `.brand::before`). Tampoco usan `--text-h3` (h3 sigue en `--text-body`), `--text-kpi` (`.stat-card dd` usa `--text-h1`) ni `--tracking-label` (las etiquetas repiten `0.06em`/`0.08em` literales). Arreglo: aplicar esos tokens en las reglas que cita cada comentario, o quitar los que no se vayan a usar para que los comentarios del fichero no prometan una jerarquía que no existe."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/tokens.css",
+          "line": 5,
+          "message": "El comentario sigue diciendo que los puntos de corte son 480/768/1024/1280px, pero este diff borra el único bloque `@media (min-width: 1280px)` de `layout.css`, el que ponía `--sidebar-w: 272px`. Si el corte de 1280 px ya no se usa en ninguna hoja, quítalo del comentario. Si la barra lateral ancha debía mantenerse, restaura el bloque en `layout.css`."
+        }
+      ],
+      "duration_ms": 35143,
+      "error": null,
+      "created_at": "2026-10-25T11:49:24.188174+00:00"
+    }
+  ]
+}
