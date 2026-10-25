@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "e7b48e88e0377d24c62d5eb8b21cc34b4db5cab5",
+  "kind": "commit",
+  "title": "docs(frontend): chips de estado con contador en la spec del canal",
+  "run": 1,
+  "written_at": "2026-10-25T12:04:28.527070+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "El diff documenta de forma coherente los contadores sobre los cambios cargados y su comportamiento con un filtro de estado activo. Los escenarios concuerdan con el requisito y el título del commit. Sin objeciones en el diff proporcionado; no se ha verificado la implementación.",
+      "findings": [],
+      "duration_ms": 10507,
+      "error": null,
+      "created_at": "2026-10-25T12:04:24.362446+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 9,
+      "summary": "Es un cambio solo de documentación. Añade a la delta de OpenSpec un bloque MODIFIED de «Controles de la lista de changes». El nombre coincide exactamente con el requisito de openspec/specs/project-browser/spec.md:53, así que el MODIFIED se aplicará sin problemas. Además, conserva los escenarios que ya existían («Filtrar por tipo» y «Buscar»). Lo que describe concuerda con la implementación: frontend/src/pages/ChannelPage.tsx:106-119 genera «N+ cambios cargados» y solo pone número al chip del filtro activo. Este segundo comportamiento corresponde al fix 29b40de, que así queda documentado. La única pega es que el requisito «Recuento de commits deshechos y revertidos» sigue hablando de la «cabecera» en la spec base, y esta delta no lo actualiza. Es una incoherencia menor de terminología.",
+      "findings": [
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/specs/project-browser/spec.md",
+          "line": 31,
+          "message": "El nuevo texto lleva el recuento de commits deshechos o revertidos a la «línea de resumen». Sin embargo, el requisito «Recuento de commits deshechos y revertidos» de openspec/specs/project-browser/spec.md:102-107 sigue diciendo «La cabecera de la lista SHALL añadir…», y su escenario también habla de «la cabecera». Esta delta no lo modifica (lo he comprobado leyendo la spec base y la delta). Al archivar el change, la spec quedará con dos requisitos que describen lo mismo con términos distintos. Arreglo: añade a la delta un MODIFIED de «Recuento de commits deshechos y revertidos» que cambie «cabecera» por «línea de resumen». También puedes usar un REMOVED, porque el recuento ya queda cubierto por «Controles de la lista de changes»."
+        }
+      ],
+      "duration_ms": 18709,
+      "error": null,
+      "created_at": "2026-10-25T12:04:28.440279+00:00"
+    }
+  ]
+}
