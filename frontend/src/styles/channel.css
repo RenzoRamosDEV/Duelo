@@ -18,6 +18,16 @@
 
 .search-box .input {
   padding-right: var(--space-6);
+  padding-left: var(--space-6);
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--fg-dim);
+  pointer-events: none;
 }
 
 .search-key {
@@ -214,6 +224,12 @@
   .search-box {
     flex: 1 1 280px;
   }
+}
+
+@media (min-width: 1024px) {
+  .toolbar {
+    top: 0;
+  }
 
   .change {
     grid-template-columns: 32px minmax(0, 1fr) auto auto;
@@ -230,11 +246,5 @@
   .change-time {
     min-width: 7ch;
     text-align: right;
-  }
-}
-
-@media (min-width: 1024px) {
-  .toolbar {
-    top: 0;
   }
 }

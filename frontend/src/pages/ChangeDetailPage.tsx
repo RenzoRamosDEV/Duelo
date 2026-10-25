@@ -12,6 +12,7 @@ import { UndoneBanner } from "../components/UndoneNotice";
 import { UpdatedAgo } from "../components/UpdatedAgo";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Icon } from "../components/ui/Icon";
 import { PageHeader } from "../components/ui/PageHeader";
 import { TabPanel, Tabs } from "../components/ui/Tabs";
 import { Toast } from "../components/ui/Toast";
@@ -163,7 +164,8 @@ function ChangeDetail({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Abrir en GitHub ↗
+                Abrir en GitHub
+                <Icon name="external" size={14} />
               </a>
             )}
             <CopyButton label="Copiar SHA" value={change.sha} />

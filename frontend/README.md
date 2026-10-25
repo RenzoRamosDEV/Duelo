@@ -1,6 +1,7 @@
 # Duelo · frontend
 
-React 19 + TypeScript + Vite con estilo de terminal retro (verde sobre negro). Sin tests de
+React 19 + TypeScript + Vite con estilo de terminal retro (verde sobre negro, con jerarquía por
+tono). Sin tests de
 frontend por decisión del proyecto ([ADR 0008](../docs/adr/0008-frontend-terminal-retro.md)): la red
 de seguridad es `tsc` strict, Biome y el build.
 
@@ -30,10 +31,11 @@ src/
   main.tsx, App.tsx     arranque y tabla de rutas
   layouts/              AppLayout (barra lateral ≥1024 px, cajón móvil), SidebarNav, Brand
   pages/                una página por ruta: Projects, Channel, ChangeDetail, Stats, Settings, NotFound
-  components/ui/        base reutilizable: Button, Input, Card, Badge, Table, Modal, Loader,
-                        Skeleton, EmptyState, Notice, ErrorMessage, Segmented
-  components/           de dominio: ReviewCard, FindingCard, FindingsPanel, DiffView, ChangeRow,
-                        AgentChecks, AgentTag, StatusBadge, TokenField, diálogos de proyecto…
+  components/ui/        base reutilizable: PageHeader, Button, Input, Card, Badge, StatusIcon,
+                        Icon, Table, Tabs, Segmented, Modal, Toast, Notice, ErrorMessage, Kbd,
+                        Loader, Skeleton, EmptyState
+  components/           de dominio: ReviewCard, FindingCard, FindingsPanel, ChangeSummary, DiffView,
+                        ChangeRow, AgentChecks, AgentTag, StatusBadge, TokenField, diálogos…
   services/             toda la red: http.ts (API), mock.ts, mappers.ts (DTO → modelo), source.ts
   hooks/                useAsync (carga + sondeo), useChannel, useProjects, useIngestToken…
   utils/                funciones puras: diff, markdown, findings, format, sort, paths…
@@ -49,16 +51,25 @@ Rutas: `/` proyectos, `/p/<owner>/<repo>` canal, `/p/<owner>/<repo>/changes/<id>
 - **Tokens primero.** Colores, espaciados, tipografías y medidas solo en `styles/tokens.css`; los
   componentes usan variables. Puntos de corte: 480, 768, 1024 y 1280 px, escritos solo en las hojas
   de `styles/`. La única propiedad inline es el ancho de las barras de Estadísticas, que es dato.
-- **Sans para leer, mono para decorar.** El cuerpo va en la pila sans del sistema; la monospace solo
-  en títulos, prompts `$`, badges, SHA, rutas y diff.
-- **Texto secundario con contraste.** `--text-secondary` es `--color-fg-muted` sobre el fondo y pasa a
-  `--color-fg-dim` dentro de `.card`, filas resaltadas y cabeceras del diff (4,5:1 en todos).
+- **Jerarquía por tono, no por caja.** `--fg-primary` para texto principal, títulos y cifras;
+  `--fg-muted` para descripciones, autor, fecha y etiquetas; `--fg-dim` para SHA, separadores,
+  etiquetas de sección y placeholders; `--fg-accent` solo para UN acento por bloque (activo, prompt
+  `$`, hover de enlace, foco). Fondos `--bg` / `--bg-elev` (sidebar, cards, modales) / `--bg-hover`;
+  bordes `--border` que solo se encienden (`--border-hi`) en activo, hover y foco; `--border-strong`
+  para los límites de campos (3:1).
+- **Semánticos.** `--ok` (= acento) para lo completado, `--warn` (ámbar) para lo que está en curso o
+  deshecho y las severidades medias, `--err` (rojo) para fallos y severidades graves, `--info` (azul)
+  para severidades menores. Todo estado lleva glifo y texto además de color.
+- **Sans para leer, mono para decorar.** El cuerpo va en la pila sans del sistema a 15 px; la
+  monospace solo en el logo, el prompt `$`, SHA, ramas, chips `[claude]`/`[codex]`, etiquetas en
+  mayúsculas y código/diff. Escala: h1 22, h2 18, h3 15 seminegrita, cuerpo 15, meta 13, etiqueta 11.
 - **Los componentes no hacen `fetch`.** Todo pasa por `services/`; las páginas usan `useAsync` con
   `pollMs`/`pollWhile` (5 s en curso, 30 s en reposo, 60 s proyectos; pausa con la pestaña oculta).
 - **Un componente por fichero**, nombres descriptivos, sin `any`, sin `console.log`, sin código muerto.
-- **Accesibilidad.** Estados con glifo y texto (no solo color), `<dialog>` nativo para modales y
-  cajón, controles de 44 px en táctil, `prefers-reduced-motion` y el interruptor de Ajustes apagan
-  scanlines y parpadeo.
+- **Accesibilidad.** `<dialog>` nativo para modales y cajón, pestañas con `tablist` y flechas,
+  controles de 36 px en escritorio y 44 en táctil, foco visible en acento, `prefers-reduced-motion`
+  y el interruptor de Ajustes apagan scanlines, parpadeo y pulso del esqueleto. Transiciones de
+  150 ms.
 
 ## PWA
 

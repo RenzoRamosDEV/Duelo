@@ -1,13 +1,19 @@
 import { Link } from "react-router";
+import { EmptyState } from "../components/ui/EmptyState";
 
 export default function NotFoundPage() {
   return (
-    <section className="page">
-      <h1 className="prompt">No encontrado</h1>
-      <p>Esta dirección no corresponde a ninguna página.</p>
-      <p>
-        <Link to="/">Volver al inicio</Link>
-      </p>
-    </section>
+    <div className="page">
+      <EmptyState
+        heading="h1"
+        title="No encontrado"
+        description="Esta dirección no corresponde a ninguna página."
+        action={
+          <Link className="button button-secondary" to="/">
+            Volver al inicio
+          </Link>
+        }
+      />
+    </div>
   );
 }

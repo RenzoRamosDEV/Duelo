@@ -6,6 +6,7 @@ import { CopyButton } from "../components/CopyButton";
 import { UpdatedAgo } from "../components/UpdatedAgo";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Icon } from "../components/ui/Icon";
 import { Kbd } from "../components/ui/Kbd";
 import { Notice } from "../components/ui/Notice";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -133,6 +134,9 @@ export default function ChannelPage() {
           <label className="visually-hidden" htmlFor={searchId}>
             Buscar cambios
           </label>
+          <span className="search-icon">
+            <Icon name="search" />
+          </span>
           <input
             id={searchId}
             ref={searchRef}

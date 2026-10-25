@@ -21,6 +21,7 @@
 
   /* Bordes */
   --border: #1e4a1e;
+  --border-strong: #2e6e2e; /* límites de campos de formulario: 3,1:1 sobre el fondo (WCAG 1.4.11) */
   --border-hi: var(--fg-accent); /* solo activo, hover y foco */
 
   /* Semánticos */

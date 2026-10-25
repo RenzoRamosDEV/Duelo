@@ -140,10 +140,6 @@ dialog {
   color: var(--fg-muted);
 }
 
-.text-dim {
-  color: var(--fg-dim);
-}
-
 .meta {
   font-size: var(--text-meta);
   color: var(--fg-muted);

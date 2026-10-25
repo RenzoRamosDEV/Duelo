@@ -6,8 +6,7 @@ export type IconName =
   | "menu"
   | "close"
   | "external"
-  | "search"
-  | "undo";
+  | "search";
 
 const PATHS: Record<IconName, string> = {
   folder: "M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
@@ -18,7 +17,6 @@ const PATHS: Record<IconName, string> = {
   close: "M6 6l12 12M18 6 6 18",
   external: "M14 4h6v6m0-6L10 14M20 14v6H4V4h6",
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm9 16-4.3-4.3",
-  undo: "M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3",
 };
 
 /** Icono de línea de 16 px, decorativo: el texto que lo acompaña da el nombre. */
