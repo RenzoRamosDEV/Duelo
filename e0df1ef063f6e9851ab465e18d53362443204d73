@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "e0df1ef063f6e9851ab465e18d53362443204d73",
+  "kind": "commit",
+  "title": "feat(frontend): detalle del change con reviews, hallazgos, reintento y diff",
+  "run": 1,
+  "written_at": "2026-10-25T11:31:56.396816+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "Revisión limitada al diff: no he podido leer el repositorio ni verificar su cobertura existente. No encuentro bugs ni vulnerabilidades demostrables, pero el cambio incorpora lógica de reintento y estados sin aportar pruebas; esa carencia requiere cambios según la rúbrica.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/RetryReview.tsx",
+          "line": 38,
+          "message": "Visto solo en el diff: el formulario incorpora ramas funcionales de reintento sin añadir pruebas. No he podido comprobar si existe cobertura previa. Añade pruebas que verifiquen que un token vacío impide enviar, un éxito comunica la run, un 401 borra el token y muestra el error, un 409 comunica el cambio de estado y un 503 permite volver a intentarlo. Comprueba también que no se envíe otra solicitud mientras la primera sigue pendiente."
+        }
+      ],
+      "duration_ms": 33589,
+      "error": null,
+      "created_at": "2026-10-25T11:31:53.121044+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "El cambio completa la página de detalle del change: reviews por run, panel de hallazgos con filtro por severidad, reintento con token y vista del diff. Es correcto en lo esencial. Comprobé en el repositorio lo que parecía dudoso y no falla: `App.tsx:17` monta la página con `key={route.id}`, así que la nota y el filtro no pasan de un change a otro. `splitRuns` y `pendingAgents` separan bien la run actual. Las reviews resumidas del listado llevan `partial: true` (mappers.ts:64) y por eso tiene sentido que `ReviewCard` no pinte `Completed` para ellas. Los enlaces externos llevan `rel=\"noopener noreferrer\"` y el diff se pinta como texto, no como HTML. Ninguno de los componentes nuevos tiene test, pero el frontend no tiene infraestructura de tests (no hay ficheros *.test ni script de test en package.json), así que no lo cuento como defecto de este commit. Solo quedan detalles menores: el aviso de un reintento rechazado (409) sale en tono «ok» y el commit incluye ajustes de CSS de otras pantallas.",
+      "findings": [
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/RetryReview.tsx",
+          "line": 53,
+          "message": "Ante un 409 el formulario llama a `onSettled(\"Esta review ya no se puede reintentar: su estado cambió.\")`. `ChangeDetailPage` pinta toda nota con `<Notice tone=\"ok\">` (ChangeDetailPage.tsx, bloque `{note && ...}`), así que un reintento rechazado se anuncia con el mismo estilo que uno aceptado. Además la nota no se borra nunca: si la run nueva vuelve a fallar, sigue diciendo «Reintento en marcha (run N)» junto al formulario de reintento. Lo comprobé leyendo los dos componentes. Arreglo: que `onSettled` reciba también el tono (`onSettled(message, \"ok\" | \"alert\")`) y guardar `{ text, tone }` en la nota. También conviene limpiarla cuando `change.run` cambie o cuando la run termine."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/channel.css",
+          "line": 205,
+          "message": "El commit trae cambios de layout de otras pantallas que el título no menciona: `.search-box` deja de tener `flex: 1 1 280px` fuera de la media query, y `.segmented-option` en components.css:460 gana `flex`, `margin-bottom: -1px` y `border-bottom`. No rompen nada que se vea en el diff, pero afectan al canal y a los controles segmentados y quedan escondidos dentro de un `feat` del detalle. Si quieres mantener los commits atómicos, sepáralos en un `fix(frontend)`/`style` propio."
+        }
+      ],
+      "duration_ms": 36807,
+      "error": null,
+      "created_at": "2026-10-25T11:31:56.347884+00:00"
+    }
+  ]
+}
