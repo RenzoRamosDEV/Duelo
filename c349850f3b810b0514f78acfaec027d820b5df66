@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "c349850f3b810b0514f78acfaec027d820b5df66",
+  "kind": "commit",
+  "title": "feat(frontend): ajustes con efectos, proyectos vigilados y diagnóstico",
+  "run": 1,
+  "written_at": "2026-10-25T11:35:01.496027+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El diff no demuestra errores funcionales, pero incorpora operaciones de gestión de proyectos sin añadir pruebas para sus nuevas ramas. La nota refleja esa carencia; no he podido leer el repositorio para comprobar cobertura previa ni contratos externos.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ProjectsSettings.tsx",
+          "line": 63,
+          "message": "Cobertura insuficiente en el cambio presentado: se añaden sincronización y guardado de agentes con validación de token, errores y actualización de proyectos, pero el diff no incorpora pruebas. Confianza probable: comprobado solo en el diff; no pude verificar tests preexistentes. Añade pruebas que comprueben que un token vacío impide la petición, un 401 elimina el token, un guardado correcto actualiza la selección y un fallo conserva el borrador y muestra el error. Cubre también la baja mediante RemoveProjectDialog, especialmente que un 409 muestra el error sin ejecutar onRemoved."
+        }
+      ],
+      "duration_ms": 37305,
+      "error": null,
+      "created_at": "2026-10-25T11:34:42.718481+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "Cambio de frontend bien construido. Los textos de terceros se muestran como texto y no como HTML. El token no se queda en el estado del componente y se borra cuando el servidor responde 401. Los errores 404, 409 y 422 tienen su propio mensaje. El contrato con la API coincide con `http.ts` y `api.generated.ts`. Comprobé además en `backend/.../routers/health.py` que `/health/dependencies` siempre responde 200, así que el modo degradado se muestra bien y no como error. Encontré un fallo menor que se reproduce de verdad. El botón «Actualizar» de Diagnóstico llama a `retry`, que vuelve a poner la carga en «cargando». Mientras dura, `agentNames` pasa a ser `null`, todos los `AgentPicker` se desmontan y la selección que no se haya guardado se pierde. El resto son detalles de UX y la falta de tests: el frontend no tiene ninguna herramienta de pruebas montada (no hay vitest ni testing-library en `package.json`), así que no lo trato como un fallo de este commit. No hay nada que bloquee el cambio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/pages/SettingsPage.tsx",
+          "line": 121,
+          "message": "Al pulsar «Actualizar» en Diagnóstico se llama a `health.retry`. Según `useAsync.ts:49` y `:103`, eso vuelve a poner el estado en `{ status: \"loading\" }`. Mientras tanto `agentNames` (línea 93) vale `null`, `ProjectsSettings` recibe `available=null` y `ProjectSettingsRow` deja de pintar el `AgentPicker`, por la condición `available && available.length > 1`. Al volver a montarse arranca con la selección del servidor y se pierde lo que el usuario había marcado sin guardar. «Agentes activos» también parpadea a «—». Lo comprobé leyendo `useAsync`. Cómo arreglarlo: usa `health.refresh`, que según `useAsync.ts:80` conserva los datos actuales mientras recarga, en vez de `retry`. Otra opción es separar los agentes de la petición de diagnóstico con `useAgentNames()` (en caché en `services/source.ts`)."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ProjectsSettings.tsx",
+          "line": 41,
+          "message": "`sync` y `saveAgents` (línea 64) usan un único bloqueo para toda la lista: `if (syncing) return;` y `if (savingAgents) return;`. Pero cada fila solo recibe `syncing={syncing === p.slug}`, así que el botón «Sincronizar PRs» de los demás proyectos sigue activo. Si se pulsa mientras otro proyecto sincroniza, no pasa nada y no aparece ningún aviso. Lo vi leyendo el componente y la fila. Cómo arreglarlo: pasa a cada fila un `disabled={syncing !== null}` (y lo mismo para `savingAgents`) o muestra un mensaje en la fila. Otra opción es guardar un conjunto de slugs en curso para permitir operaciones en paralelo."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/AgentPicker.tsx",
+          "line": 22,
+          "message": "Este commit añade lógica de negocio sin ninguna prueba. Por ejemplo: el borrador de `AgentPicker` (el estado `changed` y la regla de que haya al menos un agente), los mensajes según el código de respuesta (401 borra el token, 409 y 422) en `ProjectsSettings` y `RemoveProjectDialog`, y `syncText` con singular y plural. El frontend no tiene ninguna herramienta de tests (ni vitest ni testing-library en `package.json`, ni ficheros `*.test.tsx`), así que es una carencia del repositorio y no de este commit. Cómo arreglarlo: monta vitest con @testing-library/react y cubre como mínimo tres casos. (1) «Guardar» está desactivado sin cambios o con cero agentes. (2) Un 409 al quitar un proyecto muestra el mensaje del servidor y el diálogo sigue abierto. (3) Un 401 limpia el token."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ProjectsSettings.tsx",
+          "line": 34,
+          "message": "El aviso «Proyecto X quitado.» (`notice`) y los mensajes de cada fila (`messages`) nunca se borran. Siguen ahí hasta salir de Ajustes, incluso después de otras operaciones. Lo vi en el diff: `setNotice` solo recibe un texto, nunca `null`. Cómo arreglarlo: limpia `notice` al empezar otra acción (sincronizar, guardar, añadir) o dale un botón para cerrarlo."
+        }
+      ],
+      "duration_ms": 51323,
+      "error": null,
+      "created_at": "2026-10-25T11:35:01.446098+00:00"
+    }
+  ]
+}
