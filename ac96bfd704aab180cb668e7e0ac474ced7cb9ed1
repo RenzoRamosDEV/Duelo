@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "ac96bfd704aab180cb668e7e0ac474ced7cb9ed1",
+  "kind": "commit",
+  "title": "style(frontend): avisos como toast, esqueleto con pulso y pasada responsive",
+  "run": 1,
+  "written_at": "2026-10-25T12:06:38.327585+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: los avisos pasan a Toast y la animación respeta prefers-reduced-motion y no-effects. No pude acceder al repositorio para verificar el contrato de Toast ni las pruebas existentes; la valoración se limita al código mostrado.",
+      "findings": [],
+      "duration_ms": 14125,
+      "error": null,
+      "created_at": "2026-10-25T12:06:26.115788+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "El cambio es pequeño y en general correcto. El aviso de baja de proyecto pasa de un `Notice` en línea al `Toast` que ya existía, que se anuncia como `<output>` y tiene botón de cierre con nombre accesible. El pulso del esqueleto respeta `prefers-reduced-motion` y el interruptor `html.no-effects`, y la animación `pulse` no choca con otra del mismo nombre. Encontré un fallo menor confirmado: `onClose` se pasa como flecha en línea y eso reinicia el temporizador de autocierre del Toast cada vez que el componente se vuelve a pintar. El propio repositorio ya lo resuelve con `useCallback` en `ChangeDetailPage`. Además, el título anuncia una «pasada responsive» que no aparece en el diff. Ninguno de los dos bloquea.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/components/ProjectsSettings.tsx",
+          "line": 130,
+          "message": "`onClose={() => setNotice(null)}` crea una función nueva en cada render. `Toast` (frontend/src/components/ui/Toast.tsx:15-18) pone `onClose` en las dependencias del `useEffect` del temporizador de 6 s, así que cada render de `ProjectsSettings` limpia el temporizador y arranca otro. Y ese componente se vuelve a pintar a menudo justo después del aviso: `projects.refresh()` en el mismo `onRemoved`, cambios de `useIngestToken` mientras se escribe el token, y `setSyncing` y `setMessages` al sincronizar o guardar agentes. Resultado: mientras haya actividad, el toast no se cierra solo. Lo comprobé leyendo `Toast.tsx` y comparando con `ChangeDetailPage.tsx:58`, que usa `const closeNote = useCallback(() => setNote(null), [])` justo para evitarlo. Arreglo: `const closeNotice = useCallback(() => setNotice(null), []);` y `<Toast message={notice} onClose={closeNotice} />`. El mismo patrón está en frontend/src/pages/ProjectsPage.tsx:95, fuera de este diff. Otra opción es blindar `Toast` guardando `onClose` en un ref para que el efecto dependa solo de `message`."
+        },
+        {
+          "severity": "nit",
+          "file": "N/A",
+          "line": 0,
+          "message": "El título promete «avisos como toast, esqueleto con pulso y pasada responsive», pero el diff solo trae el toast en `ProjectsSettings` y la animación del esqueleto: no hay ninguna media query ni ajuste de anchura. Si los cambios responsive van en otro commit, quita esa parte del título; si se quedaron fuera, añádelos o cámbialo, por ejemplo a `style(frontend): aviso de baja como toast y esqueleto con pulso`."
+        }
+      ],
+      "duration_ms": 26276,
+      "error": null,
+      "created_at": "2026-10-25T12:06:38.272474+00:00"
+    }
+  ]
+}
