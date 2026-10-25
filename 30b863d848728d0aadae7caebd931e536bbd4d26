@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "30b863d848728d0aadae7caebd931e536bbd4d26",
+  "kind": "commit",
+  "title": "style(frontend): tarjetas de proyecto con acciones y fila de KPI en estadísticas",
+  "run": 1,
+  "written_at": "2026-10-25T12:04:26.652263+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El diff no demuestra errores funcionales, pero añade un flujo de eliminación de proyectos sin incorporar pruebas de la nueva interacción. La revisión se limita al diff porque no fue posible leer el repositorio.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/ProjectsPage.tsx",
+          "line": 84,
+          "message": "Visto solo en el diff: se añade el flujo de quitar proyectos desde esta página, incluida la selección del proyecto, el cierre del diálogo, el aviso y la actualización del listado, sin añadir pruebas. Añade un test de interacción que seleccione uno entre varios proyectos, compruebe que el diálogo recibe el correcto y verifique que, tras eliminarlo, desaparece del listado y aparece el aviso; cubre también cancelar sin eliminar. No se ha podido comprobar si ya existe cobertura equivalente en el repositorio."
+        }
+      ],
+      "duration_ms": 24534,
+      "error": null,
+      "created_at": "2026-10-25T12:04:08.851253+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "El cambio está bien construido. La acción «Quitar» de la portada reutiliza `RemoveProjectDialog` con el mismo patrón que `ProjectsSettings.tsx` (líneas 135-145): estado `removing`, aviso y `projects.refresh()`. Los tokens CSS nuevos (`--text-kpi`, `--tracking-label`, `--text-meta`, `--fg-dim`, `--fg-accent`, `--err`) existen en `tokens.css`. `.nav-action` no se pierde: se movió a `layout.css`, donde la usa `SidebarNav`. No he encontrado ningún bug con un camino de ejecución real. Lo que pesa en la nota es otra cosa: el commit se presenta como `style` pero añade una acción destructiva nueva en la portada, y no hay ningún test de `ProjectsPage`. Son defectos menores que no impiden aprobar.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/ProjectsPage.tsx",
+          "line": 65,
+          "message": "Comportamiento nuevo sin test: la portada ahora permite quitar un proyecto (abre el diálogo, muestra el aviso «Proyecto X quitado.» y refresca la lista). He buscado en los `*.test.*` de frontend y no hay ningún test de `ProjectsPage` ni del texto «Quitar proyecto». Propuesta: un test con Testing Library que pulse el botón de nombre «Quitar proyecto <nombre>», confirme el diálogo con un `source.removeProject` falso y compruebe que aparece el aviso y que se llama a `refresh`. Otro test debería comprobar que Cancelar cierra el diálogo sin quitar nada."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/ProjectsPage.tsx",
+          "line": 65,
+          "message": "El título dice `style(frontend)`, pero el diff añade funcionalidad: un botón «Quitar» con `RemoveProjectDialog` y un `Toast` en la portada, una acción destructiva que antes no existía en esa pantalla. Con Conventional Commits esto es un `feat` y debería ir en un commit separado del restyling de tarjetas y estadísticas. Así el historial y el changelog reflejan el cambio de comportamiento."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/ProjectsPage.tsx",
+          "line": 61,
+          "message": "Cada tarjeta tiene ahora dos enlaces al mismo destino: el nombre (que, con `::after` e `inset: 0`, cubre la tarjeta) y el enlace «Ver canal». Quien navega con teclado o lector de pantalla oye dos tabulaciones y dos enlaces redundantes por proyecto. Hay dos arreglos posibles: quitar «Ver canal», ya que toda la tarjeta es clicable, o dejarlo con `tabIndex={-1}` y `aria-hidden` si solo es una ayuda visual."
+        }
+      ],
+      "duration_ms": 24125,
+      "error": null,
+      "created_at": "2026-10-25T12:04:13.836186+00:00"
+    }
+  ]
+}
