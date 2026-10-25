@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "3dd933f84b720d978a000857b3936589de15510d",
+  "kind": "commit",
+  "title": "feat(frontend): canal del proyecto con filtros, búsqueda, sondeo y paginación",
+  "run": 1,
+  "written_at": "2026-10-25T11:28:51.327106+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 5,
+      "summary": "El canal incorpora los comportamientos anunciados, pero conserva resultados que dejan de cumplir los filtros durante el sondeo y presenta un problema de distribución en móvil. La revisión se limita al diff: no pude consultar el contexto ni los tests del repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/hooks/useChannel.ts",
+          "line": 77,
+          "message": "El sondeo conserva los resultados anteriores aunque dejen de cumplir el filtro. Con «En curso» activo, un cambio mostrado pasa a completado y desaparece de la siguiente respuesta del servidor; sin embargo, se vuelve a incorporar desde shown.current.items mediante mergeUnique(base.items, previous). La clave sigue siendo la misma porque el usuario no ha cambiado los filtros. Visto solo en el diff: no hay reconciliación de esos elementos con la consulta vigente. Revalida los elementos conservados frente a los filtros y actualiza también los cambios cargados mediante paginación. Añade una prueba donde un cambio pasa de running a completed durante el sondeo y debe desaparecer de «En curso»."
+        },
+        {
+          "severity": "bug",
+          "file": "frontend/src/styles/channel.css",
+          "line": 10,
+          "message": "En pantallas de menos de 768 px, .toolbar tiene flex-direction: column, por lo que flex: 1 1 280px aplica una base de 280 px a la altura del buscador. Esto genera un bloque vertical desproporcionado antes de los filtros. Visto solo en el diff, la regla que cambia la dirección a fila únicamente se aplica desde 768 px. Usa flex: initial en la disposición vertical y mueve flex: 1 1 280px a la media query de escritorio; comprueba que en móvil el bloque conserva la altura natural del input."
+        }
+      ],
+      "duration_ms": 39258,
+      "error": null,
+      "created_at": "2026-10-25T11:28:49.981313+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 5,
+      "summary": "Es un cambio cuidado: los avisos de accesibilidad están en texto y no dependen del color, las respuestas tardías de otra consulta se descartan, el sondeo y las páginas extra van atados a la consulta y la fila memoizada compara por valor. He leído `useAsync`, `mergeUnique`, `splitRuns`, `isWaiting` y `statusesFor` para comprobarlo. El fallo que más pesa está en `useChannel`: los items que ya se han mostrado se conservan aunque el servidor deje de devolverlos. Con el filtro «En curso», un change que termina se queda en la lista con su estado viejo y mantiene el sondeo rápido sin fin. No pido tests porque el ADR 0008 los quitó del frontend a propósito. No he encontrado problemas de seguridad: no se inserta HTML crudo y el comando de ingesta muestra `$INGEST_TOKEN` como marcador, no un secreto.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/hooks/useChannel.ts",
+          "line": 77,
+          "message": "Las filas que salen del filtro se quedan en la lista con su estado viejo, y el sondeo rápido no para. Cómo pasa: `items = mergeUnique(mergeUnique(base.items, previous), ...)` vuelve a añadir todo lo que había en `shown.current` aunque el refresco ya no lo traiga. Ejemplo con el filtro «En curso» (`statusesFor('running')`): un change termina, el sondeo devuelve `base.items` sin él y `mergeUnique` lo añade al final desde `previous` con `reviewStatus: 'running'`. La fila se queda para siempre como «En curso», cuenta en `stateCounts` y deja `anyWaiting` en true. Por eso `setReviewing(true)` mantiene `POLL_MS` en vez de `IDLE_POLL_MS` sin fin. Lo mismo pasa con la búsqueda o con un change borrado. Con «Todos», un change que pasa a la página 2 por llegar otros nuevos tampoco vuelve a actualizarse. Lo he comprobado leyendo `mergeUnique` (frontend/src/utils/pagination.ts: conserva `existing` e ignora los ids repetidos de `incoming`) y `useAsync`, que solo sustituye `data`. Arreglo: de `previous`, quedarse solo con los items que están por debajo del último de `base`, que son los que de verdad se han desplazado. Por ejemplo, `previous.filter(c => !baseIds.has(c.id) && c.createdAt < base.items.at(-1)?.createdAt)`, si el orden es por fecha descendente. Otra opción es no usar `previous` cuando `state !== 'all'` o `q` no está vacío. Los items de páginas extra que hayan quedado viejos se pueden descartar o volver a pedir al cambiar de estado."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 44,
+          "message": "`stateCounts` vuelve a escribir a mano los grupos de estados (`pending`/`running` y `failed`/`partial_failed`). Esa lógica ya existe en `isWaiting` (utils/reviewStatus.ts) y en el mapa `STATUSES` de `utils/channelQuery.ts`, que usa el filtro. Si se añade un estado al tipo `ReviewAggregate`, los contadores y el filtro pueden dejar de coincidir. Arreglo: usar `isWaiting(c.reviewStatus)` y `statusesFor('failed')?.includes(c.reviewStatus)` (o equivalente) en lugar de las comparaciones literales."
+        }
+      ],
+      "duration_ms": 40545,
+      "error": null,
+      "created_at": "2026-10-25T11:28:51.276048+00:00"
+    }
+  ]
+}
