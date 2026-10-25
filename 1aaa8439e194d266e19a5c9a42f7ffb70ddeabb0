@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "1aaa8439e194d266e19a5c9a42f7ffb70ddeabb0",
+  "kind": "commit",
+  "title": "style(frontend): detalle a dos columnas con pestañas Reviews/Hallazgos/Diff y tarjeta de resumen",
+  "run": 1,
+  "written_at": "2026-10-25T12:02:29.241953+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 8,
+      "summary": "El cambio implementa la distribución y las pestañas anunciadas sin errores funcionales demostrables en el diff. La revisión queda limitada al diff porque no pude acceder al contexto del repositorio; falta cobertura añadida para la nueva interacción por teclado.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ui/Tabs.tsx",
+          "line": 22,
+          "message": "El diff introduce navegación por teclado y gestión del foco sin añadir pruebas que protejan ese comportamiento. Visto solo en el diff: onKeyDown calcula la siguiente pestaña, cambia la selección y mueve el foco mediante una consulta al DOM. Añade pruebas con un componente controlado que comprueben ArrowLeft/ArrowRight, el salto circular entre extremos, Home/End y que el foco, aria-selected y el panel visible correspondan a la pestaña elegida."
+        }
+      ],
+      "duration_ms": 33088,
+      "error": null,
+      "created_at": "2026-10-25T12:02:25.046200+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "Reorganiza la página de detalle en dos columnas: pestañas Reviews/Hallazgos/Diff y una tarjeta de resumen con veredicto, estado por agente y reintento. Lo he contrastado con el repositorio: `pendingAgents`, los `data-tone` de FindingCard y FindingsPanel, y las clases `.crumbs` y `.card-live` que se borran (no tienen otros usos). No he encontrado errores funcionales ni de seguridad. Todo se renderiza como texto, sin HTML crudo. El componente `Tabs` maneja bien el índice y el foco con el teclado. Lo que encuentro son detalles: el diff se analiza dos veces, `aria-controls` apunta a paneles que no están montados, hay una diferencia entre el orden visual y el del DOM en móvil, faltan tests de la lógica nueva (aunque el frontend no tiene ninguno) y el tipo `style` del commit no corresponde al cambio. Ninguno es bloqueante.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/ChangeDetailPage.tsx",
+          "line": 115,
+          "message": "El diff se analiza dos veces. `ChangeDetail` llama a `useParsedDiff(change.diff)` solo para obtener `files.length`, y `DiffView` vuelve a llamar a `useParsedDiff(diff)` con un `useMemo` propio (DiffView.tsx:42). Al abrir la pestaña Diff, `parseDiff`, `diffFiles` y el resto se ejecutan otra vez sobre el mismo texto, y con los diffs grandes es el cálculo más caro de la página. Arreglo: calcular el resultado una sola vez en la página y pasarlo a `DiffView` (por ejemplo `<DiffView parsed={parsed} truncated={...} />`), o dejar que `DiffView` acepte el resultado ya calculado. Así `useParsedDiff` tampoco tendría que exportarse desde un fichero de componente."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ui/Tabs.tsx",
+          "line": 54,
+          "message": "`aria-controls` de cada pestaña apunta a `${idPrefix}-panel-${value}`. Sin embargo, la página solo monta el `TabPanel` activo (`{tab === \"reviews\" && <TabPanel …>}`, ChangeDetailPage.tsx), así que las pestañas inactivas referencian ids que no existen en el DOM, y algunas herramientas de accesibilidad (axe, por ejemplo) lo marcan como referencia rota. Arreglo: poner `aria-controls` solo en la pestaña seleccionada (`aria-controls={selected ? panelId : undefined}`), o montar todos los paneles y ocultar los inactivos con `hidden`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/detail.css",
+          "line": 48,
+          "message": "En móvil, `.detail-side { order: -1 }` muestra el resumen (que incluye el botón de reintento) antes que las pestañas, pero en el DOM el `<aside>` va después de `<section>`. Con teclado o lector de pantalla se recorren primero las pestañas y luego el resumen, al revés de lo que se ve, y WCAG 1.3.2/2.4.3 pide que ambos órdenes coincidan. Arreglo: poner el `<aside>` antes del `<section>` en el JSX y, en escritorio, colocarlo en la segunda columna con `grid-column`/`order`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ui/Tabs.tsx",
+          "line": 22,
+          "message": "Hay lógica nueva sin tests: la navegación con teclado de `Tabs` (flechas con salto circular, Inicio y Fin), la combinación de `reviews` y `pending` en `ChangeSummary` (filas ordenadas, «revisando…» y el caso `pending === null`) y `countFindings`. He comprobado que el frontend no tiene ningún fichero de test (`*.test`/`*.spec`), así que no rompe ninguna convención y no penalizo la nota. Si se añaden tests, conviene empezar por `Tabs` (ArrowLeft desde la primera pestaña selecciona la última) y por `ChangeSummary` con `pending` en `null`, `[]` y con agentes."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ChangeSummary.tsx",
+          "line": 1,
+          "message": "El tipo del commit no corresponde al cambio. Se declara como `style(frontend)`, pero añade componentes nuevos (`Tabs`, `TabPanel`, `ChangeSummary`), cambia lo que se ve (el reintento pasa a la barra lateral, la cabecera muestra la meta aunque no haya `reviewStatus` y aparece un estado vacío en Hallazgos) y mete un ajuste de `channel.css` para `.segmented` en móvil que no tiene que ver con el detalle. En Conventional Commits, `style` es solo formato. Arreglo: usar `feat(frontend)` o `refactor(frontend)` y llevar el cambio de `channel.css` a su propio commit."
+        }
+      ],
+      "duration_ms": 37247,
+      "error": null,
+      "created_at": "2026-10-25T12:02:29.197054+00:00"
+    }
+  ]
+}
