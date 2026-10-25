@@ -56,7 +56,9 @@ function StatsTable({ stats }: { stats: AgentStat[] }) {
               >
                 {c.label}
                 {sort?.key === c.key && (
-                  <span aria-hidden="true">{sort.direction === "ascending" ? "↑" : "↓"}</span>
+                  <span className="table-sort-arrow" aria-hidden="true">
+                    {sort.direction === "ascending" ? "↑" : "↓"}
+                  </span>
                 )}
               </button>
             </th>

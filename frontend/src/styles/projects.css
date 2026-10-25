@@ -2,69 +2,90 @@
 .project-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .project-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   width: 100%;
-  min-height: 120px;
+  min-height: 140px;
   padding: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
   color: var(--fg-primary);
   text-align: left;
-  text-decoration: none;
   transition: background-color var(--transition), border-color var(--transition);
 }
 
 .project-card:hover {
-  background: var(--bg-hover);
-  border-color: var(--fg-primary);
+  border-color: var(--fg-dim);
+}
+
+.project-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .project-name {
   font-family: var(--font-mono);
   font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  color: var(--fg-primary);
+  text-decoration: none;
   overflow-wrap: anywhere;
 }
 
-.project-name::before {
-  content: "> ";
-  color: var(--fg-muted);
+/* El nombre es el enlace principal y cubre la tarjeta; las acciones quedan por encima. */
+.project-name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.project-card:hover .project-name {
+  color: var(--fg-accent);
 }
 
 .project-path {
   font-family: var(--font-mono);
-  font-size: var(--text-label);
-  color: var(--fg-muted);
+  font-size: var(--text-meta);
+  color: var(--fg-dim);
   overflow-wrap: anywhere;
+}
+
+.project-card-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
 }
 
 .project-add {
   align-items: center;
   justify-content: center;
+  flex-direction: row;
+  gap: var(--space-2);
   border-style: dashed;
   background: transparent;
-  font-family: var(--font-mono);
-}
-
-.nav-action {
-  width: 100%;
-  background: transparent;
   color: var(--fg-muted);
-  text-align: left;
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
 }
 
-.nav-action:hover {
+.project-add:hover {
   color: var(--fg-primary);
+  border-color: var(--fg-dim);
 }
 
 @media (min-width: 480px) {
   .project-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
