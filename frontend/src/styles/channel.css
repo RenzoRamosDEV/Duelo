@@ -7,7 +7,6 @@
 
 .search-box {
   position: relative;
-  flex: 1 1 280px;
 }
 
 .search-box .input {
@@ -201,6 +200,10 @@
   .toolbar {
     flex-direction: row;
     align-items: center;
+  }
+
+  .search-box {
+    flex: 1 1 280px;
   }
 
   .change {
