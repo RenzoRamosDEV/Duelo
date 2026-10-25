@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "6d5d773b91f19afb79dc24eb4f21602abba55f04",
+  "kind": "commit",
+  "title": "style(frontend): ajustes con filas etiqueta/control, interruptor de efectos y diálogo de alta",
+  "run": 1,
+  "written_at": "2026-10-25T12:05:24.159398+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: el interruptor conserva el control nativo, la etiqueta, la descripción y el foco visible. No se observan errores demostrables. La revisión se limita al diff porque no fue posible acceder al contexto del repositorio.",
+      "findings": [],
+      "duration_ms": 16659,
+      "error": null,
+      "created_at": "2026-10-25T12:05:12.780745+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 9,
+      "summary": "Cambio visual pequeño y correcto. Todas las variables CSS nuevas existen en tokens.css (`--tracking-label`, `--weight-semibold`, `--control-h-sm`, `--ok-bg`, `--focus-ring`, `--focus-offset`, `--fg-dim`, `--transition`), y `variant=\"primary\"` es una variante válida de `ui/Button`. El interruptor se monta sobre un checkbox nativo que conserva su etiqueta, `aria-describedby` y un foco visible en la pista, así que la accesibilidad no empeora. Ningún test busca el checkbox de efectos por rol, de modo que cambiar a `role=\"switch\"` no rompe nada. Lo que encontré es menor: el título promete un diálogo de alta que el diff no toca, `aria-checked` sobra en un input nativo y el input oculto no tiene un ancestro posicionado.",
+      "findings": [
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/SettingsPage.tsx",
+          "line": 81,
+          "message": "`aria-checked={enabled}` sobra en un `<input type=\"checkbox\" role=\"switch\">`. El estado ya lo da el `checked` nativo, y la especificación ARIA in HTML desaconseja poner `aria-checked` en checkboxes nativos porque puede desincronizarse. Arreglo: borrar la línea `aria-checked={enabled}`. El lector de pantalla seguirá anunciando el interruptor como «activado/desactivado» gracias a `role=\"switch\"` y `checked`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/settings.css",
+          "line": 42,
+          "message": "`.switch input` usa `position: absolute`, pero `.switch` no tiene `position: relative`. El input oculto se coloca respecto al primer ancestro posicionado (o al bloque inicial), no junto al control. Con opacidad 0 y 1 px no se ve, pero al recibir el foco el navegador puede hacer scroll hacia esa posición. Arreglo: añadir `position: relative;` a `.switch` (y, si se quiere el patrón clásico de ocultación accesible, `clip: rect(0 0 0 0); overflow: hidden;`)."
+        },
+        {
+          "severity": "nit",
+          "file": "N/A",
+          "line": 0,
+          "message": "El título del commit dice «ajustes con filas etiqueta/control, interruptor de efectos y diálogo de alta», pero el diff no toca ningún diálogo de alta (ni AddProjectDialog ni sus estilos). Solo cambia AgentPicker, SettingsPage y settings.css. Arreglo: corregir el mensaje para que describa el diff, o incluir aquí los cambios del diálogo si se quedaron fuera por error."
+        }
+      ],
+      "duration_ms": 28004,
+      "error": null,
+      "created_at": "2026-10-25T12:05:24.114395+00:00"
+    }
+  ]
+}
