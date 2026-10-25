@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "29b40de232502d7a71b879b252fb1b2807eedb2b",
+  "kind": "commit",
+  "title": "fix(frontend): no inventar contadores de otros estados con un filtro activo",
+  "run": 1,
+  "written_at": "2026-10-25T12:04:24.405036+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "El diff corrige los contadores y la alerta de los chips ajenos al filtro de estado activo, preservando los contadores cuando se muestran todos los estados. No observo defectos demostrables. Revisión limitada al diff: no pude contrastar consumidores ni pruebas del repositorio.",
+      "findings": [],
+      "duration_ms": 17073,
+      "error": null,
+      "created_at": "2026-10-25T12:03:44.288101+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "El arreglo es correcto y hace lo que promete el título. `useChannel` ya recibe `state: stateFilter`, así que cuando hay un filtro de estado activo los `items` llegan filtrados por el servidor. Antes, los chips de los demás estados mostraban 0 (o, en «Todos», el total ya filtrado), un número que no es real. Ahora solo lleva número el chip activo, o todos cuando no hay filtro de estado. El punto rojo de fallos sigue la misma regla. Lo he comprobado en `Segmented.tsx:33`: el componente ya oculta el contador cuando `count` es `undefined`, así que no hace falta tocar nada más. El filtro de tipo (PR/commit) y la búsqueda no ocultan contadores, y eso es coherente: los números que se muestran siguen siendo ciertos dentro del subconjunto cargado. Solo queda un detalle: el `fix` no trae un test que reproduzca el fallo. El frontend aún no tiene ninguna suite de tests (no hay ficheros `*.test.ts(x)`), así que lo trato como mejora y no como bloqueante. Ya antes del cambio los contadores eran parciales cuando `hasMore` es verdadero, y el comentario lo explica («cuentan lo cargado»).",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 109,
+          "message": "Este `fix` cambia qué chips muestran número y punto de alerta, pero ningún test lo fija. He buscado y no hay ningún `*.test.ts(x)` en `frontend/src`, así que una refactorización futura podría volver a mostrar «Completados 0» con el filtro «Con fallos» activo sin que nada lo detecte. Arreglo propuesto: extraer el cálculo a una función pura, por ejemplo `stateOptionsFor(items, stateFilter)`, y probarla con Vitest en tres casos: (1) `stateFilter = \"all\"`: todas las opciones tienen `count`; (2) `stateFilter = \"failed\"`: solo `failed` tiene `count` y `alert`, el resto lleva `count === undefined`; (3) `stateFilter = \"completed\"` con elementos fallidos cargados: `alert` es false en `failed`. Otra opción es un test con Testing Library que compruebe con `getByRole('button', { name: /Completados/ })` que no aparece el número."
+        }
+      ],
+      "duration_ms": 21709,
+      "error": null,
+      "created_at": "2026-10-25T12:03:48.929291+00:00"
+    }
+  ]
+}
