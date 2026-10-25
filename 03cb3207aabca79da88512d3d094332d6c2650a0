@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "03cb3207aabca79da88512d3d094332d6c2650a0",
+  "kind": "commit",
+  "title": "docs(frontend): convenciones del rediseño, límites de campo a 3:1 y limpieza final",
+  "run": 1,
+  "written_at": "2026-10-25T12:09:21.927469+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: los ajustes de documentación, iconos y estilos no muestran defectos demostrables. La revisión queda limitada al diff proporcionado; no pude contrastar consumidores ni configuración del repositorio.",
+      "findings": [],
+      "duration_ms": 21952,
+      "error": null,
+      "created_at": "2026-10-25T12:09:05.659855+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "El cambio es pequeño y casi todo está bien. Retira el icono `undo` y la clase `.text-dim`, que ya no se usaban (lo he comprobado con grep en `frontend/src`). Añade el token `--border-strong` en `tokens.css` y lo aplica a inputs e interruptor. También mete los iconos de búsqueda y de enlace externo; los dos son decorativos y llevan `aria-hidden`. NotFound pasa a usar EmptyState con `heading=\"h1\"`, una prop que ya existe. Lo que más pesa en la nota es que la promesa del título, «límites de campo a 3:1», solo se cumple sobre el fondo de página. Sobre `--bg-elev` (cards de Ajustes y modales) el contraste calculado es de unos 2,9:1. Además, el commit se presenta como `docs`, pero cambia CSS y componentes, y mueve la cuadrícula de filas del canal de 768 a 1024 px sin decirlo. Ninguna de las dos cosas bloquea.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/styles/tokens.css",
+          "line": 24,
+          "message": "`--border-strong: #2e6e2e` da 3,1:1 sobre `--bg` (#0a0f0a), pero no llega a 3:1 sobre `--bg-elev` (#0f1a0f). Con la luminancia relativa de WCAG salen L≈0,119 para el borde y L≈0,0088 para `--bg-elev`, lo que da unos 2,9:1. Los inputs (components.css:158) y el interruptor (settings.css:54) aparecen dentro de `.card` y de los modales, que usan `--bg-elev` (components.css:214 y :502). El fondo del input (`--bg`) apenas se distingue de la card que lo rodea, así que el borde es lo único que marca el límite del campo, y ahí no cumple la 1.4.11 que cita el comentario. La tarea 5.9 dice «contraste comprobado». Arreglo local: aclarar un poco el token (por ejemplo, #327632 o algo más claro, recalculando el contraste frente a `--bg-elev`) y ajustar el comentario para que diga «≥3:1 sobre --bg y --bg-elev»."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/channel.css",
+          "line": 229,
+          "message": "Al reordenar las media queries, las reglas de `.change`, `.checks` y `.change-time` (la fila en una sola línea `status main checks time`) pasan del bloque `min-width: 768px` al de `1024px`. Entre 768 y 1023 px las filas del canal vuelven a la cuadrícula móvil de dos líneas. Puede ser intencionado (la pasada responsive), pero el título habla de «limpieza final» y no lo menciona. Lo he visto en el diff y en el fichero completo. Si es a propósito, conviene contarlo en el cuerpo del commit; si no, hay que volver a poner esas reglas en el bloque de 768 px."
+        },
+        {
+          "severity": "nit",
+          "file": "N/A",
+          "line": 0,
+          "message": "El commit es `docs(frontend)`, pero también cambia comportamiento visible: el icono de búsqueda y su padding, el icono externo en el detalle, NotFound con EmptyState, `--border-strong` en inputs e interruptor, y el punto de corte de las filas. Con Conventional Commits, la parte de código encaja en `style`/`refactor(frontend)` y la documentación (README y tasks.md) va aparte en `docs`. Así se respeta la atomicidad y el título no queda engañoso."
+        }
+      ],
+      "duration_ms": 38162,
+      "error": null,
+      "created_at": "2026-10-25T12:09:21.878599+00:00"
+    }
+  ]
+}
