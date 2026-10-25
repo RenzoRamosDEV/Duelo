@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="frontend/src/assets/brand/mark-dark-128.png">
-  <img src="frontend/src/assets/brand/mark-light-128.png" alt="Logo de Duelo" width="120">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mark-dark-128.png">
+  <img src="docs/brand/mark-light-128.png" alt="Logo de Duelo" width="120">
 </picture>
 
 # Duelo
@@ -119,7 +119,7 @@ en [`docs/flujo-duelo.html`](docs/flujo-duelo.html) (un solo archivo: ábrelo en
 | Persistencia | **PostgreSQL 16**, SQLAlchemy 2 async, Alembic | Transacciones con outbox e idempotencia por clave natural |
 | Orquestación | **Temporal** (`temporalio`) | Reintentos, latidos, compensación y reintento de reviews sin perder estado ([ADR 0001](docs/adr/0001-temporal-vs-alternativas.md)) |
 | Agentes | CLI de **Claude Code** y **Codex** | Con tu sesión, confinados a solo lectura; `FakeAgent` para tests y demo |
-| Frontend | **React 19 + TypeScript + Vite**, React Router | Canal por proyecto, detalle por commit, PWA instalable con tema claro y oscuro |
+| Frontend | **React 19 + TypeScript + Vite**, React Router | Estilo de terminal retro (verde sobre negro) con barra lateral y cajón móvil; canal por proyecto, detalle por commit, PWA instalable ([ADR 0008](docs/adr/0008-frontend-terminal-retro.md)) |
 | Tooling | `uv`, `pnpm`, `just`, Docker Compose | Un comando para levantar y otro para reproducir el CI |
 | Calidad | Ruff, mypy strict, Biome, import-linter, gitleaks, mutation testing | `just ci` reproduce en local lo que corre en GitHub Actions |
 | Especificación | **OpenSpec** | Cada cambio se describe antes de implementarse (`openspec/`) |
@@ -377,17 +377,16 @@ just dev
 | `just worker` | Worker de desarrollo (`platform` + `agents`); `AGENT_NAMES=claude,codex` usa los CLI |
 | `just test-unit` | Tests unitarios: sin Docker, sin red, segundos |
 | `just test-integration` | Postgres real (testcontainers) y Temporal de test |
-| `just test` | Toda la suite con cobertura y umbrales (97 % global, 100 % en `domain` + `application`), más los tests (Vitest) y el build del frontend |
+| `just test` | Toda la suite con cobertura y umbrales (97 % global, 100 % en `domain` + `application`), más el build del frontend |
 | `just lint` | Ruff, mypy strict, import-linter y Biome, sin tocar nada |
 | `just format` | Formatea todo el repo: Ruff (con arreglos seguros) y Biome |
 | `just typecheck` | Tipos de todo el repo: mypy strict y `tsc` |
 | `just ci` | `lint` + `typecheck` + `test` + validación del compose: lo mismo que GitHub Actions, salvo gitleaks, osv-scanner, hadolint y commitlint |
 | `just mutation` | Mutation testing sobre `domain/` y `application/`; falla por debajo del 95 % |
 | `just openapi` | Regenera el snapshot `docs/openapi.json` tras un cambio deliberado de la API, y con él los tipos del frontend |
-| `just gen-client` | Regenera solo `frontend/src/lib/api.generated.ts` (`openapi-typescript`) desde el snapshot |
+| `just gen-client` | Regenera solo `frontend/src/services/api.generated.ts` (`openapi-typescript`) desde el snapshot |
 | `just load` | Carga ligera de `POST /ingest/commit` |
 | `just backup` / `just restore f` | Copia de todas las bases del Postgres local y su restauración |
-| `pnpm test` (en `frontend/`) | Solo los tests del frontend (Vitest); `just test` ya los incluye |
 
 ---
 
@@ -411,8 +410,8 @@ Proyecto personal; estas notas mantienen la disciplina del repo entre sesiones.
 - [`docs/temporal-buenas-practicas.md`](docs/temporal-buenas-practicas.md) recoge cómo se operan
   los workers, y [`docs/postmortems/`](docs/postmortems/) los incidentes y lo aprendido.
 
-Cada push y PR corre en GitHub Actions lint y tests del backend, Biome, tests y build del
-frontend, gitleaks, validación del compose y del Dockerfile, build de la imagen, commitlint y
+Cada push y PR corre en GitHub Actions lint y tests del backend, Biome, tipos y build del
+frontend (sin tests de frontend, por el ADR 0008), gitleaks, validación del compose y del Dockerfile, build de la imagen, commitlint y
 osv-scanner; el mutation testing corre semanalmente. Ver [`SECURITY.md`](SECURITY.md).
 
 ---

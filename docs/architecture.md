@@ -35,7 +35,7 @@ que ya está en el spec o en `openspec/specs/`.
   `POST /ingest/commit` autenticado con token de ingesta; persiste el commit y arranca su
   review sin duplicar trabajo; `GET /ready` comprueba Postgres y Temporal (Fase 2, cierre).
   Contrato OpenAPI en [`openapi.json`](openapi.json); de él se generan los tipos del cliente
-  (`frontend/src/lib/api.generated.ts`, `just gen-client`) y el CI falla si snapshot o tipos
+  (`frontend/src/services/api.generated.ts`, `just gen-client`) y el CI falla si snapshot o tipos
   derivan.
 - `change-queries` y `pr-ingestion` (change `round1-backend-api`): lecturas sin token
   (`GET /projects`, `GET /projects/{slug}/changes` con cursor, `GET /changes/{id}`,
@@ -147,14 +147,19 @@ que ya está en el spec o en `openspec/specs/`.
   pinta con ellas los checks por agente de cada fila (la lista nunca pide el detalle) y pide el
   detalle completo solo al abrir la página del change, donde muestra solo el run actual, con los
   anteriores colapsados.
-- `project-browser` (change `front-v2-project-first-navigation`, rama `front-v2`): el frontend
-  navega en tres niveles con rutas propias: `/` elige proyecto (tarjetas, sin redirigir al
-  primero), `/p/:slug` lista los commits y PRs en filas compactas de una línea (icono de estado,
-  tipo, título, `#sha`, autor, antigüedad y un check por agente con su logo; los commits
-  revertidos o deshechos en ámbar, con su texto) y `/p/:slug/changes/:id` es la página del change
-  con todo el detalle. No hay barra lateral: la barra superior lleva la marca, un selector del
-  proyecto actual, Estadísticas, Ajustes y el tema. La fila entera es el enlace al detalle y no
-  hay hilo desplegable en la lista.
+- `project-browser` y `frontend-shell` (changes `front-v2-project-first-navigation` y
+  `frontend-terminal-retro`): el frontend navega en tres niveles con rutas propias: `/` elige
+  proyecto (tarjetas, sin redirigir al primero), `/p/:slug` lista los commits y PRs en filas
+  compactas (glifo de estado, tipo, título, `#sha`, autor, antigüedad y un check por agente con
+  su etiqueta `[claude]`/`[codex]`; los commits revertidos o deshechos en ámbar, con su texto) y
+  `/p/:slug/changes/:id` es la página del change con todo el detalle. La navegación es una barra
+  lateral a partir de 1024 px (marca, Proyectos, Estadísticas, Ajustes y la lista de proyectos
+  vigilados) y un cajón modal tras «Menú» por debajo. Estilo de terminal retro de un solo tema
+  ([ADR 0008](adr/0008-frontend-terminal-retro.md)): tokens en `styles/tokens.css`, sans-serif
+  para leer y monospace solo decorativa, sin librerías de efectos ni tests de frontend; el código
+  va por capas (`pages/`, `layouts/`, `components/`, `services/` con toda la red, `hooks/`,
+  `utils/`, `types/`, `styles/`). La fila entera es el enlace al detalle y no hay hilo
+  desplegable en la lista.
 - [`cli-review-agents`](../openspec/specs/cli-review-agents/spec.md) (changes `add-cli-agents` y
   `harden-cli-agents`): los agentes `claude` y `codex` de `AGENT_NAMES` revisan con los CLI de la
   máquina del usuario (`ClaudeCliAgent`, `CodexCliAgent` en `adapters/agents/`), **sin claves de API**:

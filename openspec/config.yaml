@@ -42,7 +42,7 @@ context: |
     `GET /changes/{id}/events` and the frontend refreshes by polling every 5 s; SSE with
     Last-Event-ID replay over LISTEN/NOTIFY is still planned (Fase 4 of the spec, pending).
   - OpenAPI/Pydantic models are the source of truth: `docs/openapi.json` is a committed snapshot
-    guarded by a contract test, and `frontend/src/lib/api.generated.ts` is generated from it
+    guarded by a contract test, and `frontend/src/services/api.generated.ts` is generated from it
     with openapi-typescript (`just openapi` regenerates both); CI fails on drift of either.
 
   Tech stack in use today (do not substitute without an ADR; the source of each decision is in
@@ -51,11 +51,12 @@ context: |
   - Workflows: Temporal (temporalio SDK), two task queues (`platform`, `agents`); the `agents`
     worker caps concurrent CLIs with AGENT_MAX_CONCURRENCY (default 2).
   - Frontend: React 19 + Vite + TypeScript strict, React Router, plain CSS with design tokens
-    (`styles/tokens.css`, one file per section) in the GitHub + Slack aesthetic
-    (docs/adr/0003, effects from libraries.dev per docs/adr/0004, agent logos per 0005, logo per
-    theme per 0006), a hand-written safe Markdown renderer (`lib/markdown.ts`) and diff table,
-    Vitest + Testing Library, Biome, pnpm, PWA via vite-plugin-pwa. No Tailwind, shadcn,
-    TanStack, react-markdown or Monaco: decided with ADR 0003 and the `round*-frontend-ui` changes.
+    (`styles/tokens.css` is the only file with raw values) in a single-theme retro-terminal
+    aesthetic (docs/adr/0008: green on black, sans-serif body, monospace only decorative, sidebar
+    on desktop and a drawer on mobile, no effect libraries, no agent logos, no theme switch), a
+    hand-written safe Markdown renderer (`utils/markdown.ts`) and diff table, Biome, pnpm, PWA via
+    vite-plugin-pwa. No frontend tests of any kind (ADR 0008; `tsc`, Biome and the build are the
+    safety net). No Tailwind, shadcn, TanStack, react-markdown or Monaco.
   - Review agents: the user's own `claude -p` and `codex exec` CLIs, read-only and confined, driven
     by their logged-in session instead of API keys (README «Revisar con Claude Code y Codex»,
     change `add-cli-agents` and `harden-cli-agents*`), plus a FakeAgent for tests and the default
@@ -76,8 +77,8 @@ context: |
   benchmark and public demo mode (Fase 6).
 
   Repo layout is a monorepo: backend/ (hexagonal src/duelo/{domain,application,adapters,
-  workflows,entrypoints}), frontend/ (feature-organized src/features/*, shared lib/ and
-  components/), Agents/<agent>/, docs/adr/ (one ADR per significant decision), docs/spec/,
+  workflows,entrypoints}), frontend/ (layered src/: pages/, layouts/, components/ with ui/,
+  services/ for all HTTP, hooks/, utils/, types/, styles/), Agents/<agent>/, docs/adr/ (one ADR per significant decision), docs/spec/,
   docs/postmortems/, scripts/ (dump_openapi, load_ingest, mutation_gate), e2e/ and benchmark/
   (placeholders for later phases). Git hooks are installed by the API itself
   (`entrypoints/hook.py`, see «Proyectos desde carpetas locales» in the README); there is no
