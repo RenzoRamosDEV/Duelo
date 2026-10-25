@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "e5fc86a4c7efba1132cecb9afeb07eea02b35395",
+  "kind": "commit",
+  "title": "docs(frontend): documentar el front terminal retro y cerrar el change",
+  "run": 1,
+  "written_at": "2026-10-25T11:38:48.081012+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: el cambio actualiza documentación, rutas de recursos y el cierre de tareas de forma coherente con la intención declarada. Revisión limitada al diff; no pude contrastar las afirmaciones sobre implementación y verificaciones con el repositorio.",
+      "findings": [],
+      "duration_ms": 12430,
+      "error": null,
+      "created_at": "2026-10-25T11:38:36.026973+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 9,
+      "summary": "Commit de documentación coherente con el estado real del repositorio. Lo he comprobado en el código: `frontend/src/services/api.generated.ts` existe, y `justfile`, `.gitattributes`, `frontend/biome.json`, `package.json` (`gen:api`) y el paso de deriva de `.github/workflows/ci.yml` ya apuntan a la ruta nueva. Existe el ADR 0008. Ni el CI ni `package.json` conservan `pnpm test` ni Vitest. Las capas que describe `frontend/README.md` (pages, layouts, `components/ui` con Segmented, Skeleton y Notice, services, hooks, utils, types, styles) y los scripts que cita existen. Los logos se movieron a `docs/brand/` porque `frontend/src/assets` ya no existe, así que el README raíz no queda con imágenes rotas. El único desajuste es menor: `tasks.md` marca como hechas tareas con nombres de ficheros que no existen. No hay problemas de seguridad ni regresiones funcionales, porque el cambio no toca código.",
+      "findings": [
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/tasks.md",
+          "line": 15,
+          "message": "Las tareas 2.1, 2.3 y 2.4 se marcan como hechas, pero nombran piezas que no existen en el repositorio. 2.1 cita `Prompt`, y no hay ningún componente con ese nombre en `frontend/src`. 2.3 cita `services/api.ts` con las 10 funciones y `services/source.tsx`, pero lo que hay es `http.ts`, `dataSource.ts` y `source.ts`. 2.4 cita `usePolling`, que no existe: el sondeo vive en `useAsync` y en `utils/polling.ts`. Lo he comprobado con Glob y Grep sobre `frontend/src`. Arreglo: cambiar el texto de esas tareas por los nombres reales, o añadir una nota de que el resultado se separó en otros ficheros. Así el checklist del change cerrado se puede usar como trazabilidad."
+        }
+      ],
+      "duration_ms": 24428,
+      "error": null,
+      "created_at": "2026-10-25T11:38:48.032541+00:00"
+    }
+  ]
+}
