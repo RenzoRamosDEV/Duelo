@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
+import { ProjectsProvider } from "../hooks/useProjects";
 import { Brand } from "./Brand";
 import { SidebarNav } from "./SidebarNav";
 
@@ -33,49 +34,51 @@ export function AppLayout() {
   };
 
   return (
-    <div className="app">
-      <a className="skip-link" href="#main">
-        Saltar al contenido
-      </a>
-      <header className="topbar">
-        <button
-          type="button"
-          className="button button-ghost"
-          aria-controls="drawer"
-          aria-haspopup="dialog"
-          onClick={openDrawer}
+    <ProjectsProvider>
+      <div className="app">
+        <a className="skip-link" href="#main">
+          Saltar al contenido
+        </a>
+        <header className="topbar">
+          <button
+            type="button"
+            className="button button-ghost"
+            aria-controls="drawer"
+            aria-haspopup="dialog"
+            onClick={openDrawer}
+          >
+            Menú
+          </button>
+          <Brand />
+        </header>
+        <aside className="sidebar">
+          <Brand />
+          <SidebarNav />
+        </aside>
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: el cierre por teclado lo da Escape, nativo del diálogo. */}
+        <dialog
+          id="drawer"
+          ref={drawer}
+          className="drawer"
+          aria-label="Menú"
+          onClick={onBackdropClick}
         >
-          Menú
-        </button>
-        <Brand />
-      </header>
-      <aside className="sidebar">
-        <Brand />
-        <SidebarNav />
-      </aside>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: el cierre por teclado lo da Escape, nativo del diálogo. */}
-      <dialog
-        id="drawer"
-        ref={drawer}
-        className="drawer"
-        aria-label="Menú"
-        onClick={onBackdropClick}
-      >
-        <div className="drawer-panel">
-          <div className="drawer-head">
-            <Brand />
-            <button type="button" className="button button-ghost" onClick={closeDrawer}>
-              Cerrar
-            </button>
+          <div className="drawer-panel">
+            <div className="drawer-head">
+              <Brand />
+              <button type="button" className="button button-ghost" onClick={closeDrawer}>
+                Cerrar
+              </button>
+            </div>
+            <SidebarNav onNavigate={closeDrawer} />
           </div>
-          <SidebarNav onNavigate={closeDrawer} />
-        </div>
-      </dialog>
-      <main id="main" className="content" tabIndex={-1}>
-        <Suspense key={pathname} fallback={<output>Cargando…</output>}>
-          <Outlet />
-        </Suspense>
-      </main>
-    </div>
+        </dialog>
+        <main id="main" className="content" tabIndex={-1}>
+          <Suspense key={pathname} fallback={<output>Cargando…</output>}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
+    </ProjectsProvider>
   );
 }
