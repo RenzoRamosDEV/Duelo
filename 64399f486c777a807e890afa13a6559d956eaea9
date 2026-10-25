@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "64399f486c777a807e890afa13a6559d956eaea9",
+  "kind": "commit",
+  "title": "feat(frontend): borrar el front anterior y crear la base terminal retro",
+  "run": 1,
+  "written_at": "2026-10-25T11:15:50.896938+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El fragmento confirma la eliminación de la puerta de tests del frontend sin una verificación equivalente. Requiere cambios por esa pérdida de cobertura automatizada. El diff está recortado antes de mostrar los componentes nuevos, por lo que no permite valorar su funcionamiento; no se ejecutaron comandos ni pruebas.",
+      "findings": [
+        {
+          "severity": "risk",
+          "file": ".github/workflows/ci.yml",
+          "line": 83,
+          "message": "Confirmado en el diff: se elimina el paso «Tests del frontend (Vitest)» y únicamente quedan la comprobación del contrato, Biome y el build. Además, package.json elimina el script test y sus dependencias. Así, una regresión de navegación o interacción que compile correctamente puede pasar este job sin ninguna prueba de comportamiento. El título justifica sustituir el frontend anterior, pero no eliminar esta comprobación para su sustituto. Conserva una infraestructura de tests, adapta las pruebas a los comportamientos del frontend nuevo y vuelve a ejecutarlas en CI; verifica que una interacción deliberadamente rota haga fallar el job."
+        }
+      ],
+      "duration_ms": 28736,
+      "error": null,
+      "created_at": "2026-10-25T11:15:41.290807+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "El commit hace lo que dice el título: borra el front anterior, quita las librerías de efectos, Vitest, Testing Library y jsdom (también del lockfile, coherente con package.json), mueve el cliente generado a `src/services/` y actualiza esa ruta en `.gitattributes`, Biome, CI y `gen:api`. También deja la base nueva: rutas con carga diferida, `AppLayout` con un cajón `<dialog>`, `parseProjectPath` y la preferencia de efectos con `useSyncExternalStore`. Quitar los tests y el paso `pnpm test` del CI no es un hallazgo: lo pide de forma explícita el ADR 0008 (líneas 37-39), y el justfile ya no llama a `pnpm test`. No hay bloqueantes. Hay un fallo menor: un efecto de `AppLayout` dice cerrar el cajón al navegar, pero no depende de la ruta. También quedan documentos que apuntan a rutas y comandos que ya no existen. Duda sin evidencia: las páginas (`ChangeDetailPage`, etc.) son de momento solo un `<h1>`. Si este commit llegase solo a main, se perdería toda la funcionalidad. Entiendo que es el primer paso del change `frontend-terminal-retro`, cuyas tareas siguen abiertas, así que no lo puntúo como regresión. El diff venía recortado y el resto lo he leído en el repositorio.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "N/A",
+          "line": 0,
+          "message": "En frontend/src/layouts/AppLayout.tsx (líneas 26-29, fuera del tramo visible del diff y leído en el repo), el efecto lleva el comentario «Navegar cierra el cajón aunque el destino sea la misma ruta», pero sus dependencias son `[closeDrawer]`, que es estable por `useCallback([])`. Por eso solo se ejecuta al montar. `pathname` ya existe en el componente y no está en las dependencias. Los enlaces de `SidebarNav` cierran el cajón con `onNavigate`, pero cualquier otra navegación lo deja abierto encima de la página nueva: el botón atrás del móvil o un enlace dentro de una página futura. Arreglo: `useEffect(() => { closeDrawer(); }, [pathname, closeDrawer]);`. Si se quiere cubrir también la navegación a la misma ruta, depender de `location.key` en lugar de `pathname`. Si no, borrar el efecto y su comentario, que hoy no dice la verdad."
+        },
+        {
+          "severity": "nit",
+          "file": "N/A",
+          "line": 0,
+          "message": "Quedan documentos que apuntan a lo que este commit ha borrado: README.md:387 (`frontend/src/lib/api.generated.ts`), README.md:390 y docs/testing.md:39 (`pnpm test`), docs/architecture.md:38 y openspec/config.yaml:45 (ruta antigua del cliente generado). Lo comprobé con grep en el repo; esos ficheros no están en el diff. La tarea 4.4 del change ya prevé actualizar docs/testing.md. Conviene hacerlo en el mismo change, cambiando a `src/services/api.generated.ts` y quitando las filas de `pnpm test`, para que nadie ejecute un script que ya no existe."
+        }
+      ],
+      "duration_ms": 38309,
+      "error": null,
+      "created_at": "2026-10-25T11:15:50.850189+00:00"
+    }
+  ]
+}
