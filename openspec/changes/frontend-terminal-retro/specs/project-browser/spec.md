@@ -3,9 +3,11 @@
 ## ADDED Requirements
 
 ### Requirement: Barra lateral con menú en móvil
-A partir de 1024 px la interfaz SHALL mostrar una barra lateral fija con la marca (enlace a `/`), los
-enlaces Proyectos, Estadísticas y Ajustes con el destino activo marcado con el prefijo «>», la lista
-de proyectos vigilados (cada uno enlaza a `/p/:slug`, el actual marcado) y «Añadir proyecto». Por
+A partir de 1024 px la interfaz SHALL mostrar una barra lateral fija de fondo elevado con la marca
+(enlace a `/`), los enlaces Proyectos, Estadísticas y Ajustes con el destino activo marcado con una
+barra izquierda y fondo (no con una caja con borde), la lista de proyectos vigilados bajo una
+etiqueta de sección (cada uno enlaza a `/p/:slug`, el actual marcado), «Añadir proyecto» y un pie
+con el estado de la conexión con la API. Por
 debajo de 1024 px la barra lateral SHALL ocultarse tras un botón «Menú» en la cabecera que la abre
 como cajón con foco atrapado, cierre con Escape y al pulsar fuera, y que SHALL cerrarse al navegar.
 Todo SHALL ser operable con teclado.

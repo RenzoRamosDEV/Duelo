@@ -31,3 +31,15 @@
 - [x] 4.3 Limpieza: cero código muerto, estilos inline, `any` y `console.log`; `pnpm lint`, `pnpm typecheck`, `pnpm build` y `pnpm gen:api` sin deriva
 - [x] 4.4 Tooling: quitar `pnpm test` del CI y de `just test`, actualizar `docs/testing.md`
 - [x] 4.5 Docs: `frontend/README.md` corto (arrancar, estructura, convenciones), README raíz, `docs/architecture.md`, `openspec/config.yaml`
+
+## 5. Rediseño visual con jerarquía (revisión 2026-10-25)
+
+- [ ] 5.1 `tokens.css` con la paleta por jerarquía, escala tipográfica, espaciado 4–32, radios 4–6 y transición 150 ms; sin verdes fuera del fichero
+- [ ] 5.2 Componentes base revisados: Button (primary/secondary/ghost/danger, 36/44 px), Input, Chip/Badge (neutral/status/count), StatusIcon sin caja, Card elevada, Table con flecha de orden, Segmented, Modal, Toast, Kbd, EmptyState, Skeleton, Loader, PageHeader
+- [ ] 5.3 Layout: sidebar de 240 px elevada con activo por barra izquierda, etiquetas de sección y pie de conexión; contenido con padding 32/16; foco visible en acento
+- [ ] 5.4 Canal: barra sticky (buscador + segmento), chips de estado con contador y punto rojo si hay fallos, filas sin caja en grid [estado][contenido][reviews][tiempo], hover con título en acento
+- [ ] 5.5 Detalle: PageHeader con chips y acciones, dos columnas en escritorio con pestañas Reviews / Hallazgos / Diff y card de resumen; una columna en móvil
+- [ ] 5.6 Proyectos (cards con acción y «+ Añadir» discontinua) y Estadísticas (fila de KPI, Table ordenable)
+- [ ] 5.7 Ajustes en cards con etiqueta a la izquierda y control a la derecha; diálogo de añadir con validación inline
+- [ ] 5.8 Estados globales (Skeleton en el mismo layout, EmptyState, Toast de resultado, modal de confirmación) y pasada responsive 375/768/1440
+- [ ] 5.9 Limpieza (sin estilos inline ni código muerto), contraste comprobado y README del front actualizado

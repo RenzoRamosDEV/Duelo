@@ -11,17 +11,28 @@ de backend.
 
 ## What Changes
 
-- **BREAKING (visual)**: se borra `frontend/src` y se reescribe con una estética de terminal retro:
-  fondo negro, verde para el texto, verde apagado para lo secundario y los bordes, verde oscuro para
-  superficies, y un único color de alerta (ámbar). Tipografía sans-serif legible para todo el texto
-  de lectura; monospace solo en títulos, prompts «$», badges y códigos. Contraste AA en todo el texto.
+- **BREAKING (visual)**: se borra `frontend/src` y se reescribe con una estética de terminal retro
+  con jerarquía por tono: fondo casi negro (`#0a0f0a`), texto principal verde claro (`#d8ffd8`), el
+  verde fosforescente (`#33ff33`) reservado a UN acento por bloque (activo, prompt «$», hover,
+  foco), verde medio (`#7fbf7f`) para texto secundario y verde apagado (`#4f9a4f`) para terciario
+  (SHA, separadores, etiquetas de sección); superficies elevadas (`#0f1a0f`) para sidebar, cards y
+  modales; bordes discretos (`#1e4a1e`) que solo se encienden en activo/hover/foco. Tres colores
+  semánticos: ok = acento, aviso ámbar (`#ffb000`, en curso y commits deshechos), fallo rojo
+  (`#ff4d4d`) e info azul (`#5fd3ff`) para severidades menores. Sans-serif de 15–16 px para leer;
+  monospace solo en logo, prompt, SHA, ramas, chips de agente, etiquetas en mayúsculas y
+  código/diff. Contraste AA en todo el texto.
 - **BREAKING**: desaparecen el tema claro, el selector Sistema/Claro/Oscuro, los logos de Duelo por
   tema y los logos de Claude y Codex como avatar; los agentes se identifican con una etiqueta de texto
   monospace. Se eliminan las dependencias `border-beam`, `img-fx`, `metal-fx`, `liquid-gooey`,
   `thinking-orbs` y `three`.
-- Navegación: barra lateral en escritorio (marca, Proyectos, Estadísticas, Ajustes y la lista de
-  proyectos vigilados) y menú hamburguesa que abre esa misma barra en móvil. Sustituye a la barra
-  superior con selector de proyecto.
+- Navegación: barra lateral de 240 px en escritorio (marca, Proyectos, Estadísticas, Ajustes y la
+  lista de proyectos vigilados, con el activo marcado por una barra izquierda de 2 px y fondo, y un
+  pie con el estado de la conexión) y menú hamburguesa que abre esa misma barra en móvil.
+  Sustituye a la barra superior con selector de proyecto.
+- Organización visual de cada pantalla: cabecera de página común (título, subtítulo, acciones a la
+  derecha), filas del canal sin cajas (solo línea inferior, hover y tiempo a la derecha), detalle a
+  dos columnas en escritorio con pestañas Reviews / Hallazgos / Diff y una tarjeta de resumen, KPI
+  en Estadísticas, Ajustes en cards con etiqueta a la izquierda y control a la derecha.
 - Responsive obligatorio (mobile first, breakpoints 480/768/1024/1280): las tablas pasan a tarjetas o a
   scroll horizontal controlado en móvil, formularios a una columna, controles de 44 px de alto mínimo.
 - Mismas rutas (`/`, `/p/<slug>`, `/p/<slug>/changes/<id>`, `/stats`, `/settings`, 404), mismas

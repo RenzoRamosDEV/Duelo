@@ -16,9 +16,13 @@ de acceso a datos permiten rehacer la presentación sin arrastrar cambios de bac
 
 ## Decisión
 
-- **Terminal retro, pero legible.** Un único tema: fondo `#0a0a0a`, texto `#33ff33`, secundario y
-  bordes `#1f9d1f`, superficies `#0f3b0f` y un solo color de alerta, ámbar `#ffb000`. Todo como
-  tokens CSS en `styles/tokens.css`; ningún valor de color o espaciado en los componentes.
+- **Terminal retro, pero legible, con jerarquía por tono** (revisado el 2026-10-25 tras la primera
+  versión, que usaba el mismo verde para todo). Un único tema: fondo `#0a0f0a`, superficies
+  elevadas `#0f1a0f`, texto principal `#d8ffd8`, secundario `#7fbf7f`, terciario `#4f9a4f` y el
+  verde fosforescente `#33ff33` solo como acento (un elemento por bloque). Bordes `#1e4a1e` que se
+  encienden en activo, hover y foco. Semánticos: ok = acento, aviso ámbar `#ffb000`, fallo rojo
+  `#ff4d4d`, info azul `#5fd3ff`. Todo como tokens CSS en `styles/tokens.css`; ningún valor de
+  color o espaciado en los componentes.
 - **Sans-serif para leer, monospace para decorar.** El cuerpo usa la pila del sistema
   (`Inter, system-ui, …`) a 16 px con interlineado 1,5. La monospace queda para títulos, prompts
   «$», badges, SHA, rutas y diff. Prohibidas las fuentes pixeladas y la monospace en párrafos,

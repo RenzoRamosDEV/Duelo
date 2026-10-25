@@ -3,18 +3,31 @@
 ## ADDED Requirements
 
 ### Requirement: Estética de terminal retro legible
-La interfaz SHALL usar un único tema de terminal retro definido como tokens CSS en un solo fichero:
-fondo negro, verde para el texto principal, verde apagado para texto secundario y bordes, verde
-oscuro para superficies y un único color de alerta (ámbar) para errores y fallos. El texto de
-lectura (párrafos, formularios, tablas, listas) SHALL ir en una sans-serif legible a 16 px con
-interlineado 1,5; la monospace SHALL reservarse a títulos, prompts «$», badges, SHA, rutas y código.
-Los detalles retro (cursor parpadeante en el título de página, prefijo «>» en la navegación activa,
-scanlines con opacidad inferior a 0,05) SHALL ser sutiles, SHALL poder apagarse desde Ajustes y
-SHALL desactivarse con `prefers-reduced-motion`. Nada SHALL parpadear salvo el cursor.
+La interfaz SHALL usar un único tema de terminal retro definido como tokens CSS en un solo fichero,
+con jerarquía por tono: texto principal verde claro, texto secundario verde medio, terciario verde
+apagado y un verde de acento reservado a un solo elemento por bloque (activo, prompt «$», hover,
+foco); fondo casi negro, superficies elevadas para barra lateral, cards y modales, y bordes
+discretos que solo se encienden en activo, hover o foco. Los colores semánticos SHALL ser tres:
+ok (acento), aviso (ámbar: en curso, commits deshechos, severidades medias) y fallo (rojo:
+reviews fallidas, severidades graves), más un azul para severidades menores. El texto de lectura
+SHALL ir en una sans-serif legible de 15–16 px; la monospace SHALL reservarse al logo, prompt,
+SHA, ramas, chips de agente, etiquetas en mayúsculas y código. Los detalles retro (cursor
+parpadeante solo en el logo, scanlines con opacidad inferior a 0,04) SHALL poder apagarse desde
+Ajustes y SHALL desactivarse con `prefers-reduced-motion`; las transiciones SHALL durar 150 ms o
+menos.
 
 #### Scenario: Texto de lectura
 - **WHEN** se muestra un párrafo, un formulario o una tabla
 - **THEN** su fuente es la sans-serif del cuerpo, no la monospace
+
+#### Scenario: Un acento por bloque
+- **WHEN** se muestra una fila del canal o una card
+- **THEN** como mucho un elemento va en el verde de acento (el título al pasar el cursor, el
+  estado activo o el foco) y el resto usa los verdes de jerarquía
+
+#### Scenario: Fallo y aviso distinguibles
+- **WHEN** un change tiene una review fallida y otro está en curso
+- **THEN** el fallo va en rojo y el en curso en ámbar, ambos con su glifo y su texto
 
 #### Scenario: Movimiento reducido
 - **WHEN** el usuario prefiere movimiento reducido
@@ -136,14 +149,15 @@ proyecto el agente pendiente se muestra como check en espera.
 - **THEN** se muestra una única línea «Esperando a los agentes…»
 
 ### Requirement: Reviews como mensajes
-Cada review SHALL mostrarse como un bloque con la etiqueta monospace del agente (`[claude]`,
-`[codex]`, o el nombre tal cual para otros), estado, resumen, hallazgos con una marca por severidad
-(ámbar para `critical`, `bug` y `high`; verde apagado con texto de severidad para el resto, siempre
-con la etiqueta en texto) y, como metadatos, el run, la duración y la nota.
+Cada review SHALL mostrarse como una card con la etiqueta monospace del agente (`[claude]`,
+`[codex]`, o el nombre tal cual para otros), el veredicto como chip de estado, resumen, hallazgos
+con un chip de severidad (rojo para `critical`, `bug` y `high`; ámbar para `risk` y `medium`;
+azul para `improvement`, `low` e `info`; neutro para el resto, siempre con la etiqueta en texto)
+y, como metadatos, el run, la duración y la nota.
 
 #### Scenario: Severidad con color
 - **WHEN** una review tiene hallazgos `bug`, `risk` y `nit`
-- **THEN** cada uno muestra su etiqueta «Bug», «Riesgo» y «Detalle», y solo el primero va en ámbar
+- **THEN** cada uno muestra su etiqueta «Bug», «Riesgo» y «Detalle» en rojo, ámbar y neutro
 
 #### Scenario: Agente sin respuesta
 - **WHEN** un agente esperado aún no ha entregado su review

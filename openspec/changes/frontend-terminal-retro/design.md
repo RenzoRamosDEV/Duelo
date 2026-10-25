@@ -41,11 +41,29 @@ y el hook `tsc` de pre-commit. Los ADR 0003 a 0006 fijan la estética actual y
   `line-height 1.5`; mono `ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace` solo en
   `h1`–`h3`, prompt, badges, SHA, rutas y diff. Sin descargar fuentes: la pila del sistema evita una
   dependencia de red y respeta la PWA sin conexión.
-- **Paleta**: `--bg #0a0a0a`, `--fg #33ff33`, `--fg-muted #1f9d1f`, `--surface #0f3b0f`,
-  `--alert #ffb000`. El contraste de `#1f9d1f` sobre `#0a0a0a` es 5,4:1 y sobre `#0f3b0f` 3,9:1,
-  así que el texto secundario sobre superficie usa `--fg` atenuado con opacidad calculada para
-  mantener 4,5:1 (token `--fg-dim`). Los estados de review y severidades se expresan con forma e
-  icono/texto además de color: ok en verde, fallo y crítico en ámbar, el resto en verde apagado.
+- **Paleta por jerarquía** (revisión del 2026-10-25): `--bg #0a0f0a`, `--bg-elev #0f1a0f`,
+  `--bg-hover #152615`; texto `--fg-primary #d8ffd8`, `--fg-muted #7fbf7f` (8,9:1 sobre el fondo),
+  `--fg-dim #4f9a4f` (el `#3f7a3f` pedido da 3,7:1 y no cumple AA como texto; `#4f9a4f` da 5,6:1
+  sobre el fondo y 4,6:1 sobre `--bg-hover`), `--fg-accent #33ff33` solo para un acento por bloque;
+  bordes `--border #1e4a1e` y `--border-hi` = acento en activo/hover/foco; semánticos
+  `--ok` = acento, `--warn #ffb000` (en curso, commits deshechos, severidades medias), `--err
+  #ff4d4d` (fallos, severidades graves), `--info #5fd3ff` (severidades menores). Los estados se
+  expresan con glifo y texto además de color.
+- **Escala tipográfica**: h1 22 px, h2 18 px, h3 15 px seminegrita, cuerpo 15 px, meta 13 px,
+  etiqueta 11 px en mayúsculas con espaciado. Espaciado 4/8/12/16/24/32, radios 4–6 px,
+  contenedor de 1200 px, transiciones de 150 ms como máximo.
+- **Componentes base**: Button (primary, secondary, ghost, danger; 36 px en escritorio y 44 en
+  táctil), Input, Chip/Badge (neutral, status, count), StatusIcon (✓ ● ✕ sin caja), Card, Table
+  (cabecera 11 px, hover, flecha de orden solo en la activa), Segmented, Modal, Toast, Kbd,
+  EmptyState, Skeleton, Loader y PageHeader. No se crean Select, Textarea ni Tooltip: ninguna
+  pantalla los usa y el encargo pide cero código muerto.
+- **Layout**: sidebar de 240 px con fondo elevado, activo con barra izquierda de 2 px y fondo
+  hover, secciones con etiqueta de 11 px y pie con el estado de la conexión (derivado del
+  diagnóstico ya compartido, sin peticiones nuevas) y acceso a Ajustes. Contenido con padding de
+  32 px en escritorio y 16 en móvil.
+- **Detalle a dos columnas**: en escritorio, pestañas Reviews / Hallazgos / Diff a la izquierda
+  y una tarjeta de resumen (estado por agente, duración, nota) a la derecha; una columna en móvil.
+  Es organización visual: los datos y las llamadas son los mismos.
 - **Detalles retro**: cursor parpadeante solo en el `h1` de cada página (CSS `steps`), prefijo `>`
   en los enlaces de navegación activos, bordes de 1 px, scanlines en un pseudo-elemento fijo con
   `opacity 0.04` que se apagan con la clase `no-scanlines` (interruptor en Ajustes guardado en
@@ -73,8 +91,10 @@ y el hook `tsc` de pre-commit. Los ADR 0003 a 0006 fijan la estética actual y
 - [Pérdida de un detalle funcional al reescribir] → la auditoría de pantallas y llamadas es la lista
   de verificación; cada pantalla se revisa contra ella antes de cerrarla, y el modo mock permite
   recorrer todos los estados sin backend.
-- [Contraste del verde sobre verde oscuro] → tokens derivados calculados y comprobados con una
-  fórmula WCAG en la pasada final; nunca `#1f9d1f` como texto sobre `--surface`.
+- [Contraste de los verdes apagados] → todos los pares texto/fondo se calculan con la fórmula
+  WCAG antes de cerrar; `--fg-dim` se sube a `#4f9a4f` por eso.
+- [Tarjetas de proyecto con «último change» y contadores] → el endpoint de proyectos no los trae
+  y añadirlos exigiría una petición por proyecto; quedan fuera por la regla de no tocar la API.
 - [Sin tests, regresiones silenciosas] → decisión explícita del encargo; mitigación: `tsc` strict,
   Biome, build en CI y recorrido manual en 375/768/1440 documentado en tasks.
 - [Scanlines y parpadeo molestos] → opacidad < 0,05, interruptor y `prefers-reduced-motion`.
