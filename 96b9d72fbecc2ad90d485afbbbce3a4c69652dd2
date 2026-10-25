@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "96b9d72fbecc2ad90d485afbbbce3a4c69652dd2",
+  "kind": "commit",
+  "title": "feat(frontend): estadísticas con tarjetas de resumen y tabla ordenable",
+  "run": 1,
+  "written_at": "2026-10-25T11:34:44.156400+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "El diff implementa las tarjetas y la tabla ordenable, pero no incluye pruebas para la lógica nueva. La revisión se limita al diff: sin acceso al contrato de AgentStat no puedo confirmar que total sea el peso correcto para combinar las medias de duración y nota.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/StatsPage.tsx",
+          "line": 99,
+          "message": "El diff añade agregación de medias y ordenación interactiva sin aportar tests. Visto solo en el diff; no he podido comprobar si existen pruebas previas que cubran estos comportamientos. Añade pruebas con agentes de distintos volúmenes y medias nulas, verificando los resultados visibles de las tarjetas, y una prueba que pulse las cabeceras y compruebe el orden de las filas y aria-sort en ambos sentidos. Los pesos esperados deben proceder del contrato de la API, para que la prueba detecte un denominador incorrecto en weightedMean."
+        }
+      ],
+      "duration_ms": 24897,
+      "error": null,
+      "created_at": "2026-10-25T11:34:05.377415+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 5,
+      "summary": "La página de estadísticas está bien construida. Carga los datos con AsyncBoundary, muestra un mensaje cuando no hay reviews, ordena con aria-sort y botones reales, y las barras se ocultan a los lectores de pantalla. stats.css ya se importa en index.css. ratio() y sortRows ya contemplan el máximo 0 y los valores nulos. El problema que pesa en la nota está en las tarjetas «Duración media» y «Nota media». weightedMean pondera la media de cada agente por `total`. Pero el backend calcula esas medias con SQL AVG (review_repository.py:116-117), que solo cuenta las filas con valor. Las reviews fallidas o pendientes sin nota también pesan, así que la cifra global sale mal en cuanto los agentes tienen proporciones distintas de reviews con nota o duración. El repositorio no tiene tests de frontend, así que la falta de tests en este cambio sigue la práctica actual y no la penalizo más allá de una mejora. Duda sin evidencia suficiente: no he comprobado si `duration_ms` también se rellena en las reviews fallidas. De eso depende cuánto se desvía la duración media.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/pages/StatsPage.tsx",
+          "line": 96,
+          "message": "weightedMean pondera cada media por `s.total` (línea 103: `sum += value * s.total`). El backend calcula `avg_score` y `avg_duration_ms` con `func.avg(...)` (backend/src/duelo/adapters/persistence/review_repository.py:116-117), y AVG descarta los NULL. El fake de los tests del backend hace lo mismo: solo promedia las filas con valor. Por tanto el peso correcto es cuántas reviews tienen valor, no el total. Ejemplo que lo reproduce: el agente A tiene total=10, 1 completada con nota 2 y 9 fallidas sin nota; el agente B tiene total=10 y 10 completadas con nota 8. La nota media real es (2 + 80) / 11 ≈ 7,5, pero la tarjeta muestra (20 + 80) / 20 = 5. Lo he comprobado leyendo la consulta SQL y el fake. Arreglo recomendado: que el backend devuelva el agregado global o el número de filas con valor por agente (p. ej. `scored_count` y `timed_count`), y ponderar por ese número. Si solo las reviews completadas reciben nota, una aproximación local es ponderar la nota por `s.completed`. Corrige también el docstring, que ahora dice «ponderada por cuántas reviews tiene cada uno»."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/pages/StatsPage.tsx",
+          "line": 96,
+          "message": "weightedMean y la suma de totales en SummaryCards son lógica pura, nueva y sin tests. El fallo anterior lo habría detectado un test unitario con agentes que tienen distinta proporción de reviews sin nota. El repositorio todavía no tiene tests de frontend (no hay ningún `*.test.ts*` en frontend/src). Propuesta: mover weightedMean a `utils/` y cubrirla con casos de lista vacía, todos los valores null, un solo agente y agentes con pesos distintos. Si se añade un runner, conviene también un test de StatsPage que compruebe el orden al pulsar las cabeceras (aria-sort ascendente y descendente)."
+        }
+      ],
+      "duration_ms": 29616,
+      "error": null,
+      "created_at": "2026-10-25T11:34:10.090231+00:00"
+    }
+  ]
+}
