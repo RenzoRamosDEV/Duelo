@@ -60,6 +60,10 @@
   text-align: left;
 }
 
+.nav-action:hover {
+  color: var(--color-fg);
+}
+
 @media (min-width: 480px) {
   .project-grid {
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

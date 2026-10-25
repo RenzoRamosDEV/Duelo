@@ -373,6 +373,10 @@
   color: var(--text-secondary);
 }
 
+.diff-row.header[data-file] {
+  --text-secondary: var(--color-fg-dim);
+}
+
 .diff-row.header[data-file] td {
   padding-top: var(--space-2);
   padding-bottom: var(--space-2);
@@ -380,10 +384,6 @@
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-fg);
-}
-
-.diff-row.header[data-file] .code strong {
-  --text-secondary: var(--color-fg-dim);
 }
 
 .diff-row.header:first-child td {

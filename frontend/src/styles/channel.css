@@ -75,15 +75,14 @@
   border-bottom: 0;
 }
 
-.change:hover {
-  background: var(--color-surface);
-}
-
+.change:hover,
 .change:focus-within {
+  --text-secondary: var(--color-fg-dim);
   background: var(--color-surface);
 }
 
 .change[data-undone] {
+  --text-secondary: var(--color-fg-dim);
   border-left-color: var(--color-alert);
   background: var(--color-alert-bg);
 }
