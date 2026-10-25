@@ -1,0 +1,78 @@
+/* Ajustes: filas de ajuste y proyectos vigilados. */
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.setting:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.setting:first-child {
+  padding-top: 0;
+}
+
+.setting > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-token {
+  max-width: 480px;
+}
+
+.project-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+.project-settings-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.agent-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.agent-picker legend {
+  padding: 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+  .setting {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .project-settings-head {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}

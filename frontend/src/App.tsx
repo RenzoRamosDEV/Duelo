@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { Route, Routes, useParams } from "react-router";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { AppLayout } from "./layouts/AppLayout";
 import { parseProjectPath } from "./utils/paths";
 
@@ -24,14 +25,17 @@ function ProjectRoute() {
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<ProjectsPage />} />
-        <Route path="p/*" element={<ProjectRoute />} />
-        <Route path="stats" element={<StatsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<ProjectsPage />} />
+          <Route path="p/*" element={<ProjectRoute />} />
+          <Route path="stats" element={<StatsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+      {import.meta.env.PROD && <UpdatePrompt />}
+    </>
   );
 }
