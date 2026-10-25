@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "a34b05ccc62b191be6b848eb79efc380cb350a2d",
+  "kind": "commit",
+  "title": "docs(frontend): recoger el rediseño visual con jerarquía en el change y el ADR 0008",
+  "run": 1,
+  "written_at": "2026-10-25T11:47:50.082590+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 9,
+      "summary": "El cambio documenta el rediseño y deja explícitas las tareas pendientes, sin modificar código ejecutable. Queda una contradicción entre el diseño y la especificación sobre dónde debe parpadear el cursor.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "openspec/changes/frontend-terminal-retro/specs/frontend-shell/spec.md",
+          "line": 15,
+          "message": "La especificación exige el cursor parpadeante «solo en el logo», pero design.md conserva en «Detalles retro» que aparece «solo en el h1 de cada página». Confirmado leyendo ambos fragmentos del diff: implementar cualquiera de las dos instrucciones incumple la otra. Unifica la ubicación en ambos documentos para que la implementación y su verificación tengan un criterio único."
+        }
+      ],
+      "duration_ms": 25330,
+      "error": null,
+      "created_at": "2026-10-25T11:47:37.824110+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "Cambio solo de documentación: recoge la paleta por jerarquía en el ADR 0008, el design, la proposal, las specs y una sección 5 de tareas pendientes. Recalculé con la fórmula WCAG los contrastes que se citan (#7fbf7f 8,9:1, #4f9a4f 5,6:1 sobre el fondo y 4,6:1 sobre --bg-hover, #3f7a3f 3,7:1) y son correctos. Lo que más pesa es que la revisión es parcial: la spec normativa cambia el cursor (ahora solo en el logo), la opacidad de las scanlines (ahora por debajo de 0,04), el marcador de navegación activa (ahora una barra izquierda) y el tamaño del cuerpo (ahora 15 px), pero el resto del ADR y del design, sin tocar, sigue diciendo lo contrario. Con eso quedan dos fuentes de verdad contradictorias para la implementación de la sección 5. No es bloqueante, pero conviene alinearlo antes de implementar.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "openspec/changes/frontend-terminal-retro/design.md",
+          "line": 67,
+          "message": "Los detalles retro del design contradicen la spec revisada. Lo comprobé leyendo design.md:67-69: dice «cursor parpadeante solo en el `h1` de cada página», «prefijo `>` en los enlaces de navegación activos» y «scanlines con `opacity 0.04`». En cambio, specs/frontend-shell/spec.md:14-15 dice «cursor parpadeante solo en el logo» y «scanlines con opacidad inferior a 0,04». Además, 0.04 no cumple «inferior a 0,04». specs/project-browser/spec.md sustituye el «>» por una barra izquierda con fondo. Arreglo: reescribir la viñeta «Detalles retro» del design para que diga cursor solo en el logo, activo con barra izquierda de 2 px y una opacidad que cumpla la spec (por ejemplo 0.03, o bien cambiar la spec a «como máximo 0,04»). Hay que alinear también la línea de riesgos que dice «opacidad < 0,05»."
+        },
+        {
+          "severity": "improvement",
+          "file": "docs/adr/0008-frontend-terminal-retro.md",
+          "line": 19,
+          "message": "El ADR solo revisa la viñeta de la paleta. Las viñetas siguientes, que no cambian, contradicen ahora la spec. Lo comprobé leyendo el fichero completo: en la línea 27 el cuerpo va «a 16 px», pero el design.md:52 y la spec dicen 15 px o 15–16 px. En las líneas 27-28 la monospace es «para títulos», pero la spec la limita a logo, prompt, SHA, ramas, chips y etiquetas. En las líneas 30-31 aparecen el «cursor parpadeante solo en el título de página», el «prefijo «>» en la navegación activa» y la «opacidad menor de 0,05», que la spec cambia a logo, barra izquierda y menos de 0,04. Arreglo: actualizar esas dos viñetas en este mismo commit con la nota de revisión del 2026-10-25, igual que se hizo con la paleta."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/design.md",
+          "line": 52,
+          "message": "El design se contradice sobre el tamaño del cuerpo. La línea 40, que no cambia, dice «a 16 px» y la nueva línea 52 dice «cuerpo 15 px». La spec admite 15–16 px. Arreglo: dejar una sola cifra (15 px si es la decisión nueva) en la viñeta de Tipografía."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/specs/frontend-shell/spec.md",
+          "line": 10,
+          "message": "«Los colores semánticos SHALL ser tres: ok, aviso y fallo, más un azul» enumera en realidad cuatro, y la proposal también habla de «tres colores semánticos» y lista cuatro (ok, aviso, fallo, info). Arreglo: decir «cuatro: ok, aviso, fallo e info» en la spec y en la proposal para que el requisito no sea ambiguo."
+        },
+        {
+          "severity": "nit",
+          "file": "openspec/changes/frontend-terminal-retro/tasks.md",
+          "line": 35,
+          "message": "La tarea 1.4 (marcada como hecha, línea 8) sigue fijando `theme_color #0a0a0a` en index.html, pero el fondo pasa a `#0a0f0a`. La sección 5 nueva no incluye actualizar el theme_color ni el manifest de la PWA. Arreglo: añadir a la 5.1 «actualizar theme_color de index.html y del manifest a #0a0f0a»."
+        }
+      ],
+      "duration_ms": 37523,
+      "error": null,
+      "created_at": "2026-10-25T11:47:50.024468+00:00"
+    }
+  ]
+}
