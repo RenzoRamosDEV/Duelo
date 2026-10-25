@@ -102,18 +102,19 @@ export default function ChannelPage() {
 
   const unfiltered = filter === "all" && stateFilter === "all" && search === "";
   const emptyChannel = items.length === 0 && unfiltered && !hasMore;
-  // Los chips cuentan lo cargado; un commit deshecho cuenta como un cambio normal y su estado se
-  // dice aparte en la línea de resumen («1 deshecho · 2 revertidos»).
+  // Los chips cuentan lo cargado, que ya viene filtrado por el servidor: con un filtro activo solo
+  // su propio chip puede llevar número. Un commit deshecho cuenta como un cambio normal y su
+  // estado se dice aparte en la línea de resumen («1 deshecho · 2 revertidos»).
   const counts = stateCounts(items);
-  const stateOptions = STATE_FILTERS.map((option) =>
-    option.value === "all"
-      ? { ...option, count: items.length }
-      : {
-          ...option,
-          count: counts[option.value],
-          alert: option.value === "failed" && counts.failed > 0,
-        },
-  );
+  const stateOptions = STATE_FILTERS.map((option) => {
+    const count = option.value === "all" ? items.length : counts[option.value];
+    const shown = stateFilter === "all" || stateFilter === option.value;
+    return {
+      ...option,
+      count: shown ? count : undefined,
+      alert: option.value === "failed" && shown && counts.failed > 0,
+    };
+  });
   const summary = [
     hasMore ? `${items.length}+ cambios cargados` : plural(items.length, "cambio", "cambios"),
     undoneCounts(items),
