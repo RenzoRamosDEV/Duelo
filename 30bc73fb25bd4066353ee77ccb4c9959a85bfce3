@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "30bc73fb25bd4066353ee77ccb4c9959a85bfce3",
+  "kind": "commit",
+  "title": "feat(frontend): pantalla de proyectos y lista de proyectos en la barra lateral",
+  "run": 1,
+  "written_at": "2026-10-25T11:26:12.498755+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 6,
+      "summary": "No identifico errores funcionales demostrables en el diff, pero el alta de proyectos introduce ramas de negocio sin pruebas incorporadas al cambio. La revisión se limita al diff: las herramientas de lectura del repositorio no estaban disponibles.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/AddProjectDialog.tsx",
+          "line": 51,
+          "message": "Visto solo en el diff: el nuevo flujo de alta incorpora validación de ruta y token, envío asíncrono y recuperación de errores, pero el cambio no incluye pruebas que protejan esos comportamientos. Añade pruebas que verifiquen que una entrada inválida no llama a addProject, que un alta correcta entrega el proyecto a onAdded y que un 401 borra el token, muestra el error y permite reintentar. Son ramas de negocio nuevas cuya regresión quedaría sin detectar en las pruebas aportadas."
+        }
+      ],
+      "duration_ms": 18687,
+      "error": null,
+      "created_at": "2026-10-25T11:25:59.108804+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 7,
+      "summary": "El cambio está bien hecho en general. Hay un único proveedor de proyectos para la portada y la barra lateral, y la memoización del valor del contexto está razonada. El diálogo valida la ruta y el token antes de enviar, enfoca el campo que falla y bloquea el cierre mientras la petición está en vuelo (Modal respeta `dismissible`). No hay HTML crudo: rutas y nombres se pintan como texto. El defecto más relevante es que, tras añadir un proyecto, `refresh()` de `useAsync` puede no hacer nada. Pasa si la lista estaba en error o cargando, y también si había un sondeo en vuelo. En ese caso la barra lateral y la portada no muestran el proyecto nuevo, o siguen en error hasta un reintento manual o el siguiente sondeo de 60 s. Es un defecto funcional menor con un camino real. El frontend no tiene framework de tests (no hay vitest en package.json), así que la falta de pruebas es una limitación del repositorio y no de este commit. No hay bloqueantes.",
+      "findings": [
+        {
+          "severity": "bug",
+          "file": "frontend/src/hooks/useProjects.tsx",
+          "line": 45,
+          "message": "`onAdded` llama a `refresh()`, pero en `useAsync.ts:69-72` el refresco forzado se descarta en silencio en dos casos: (a) hay otro sondeo en vuelo (`inFlight`); (b) el estado mostrado no es `ready` (`if (shown.status !== \"ready\") return`). Camino real del caso (b): la carga inicial de proyectos falló y la portada muestra el error. El usuario usa «+ Añadir proyecto» de la barra lateral, que sigue disponible, y el alta va bien. Entonces `refresh()` no hace nada, y como el sondeo tampoco actúa fuera de `ready`, la lista sigue en error hasta que se pulsa Reintentar. En el caso (a), un sondeo lanzado justo antes del alta devuelve la lista vieja y el proyecto nuevo no aparece en la barra hasta el siguiente ciclo de `PROJECTS_POLL_MS` (60 s). Lo he comprobado leyendo `useAsync.ts`. Arreglo local: en `onAdded`, usar `status === \"ready\" ? refresh() : retry()`. Para el caso (a), una opción es que el `refresh(true)` de `useAsync` marque un refresco pendiente cuando hay uno en vuelo y lo relance en el `finally`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/layouts/SidebarNav.tsx",
+          "line": 42,
+          "message": "La barra lateral muestra `project.slug` y la portada (`ProjectsPage.tsx`, `<strong className=\"project-name\">{p.name}</strong>`) muestra `p.name`. Si el nombre y el slug no coinciden, el mismo proyecto aparece con dos etiquetas distintas. Si es intencionado (el slug como identificador en mono), conviene añadir `title={project.name}` o mostrar `name`, para que se reconozca igual en ambos sitios. Visto en el diff."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/layouts/SidebarNav.tsx",
+          "line": 32,
+          "message": "Mientras la lista carga o falla (`list === null`), la sección «Proyectos vigilados» solo muestra el botón de añadir, sin ningún aviso. En la portada lo cubre `AsyncBoundary`, pero en las demás páginas un fallo de la API deja la sección vacía sin explicación. Basta con una línea como `projects.status === \"error\" && <p className=\"nav-empty\">No se pudieron cargar.</p>` (o un botón que llame a `projects.retry`). Visto en el diff."
+        }
+      ],
+      "duration_ms": 32019,
+      "error": null,
+      "created_at": "2026-10-25T11:26:12.450577+00:00"
+    }
+  ]
+}
