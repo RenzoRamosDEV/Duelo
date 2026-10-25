@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "2ce29e9a532e26df183c1c61273703d312ef6831",
+  "kind": "commit",
+  "title": "style(frontend): componentes base con jerarquía (botones, chips, estado, segmentado, toast, cabecera)",
+  "run": 1,
+  "written_at": "2026-10-25T11:54:32.422219+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 8,
+      "summary": "Cambio aprobado con una observación menor: las filas pierden el glifo específico de fallo parcial. Revisión limitada al diff, ya que las herramientas de lectura no estuvieron disponibles.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ChangeRow.tsx",
+          "line": 43,
+          "message": "Visto solo en el diff: cuando reviewStatus es partial_failed y no hay undone, AGGREGATE_TONE devuelve warn y StatusIcon dibuja ●, igual que para pending y running. Sin embargo, AGGREGATE_GLYPH mantiene ✕ para partial_failed. Esto elimina la distinción visual entre un fallo parcial y una revisión en curso. Pasa también glyph={AGGREGATE_GLYPH[change.reviewStatus]} a StatusIcon y comprueba que partial_failed conserva ✕ mientras pending y running muestran ●."
+        }
+      ],
+      "duration_ms": 37084,
+      "error": null,
+      "created_at": "2026-10-25T11:54:31.898775+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "Rediseño visual de los componentes base, coherente y bien migrado: todos los tokens nuevos existen en tokens.css, no queda ningún uso de `tone=\"alert\"`, `variant=\"default\"`, `isDangerSeverity`, `StatusMark` ni `text-secondary` en el código TSX, y los estados siguen sin depender solo del color (glifo más texto oculto). No encuentro bugs funcionales ni de seguridad; el enlace externo mantiene `rel=\"noopener noreferrer\"`. Quedan detalles: CSS muerto de `.status-mark`, un borde doble en la tecla del buscador, el temporizador del Toast que no se reinicia cuando cambia el mensaje, un posible solape con el aviso de actualización y un tipo `style` que se queda corto para lo que hace el commit. El frontend no tiene infraestructura de tests, así que no pido tests como defecto. Lo que no he podido comprobar sin ejecutar: el aspecto final en pantalla.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ui/Toast.tsx",
+          "line": 15,
+          "message": "El temporizador solo depende de `onClose`. En ChangeDetailPage `onClose` es estable (`useCallback`), así que si llega un segundo `note` distinto mientras el Toast sigue visible (otro reintento antes de 6 s), el texto nuevo se cierra cuando vence el temporizador del anterior, quizá a los pocos milisegundos. Comprobado leyendo Toast.tsx y ChangeDetailPage.tsx. Arreglo: añadir `message` a las dependencias del efecto (`[onClose, message]`) para que cada mensaje tenga sus 6 s completos."
+        },
+        {
+          "severity": "improvement",
+          "file": "frontend/src/components/ui/Toast.tsx",
+          "line": 19,
+          "message": "`.toast` y `.update-prompt` (UpdatePrompt.tsx) son los dos `position: fixed` abajo a la derecha, con el mismo `--z-toast` y los mismos márgenes (components.css). Si salen a la vez, uno tapa al otro, incluido el botón de cerrar o el de actualizar. Arreglo: apilarlos en un contenedor común de avisos con `flex-direction: column` o desplazar uno de los dos."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/ChannelPage.tsx",
+          "line": 136,
+          "message": "`.search-key` (channel.css:16-27) mantiene su borde, padding y radio, y ahora envuelve a `<Kbd>`, que trae su propio borde (`.kbd` en components.css). Resultado: la tecla «/» sale con dos cajas. Arreglo: dejar en `.search-key` solo el posicionamiento (position, top, right, transform) y quitar border, padding, radius, font y color."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ChangeRow.tsx",
+          "line": 39,
+          "message": "Al borrar StatusMark.tsx se queda sin uso el CSS de `.status-mark` y `.status-mark[data-tone=…]` en frontend/src/styles/channel.css:88-110. Una búsqueda de `status-mark` en todo frontend/src solo encuentra ese CSS. Arreglo: borrar esas reglas."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/pages/ChangeDetailPage.tsx",
+          "line": 124,
+          "message": "El SHA corto aparece dos veces en la cabecera: en las migas (`aria-current=\"page\"`) y otra vez en `meta`. Además, `ProjectsPage` con la lista vacía muestra ahora dos botones primarios «Añadir proyecto» (el de la cabecera y el del EmptyState, ProjectsPage.tsx:19 y :31). Arreglo: quitar el SHA de `meta` y, en el estado vacío, mostrar solo una de las dos acciones."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/utils/reviewStatus.ts",
+          "line": 37,
+          "message": "El cambio no es solo de estilo: cambia qué tono y qué glifo corresponden a cada estado y severidad (pending/running pasan a ámbar, `severityTone` con cuatro tramos). También añade comportamiento nuevo: el Toast se cierra solo, el botón «Añadir proyecto» aparece en la cabecera y el chip PR/Commit en el detalle. Con Conventional Commits, el tipo `style` se reserva para formato sin efecto. Arreglo: usar `feat(frontend)` o separar en commits de estilo y de comportamiento."
+        }
+      ],
+      "duration_ms": 37573,
+      "error": null,
+      "created_at": "2026-10-25T11:54:32.374938+00:00"
+    }
+  ]
+}
