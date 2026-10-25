@@ -6,4 +6,4 @@
 *.ico binary
 
 # Generado por `pnpm gen:api` desde docs/openapi.json; no se edita a mano.
-frontend/src/lib/api.generated.ts linguist-generated=true
+frontend/src/services/api.generated.ts linguist-generated=true

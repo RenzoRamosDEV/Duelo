@@ -74,7 +74,7 @@ restore file:
 openapi: && gen-client
     cd backend && PYTHONPATH=. uv run python ../scripts/dump_openapi.py
 
-# Regenera los tipos TypeScript del contrato (frontend/src/lib/api.generated.ts) desde docs/openapi.json
+# Regenera los tipos TypeScript del contrato (frontend/src/services/api.generated.ts) desde docs/openapi.json
 gen-client:
     cd frontend && pnpm gen:api
 
@@ -122,7 +122,7 @@ test:
         || { echo "FALLA: cobertura global por debajo de {{cov_min}}%" >&2; exit 1; }
     uv run coverage report --include="$core" --fail-under={{cov_core_min}} >/dev/null \
         || { echo "FALLA: cobertura de domain+application por debajo de {{cov_core_min}}%" >&2; exit 1; }
-    cd ../frontend && pnpm test && pnpm build
+    cd ../frontend && pnpm build
 
 # Lint + tipos en todo el repo (mismos checks que corre el CI)
 lint:

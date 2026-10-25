@@ -1,24 +1,19 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
+import { App } from "./App";
+import { applyEffectsPreference } from "./hooks/useEffectsPreference";
 import "./index.css";
-import App from "./App.tsx";
-import { NowProvider } from "./lib/now";
-import { PollingProvider } from "./lib/polling";
-import { applyTheme } from "./lib/theme";
 
-// The inline script in index.html already set it before first paint; this keeps it in sync with
-// the system when the preference is "system".
-applyTheme();
+applyEffectsPreference();
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (!root) throw new Error("Falta el elemento #root");
+
+createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
-      <NowProvider>
-        <PollingProvider>
-          <App />
-        </PollingProvider>
-      </NowProvider>
+      <App />
     </BrowserRouter>
   </StrictMode>,
 );

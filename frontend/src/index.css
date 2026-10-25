@@ -1,16 +1,4 @@
-/* One file per section, in cascade order; `tokens.css` first so every section can use them. */
 @import "./styles/tokens.css";
 @import "./styles/base.css";
-@import "./styles/shell.css";
-@import "./styles/primitives.css";
-@import "./styles/loading.css";
-@import "./styles/channel.css";
-@import "./styles/reviews.css";
-@import "./styles/findings.css";
-@import "./styles/detail.css";
-@import "./styles/stats.css";
-@import "./styles/settings.css";
-@import "./styles/responsive.css";
 @import "./styles/effects.css";
-@import "./styles/update-prompt.css";
-@import "./styles/project-picker.css";
+@import "./styles/layout.css";

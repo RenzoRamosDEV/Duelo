@@ -2,7 +2,6 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <!-- The tab follows the system color scheme (not the app's selector): neon for dark, 3D for light. -->
     <link
       rel="icon"
       type="image/png"
@@ -20,25 +19,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Duelo</title>
-    <meta name="color-scheme" content="dark light" />
-    <!-- Browser chrome colour per system scheme; the manifest link is injected by vite-plugin-pwa at build. -->
-    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <script>
-      // Sets the theme before first paint so there is no flash of the other one.
-      (function () {
-        try {
-          var stored = localStorage.getItem("duelo-theme");
-          var theme =
-            stored === "light" || stored === "dark"
-              ? stored
-              : window.matchMedia("(prefers-color-scheme: light)").matches
-                ? "light"
-                : "dark";
-          document.documentElement.setAttribute("data-theme", theme);
-        } catch (e) {}
-      })();
-    </script>
+    <meta name="color-scheme" content="dark" />
+    <!-- El manifiesto lo inyecta vite-plugin-pwa en el build. -->
+    <meta name="theme-color" content="#0a0a0a" />
   </head>
   <body>
     <div id="root"></div>

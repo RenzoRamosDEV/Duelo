@@ -1,70 +1,37 @@
 import { lazy } from "react";
-import { Link, Route, Routes, useParams } from "react-router";
-import { EmptyState } from "./components/EmptyState";
-import { UpdatePrompt } from "./components/UpdatePrompt";
-import { HERO } from "./components/brand";
-import { ChannelPage } from "./features/channel/ChannelPage";
-import { ProjectPicker } from "./features/projects/ProjectPicker";
-import { Shell } from "./layout/Shell";
-import { parseProjectPath } from "./lib/projectPath";
+import { Route, Routes, useParams } from "react-router";
+import { AppLayout } from "./layouts/AppLayout";
+import { parseProjectPath } from "./utils/paths";
 
-// Loaded on first visit: the entry page and the channel stay in the initial bundle.
-const ChangeDetailPage = lazy(() =>
-  import("./features/review/ChangeDetailPage").then((m) => ({ default: m.ChangeDetailPage })),
-);
-const SettingsPage = lazy(() =>
-  import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
-);
-const StatsPage = lazy(() =>
-  import("./features/stats/StatsPage").then((m) => ({ default: m.StatsPage })),
-);
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
+const ChannelPage = lazy(() => import("./pages/ChannelPage"));
+const ChangeDetailPage = lazy(() => import("./pages/ChangeDetailPage"));
+const StatsPage = lazy(() => import("./pages/StatsPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
-function NotFoundPage() {
-  return (
-    <div className="page">
-      <EmptyState
-        kind="missing"
-        hero={HERO}
-        heading
-        title="No encontrado"
-        action={
-          <Link className="btn btn-primary" to="/">
-            Volver al inicio
-          </Link>
-        }
-      >
-        <p className="muted">Esta dirección no corresponde a ninguna página.</p>
-      </EmptyState>
-    </div>
-  );
-}
-
-/** `p/*`: the slug can contain "/", so the route is parsed by hand (see `lib/projectPath`). */
+/** `/p/*`: el slug lleva barras, así que la ruta se interpreta a mano. */
 function ProjectRoute() {
   const route = parseProjectPath(useParams()["*"]);
-  if (route.kind === "channel") return <ChannelPage key={route.slug} slug={route.slug} />;
   if (route.kind === "change") {
-    return <ChangeDetailPage key={route.id} slug={route.slug} id={route.id} />;
+    return <ChangeDetailPage key={route.id} />;
+  }
+  if (route.kind === "channel") {
+    return <ChannelPage key={route.slug} />;
   }
   return <NotFoundPage />;
 }
 
-function App() {
+export function App() {
   return (
-    <>
-      <Routes>
-        <Route element={<Shell />}>
-          <Route index element={<ProjectPicker />} />
-          <Route path="p/*" element={<ProjectRoute />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
-      {/* The service worker only exists in the production build; dev and tests never register it. */}
-      {import.meta.env.PROD && <UpdatePrompt />}
-    </>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route index element={<ProjectsPage />} />
+        <Route path="p/*" element={<ProjectRoute />} />
+        <Route path="stats" element={<StatsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   );
 }
-
-export default App;

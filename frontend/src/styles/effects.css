@@ -1,86 +1,58 @@
-/* ---------- Reduced motion: nothing moves ---------- */
+/*
+ * Detalles retro, siempre sutiles y apagables: cursor parpadeante y scanlines.
+ * Se desactivan con `html.no-effects` (Ajustes › Pantalla) y con prefers-reduced-motion.
+ */
+.cursor::after {
+  content: "▌";
+  display: inline-block;
+  margin-left: 0.15em;
+  color: var(--color-fg);
+  animation: blink var(--blink-duration) steps(1, end) infinite;
+}
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
+@keyframes blink {
+  50% {
+    opacity: 0;
   }
 }
 
-/* libraries.dev effects: border-beam (in progress), liquid-gooey (theme switch), metal-fx
-   (key buttons) and img-fx (empty-state hero). All decorative and off under reduced motion. */
-.beam {
-  display: block;
-}
-
-/* The glow hugs the wrapped element, so a box inside it hands its bottom margin to the wrapper. */
-.beam:has(> .box) {
-  margin-bottom: 16px;
-}
-
-.beam > .box {
-  margin-bottom: 0;
-}
-
-.theme-liquid {
-  display: inline-flex;
-  position: relative;
-}
-
-.theme-thumb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scanlines);
   pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    var(--color-bg) 2px,
+    var(--color-bg) 3px
+  );
+  opacity: var(--scanline-opacity);
 }
 
-/* With the liquid indicator the pressed segment keeps its text color but not its own fill. */
-.theme-switch[data-fluid] .segment {
-  position: relative;
-  z-index: 1;
+html.no-effects body::before {
+  display: none;
 }
 
-.theme-switch[data-fluid] .segment[aria-pressed="true"] {
-  background: transparent;
+html.no-effects .cursor::after {
+  animation: none;
 }
 
-.theme-switch[data-fluid] .segment:hover:not([aria-pressed="true"]) {
-  background: transparent;
-  color: var(--fg);
-}
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    display: none;
+  }
 
-.metal {
-  display: inline-flex;
-}
+  .cursor::after {
+    animation: none;
+  }
 
-.hero,
-.hero-img {
-  width: 240px;
-  max-width: 100%;
-  border-radius: var(--radius-lg);
-}
-
-.hero-img {
-  height: auto;
-  border: 1px solid var(--border);
-}
-
-.hero-card {
-  max-width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-subtle);
-}
-
-/* The metal ring supplies the surface (white / dark grey), so the label keeps the normal text color. */
-.btn-metal {
-  color: var(--fg);
-  font-weight: 600;
-}
-
-.btn-metal:hover:not(:disabled) {
-  color: var(--fg);
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
 }

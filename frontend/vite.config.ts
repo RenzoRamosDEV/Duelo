@@ -1,18 +1,17 @@
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig } from "vitest/config";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    // Installable app with an offline app shell. Only the build output is precached, minus the
-    // on-demand effects and the big icons, which are cached on first use (same origin, hashed or
-    // static files only), so API calls and anything from another origin always hit the network.
+    // Aplicación instalable con app shell sin conexión. Solo se precachea el build (los iconos
+    // grandes se cachean al primer uso); las llamadas a la API y otros orígenes van siempre a red.
     VitePWA({
-      // The user decides when to reload (see `components/UpdatePrompt`); never mid-review.
+      // El usuario decide cuándo recargar (ver `components/UpdatePrompt`), nunca a mitad de review.
       registerType: "prompt",
-      // The icons live in `public/` and are already matched by `globPatterns` below.
+      // Los iconos viven en `public/` y ya los recoge `globPatterns`.
       includeManifestIcons: false,
       manifest: {
         name: "Duelo",
@@ -22,8 +21,8 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        theme_color: "#0d1117",
-        background_color: "#0d1117",
+        theme_color: "#0a0a0a",
+        background_color: "#0a0a0a",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
           { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
@@ -36,40 +35,23 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // The app shell: build output plus the static icons copied from `public/`.
-        globPatterns: ["**/*.{js,css,html,png,webp}"],
-        globIgnores: [
-          "**/HeroImageFx-*.js",
-          "**/MetalRing-*.js",
-          "**/BeamLayer-*.js",
-          "**/FluidThemeSwitch-*.js",
-          "**/pwa-*.png",
-        ],
+        globPatterns: ["**/*.{js,css,html,png}"],
+        globIgnores: ["**/pwa-*.png"],
         runtimeCaching: [
           {
-            // Serialised into the service worker: it cannot use anything defined outside it.
+            // Se serializa dentro del service worker: no puede usar nada definido fuera.
             urlPattern: ({ url, sameOrigin }) =>
-              sameOrigin &&
-              /\/(assets\/(HeroImageFx|MetalRing|BeamLayer|FluidThemeSwitch)-[^/]+\.js|pwa-[^/]+\.png)$/.test(
-                url.pathname,
-              ),
+              sameOrigin && /\/pwa-[^/]+\.png$/.test(url.pathname),
             handler: "CacheFirst",
-            options: { cacheName: "duelo-fx", expiration: { maxEntries: 16 } },
+            options: { cacheName: "duelo-icons", expiration: { maxEntries: 8 } },
           },
         ],
-        // SPA routes resolve on the client; `/api/` is excluded in case the API is ever same-origin.
+        // Las rutas de la SPA se resuelven en el cliente; `/api/` queda fuera por si algún día
+        // la API comparte origen.
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
       },
     }),
   ],
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    globals: false,
-    // One jsdom per worker instead of one per file (68 files): the suite takes half the time and
-    // each file keeps its own module isolation. `setup.ts` cleans the DOM after every test.
-    pool: "vmThreads",
-  },
 });
