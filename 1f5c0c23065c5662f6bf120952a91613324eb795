@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "1f5c0c23065c5662f6bf120952a91613324eb795",
+  "kind": "commit",
+  "title": "fix(frontend): contraste del texto secundario y controles de 44 px en móvil",
+  "run": 1,
+  "written_at": "2026-10-25T11:37:23.337965+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "Sin objeciones en el diff: los ajustes de contraste y tamaño de controles son coherentes con el objetivo declarado. La revisión se limita al diff; no pude contrastar componentes, estilos completos ni pruebas del repositorio.",
+      "findings": [],
+      "duration_ms": 11693,
+      "error": null,
+      "created_at": "2026-10-25T11:36:47.883147+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "The change does what its title says. The new --color-surface-hover (#114011) keeps --color-fg-dim at about 4.5:1. I calculated this by hand: 4.51:1, right at the limit, so any further darkening of the green would break it. Rows that are hovered, focused or undone now use fg-dim (about 6.2:1 on the undone background). The diff file header now inherits fg-dim for the line numbers (.ln), which fixes contrast on the surface. --control-h-sm goes up to 44 px below 1024 px, and every control that uses it inherits the new size. I found no bugs or security issues. Two things weigh on the score. First, the commit also brings unannounced layout changes: the style for tbody th, the stats meter on mobile, and align-items in settings. Second, those mobile meters are probably misaligned inside the flex cells of the card view. There are no tests, which is reasonable for pure CSS. One doubt I could not settle without rendering: whether the segmented control, now 45 px tall in total, lines up with neighbouring 44 px buttons.",
+      "findings": [
+        {
+          "severity": "improvement",
+          "file": "frontend/src/styles/stats.css",
+          "line": 58,
+          "message": "Likely layout problem on mobile, read in the code but not rendered. In the card view, the 'failed' and 'avg duration' cells (StatsPage.tsx:79-86) are `display:flex; justify-content:space-between` (components.css:314-320), and each holds three items: the label from ::before, the value as an anonymous text item, and the .meter. With space-between, the value ends up centred and the meter pinned to the right edge, instead of the value and meter sitting together on the right. The new `display:inline-block` does nothing here, because the meter is a flex item. Fix: in the same media query, add `.table-wrap[data-variant=\"cards\"] td::before { margin-right: auto; }`. The auto margin overrides space-between and groups the value and meter on the right. Keep the meter's `margin-left: var(--space-2)`."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/styles/components.css",
+          "line": 256,
+          "message": "The commit's scope goes beyond its title ('contraste del texto secundario y controles de 44 px'). It adds a new style for `.table tbody th` and `th[scope=\"row\"]` in the card view (components.css:256-268, 310-312), the meter layout on mobile (stats.css:58-65) and `align-items:flex-start` in .setting (settings.css:5). None of these are contrast or touch-target changes. They break nothing visible, but they make the commit harder to bisect. Move them into a separate `fix(frontend): maquetación de la tabla de estadísticas en móvil` commit, or mention them in the commit body."
+        }
+      ],
+      "duration_ms": 47104,
+      "error": null,
+      "created_at": "2026-10-25T11:37:23.285561+00:00"
+    }
+  ]
+}
