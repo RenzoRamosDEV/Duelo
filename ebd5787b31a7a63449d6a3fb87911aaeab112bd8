@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "project": "RenzoRamosDEV/Duelo",
+  "sha": "ebd5787b31a7a63449d6a3fb87911aaeab112bd8",
+  "kind": "commit",
+  "title": "docs(frontend): proponer el frontend estilo terminal retro (ADR 0008)",
+  "run": 1,
+  "written_at": "2026-10-25T11:11:11.929544+00:00",
+  "reviews": [
+    {
+      "agent": "codex",
+      "status": "completed",
+      "score": 10,
+      "summary": "La propuesta documenta coherentemente la nueva estética y sus decisiones explícitas, incluida la retirada de tests. Sin defectos demostrables en el diff. No pude leer el repositorio para comprobar si la eliminación de Card.tsx deja importaciones sin resolver; esa duda requiere revisar sus consumidores.",
+      "findings": [],
+      "duration_ms": 19194,
+      "error": null,
+      "created_at": "2026-10-25T11:10:42.903324+00:00"
+    },
+    {
+      "agent": "claude",
+      "status": "completed",
+      "score": 8,
+      "summary": "El commit añade el ADR 0008, la propuesta de openspec, el diseño, los deltas de spec y las tareas del frontend estilo terminal retro, y actualiza el estado de los ADR 0003 a 0006. La documentación es coherente: rutas, sondeo, contrato DataSource, garantías del parser de Markdown y migraciones de requisitos cuadran entre proposal, design y specs. No encuentro ningún defecto bloqueante. Lo más importante: las cifras de contraste del diseño están mal calculadas, aunque la conclusión no cambia; y quitar todos los tests de frontend deja sin red un saneador de Markdown que se va a reescribir. Además, el commit es de documentación pero borra `Card.tsx`. He comprobado que nada lo importa, así que no rompe el build, pero no tiene que ver con el propósito del commit.",
+      "findings": [
+        {
+          "severity": "risk",
+          "file": "openspec/changes/frontend-terminal-retro/design.md",
+          "line": 67,
+          "message": "El diseño reescribe `utils/markdown.ts` (sin HTML, solo enlaces http(s), tope de 20 000 caracteres). Ese código renderiza texto de terceros: resúmenes y hallazgos de los agentes, que vienen de diffs no confiables. A la vez, la línea 37 de `docs/adr/0008-frontend-terminal-retro.md` elimina todos los tests de frontend. `tsc`, Biome y el build no detectan que el saneador deje pasar `javascript:` o HTML crudo. Así, una regresión aquí sería un XSS que no detecta nadie. Respeto la decisión del propietario sobre los tests de UI, pero propongo una excepción escrita en el ADR: conservar Vitest en modo node (sin jsdom ni Testing Library) solo para las utilidades puras de seguridad (`markdown`, `sanitize`, URL segura), con casos para `javascript:`, `data:`, etiquetas HTML y el tope de longitud. Si se rechaza, dejar escrito en Consequences el riesgo concreto de XSS, no solo «regresión visual»."
+        },
+        {
+          "severity": "improvement",
+          "file": "openspec/changes/frontend-terminal-retro/design.md",
+          "line": 45,
+          "message": "Las cifras de contraste no coinciden con la fórmula WCAG. Las he calculado a mano con la luminancia relativa: `#1f9d1f` sobre `#0a0a0a` da unos 5,0:1, no 5,4:1, y sobre `#0f3b0f` da unos 3,2:1, no 3,9:1. La conclusión sigue siendo válida (≥4,5 sobre el fondo; <4,5 sobre la superficie, de ahí `--fg-dim`). Pero el margen sobre el fondo es menor de lo que dice el texto, y el diseño luego usa esas cifras como referencia para la pasada de contraste. Corregir las cifras, o quitarlas y remitir a la comprobación de la tarea 4.1."
+        },
+        {
+          "severity": "nit",
+          "file": "frontend/src/components/ui/Card.tsx",
+          "line": 0,
+          "message": "El commit es `docs(frontend)` pero borra `frontend/src/components/ui/Card.tsx`. He buscado `Card` en `frontend/src` y nadie lo importa, así que no rompe el build. Aun así es una limpieza de código que no sale en el título y mezcla propósitos. Lo mejor es sacarla a su propio commit `refactor(frontend): quitar Card sin uso`, o dejarla para el borrado de `frontend/src` previsto en la tarea 1.2."
+        },
+        {
+          "severity": "nit",
+          "file": "docs/adr/0008-frontend-terminal-retro.md",
+          "line": 3,
+          "message": "El título del commit dice «proponer», pero el ADR ya está en `Estado: Aceptada` y los ADR 0003 y 0004 ya figuran como sustituidos. Mientras tanto, el código sigue con la estética anterior y la tarea 1.1 de `tasks.md`, que este mismo commit cumple, sigue sin marcar. Hay que elegir una de dos: dejar el ADR como «Propuesta» hasta mergear la implementación, o marcar la 1.1 como hecha y cambiar el título a «aceptar»."
+        }
+      ],
+      "duration_ms": 42107,
+      "error": null,
+      "created_at": "2026-10-25T11:11:05.831386+00:00"
+    }
+  ]
+}
