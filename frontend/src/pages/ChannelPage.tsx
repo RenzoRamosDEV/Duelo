@@ -41,22 +41,15 @@ const STATE_FILTERS: { value: StateFilter; label: string }[] = [
 
 const SEARCH_DELAY_MS = 300;
 
-/** «3 en curso · 1 con fallos · 12 completados» de los changes cargados. */
-function stateCounts(items: readonly Change[]): string {
-  const running = items.filter(
-    (c) => c.reviewStatus === "pending" || c.reviewStatus === "running",
-  ).length;
-  const failed = items.filter(
-    (c) => c.reviewStatus === "failed" || c.reviewStatus === "partial_failed",
-  ).length;
-  const done = items.filter((c) => c.reviewStatus === "completed").length;
-  return [
-    running > 0 && `${running} en curso`,
-    failed > 0 && `${failed} con fallos`,
-    done > 0 && `${done} completados`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+/** Cuántos de los changes cargados hay en cada estado, para los chips de filtro. */
+function stateCounts(items: readonly Change[]): Record<Exclude<StateFilter, "all">, number> {
+  return {
+    running: items.filter((c) => c.reviewStatus === "pending" || c.reviewStatus === "running")
+      .length,
+    failed: items.filter((c) => c.reviewStatus === "failed" || c.reviewStatus === "partial_failed")
+      .length,
+    completed: items.filter((c) => c.reviewStatus === "completed").length,
+  };
 }
 
 function EmptyChannel({ slug, agents }: { slug: string; agents: string }) {
@@ -109,9 +102,24 @@ export default function ChannelPage() {
 
   const unfiltered = filter === "all" && stateFilter === "all" && search === "";
   const emptyChannel = items.length === 0 && unfiltered && !hasMore;
-  // Los contadores de review siguen contando un commit deshecho como un cambio normal; su estado
-  // se dice aparte («1 deshecho · 2 revertidos»).
-  const counts = [stateCounts(items), undoneCounts(items)].filter(Boolean).join(" · ");
+  // Los chips cuentan lo cargado; un commit deshecho cuenta como un cambio normal y su estado se
+  // dice aparte en la línea de resumen («1 deshecho · 2 revertidos»).
+  const counts = stateCounts(items);
+  const stateOptions = STATE_FILTERS.map((option) =>
+    option.value === "all"
+      ? { ...option, count: items.length }
+      : {
+          ...option,
+          count: counts[option.value],
+          alert: option.value === "failed" && counts.failed > 0,
+        },
+  );
+  const summary = [
+    hasMore ? `${items.length}+ cambios cargados` : plural(items.length, "cambio", "cambios"),
+    undoneCounts(items),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const loadMoreLabel = moreState === "error" ? "Reintentar" : "Cargar más";
 
   return (
@@ -143,16 +151,11 @@ export default function ChannelPage() {
         <div className="list-head">
           <Segmented
             label="Estado de la review"
-            options={STATE_FILTERS}
+            options={stateOptions}
             value={stateFilter}
             onChange={setStateFilter}
           />
-          {items.length > 0 && (
-            <span className="list-count">
-              {hasMore ? `${items.length}+ cambios` : plural(items.length, "cambio", "cambios")}
-              {counts && ` · ${counts}`}
-            </span>
-          )}
+          {items.length > 0 && <span className="list-count">{summary}</span>}
         </div>
         <AsyncBoundary state={first} loadingLabel="Cargando cambios…" skeleton={<Skeleton />}>
           {() => (

@@ -4,13 +4,12 @@ import { type UndoneNotice, undoneNotice } from "../utils/commitState";
 import { changePath } from "../utils/paths";
 import { shortSha } from "../utils/url";
 
-/** La etiqueta en medio de una fila del canal: el titular en mayúsculas y su subtítulo. */
+/** La etiqueta de una fila del canal: el titular en mayúsculas y su subtítulo. */
 export function UndoneLabel({ notice }: { notice: UndoneNotice }) {
   return (
-    <p className="undone-label" data-state={notice.state}>
-      <strong>{notice.label}</strong>
-      <span>{notice.subtitle}</span>
-    </p>
+    <span className="undone-label" data-state={notice.state}>
+      <strong>{notice.label}</strong> {notice.subtitle}
+    </span>
   );
 }
 
